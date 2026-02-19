@@ -1,0 +1,136 @@
+﻿@model Acoes_Fiis.Models.CarteiraTotalViewModel
+
+@{
+    ViewData["Title"] = "Minha Carteira Profissional";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="fw-bold">Minha Carteira</h1>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalAdicionarAtivo">
+            <i class="bi bi-plus-circle"></i> Adicionar Ativo à Carteira
+        </button>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card bg-dark text-white shadow border-0">
+                <div class="card-body">
+                    <h6 class="text-uppercase small fw-bold text-info">Patrimônio Total Atual</h6>
+                    <h2 class="mb-0">R$ @Model.TotalPatrimonio.ToString("N2")</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card shadow border-0 @(Model.TotalLucro >= 0 ? "bg-success" : "bg-danger") text-white">
+                <div class="card-body">
+                    <h6 class="text-uppercase small fw-bold">Lucro/Prejuízo Total</h6>
+                    <h2 class="mb-0">R$ @Model.TotalLucro.ToString("N2")</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Ticker</th>
+                        <th>Qtd</th>
+                        <th>Preço Médio</th>
+                        <th>Preço Atual</th>
+                        <th>Total Atual</th>
+                        <th>Resultado</th>
+                        <th>Status</th>
+                        <th class="text-center">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.Itens)
+                    {
+                        <tr>
+                            <td class="fw-bold text-primary">@item.Ticker</td>
+                            <td>@item.Quantidade.ToString("N2")</td>
+                            <td>R$ @item.PrecoMedio.ToString("N2")</td>
+                            <td>R$ @item.PrecoAtual.ToString("N2")</td>
+                            <td class="fw-bold">R$ @item.ValorAtual.ToString("N2")</td>
+                            <td>
+                                <span class="@(item.LucroPrejuizo >= 0 ? "text-success" : "text-danger") fw-bold">
+                                    R$ @item.LucroPrejuizo.ToString("N2")
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge @item.CorBadge">@item.Recomendacao</span>
+                            </td>
+                            <td class="text-center">
+                                <div class="btn-group" role="group">
+                                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">Editar</a>
+                                    <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger">Remover</a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalAdicionarAtivo" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Novo Lançamento na Carteira</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form asp-action="AdicionarAtivo" method="post">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Selecione o Ativo (Ações, FIIs ou Gerais)</label>
+                        <select name="ticker" class="form-select" required>
+                            <option value="">-- Escolha um Ticker --</option>
+                            <optgroup label="Ações">
+                                @foreach (var t in Model.ListaTickersAcoes)
+                                {
+                                    <option value="@t">@t</option>
+                                }
+                            </optgroup>
+                            <optgroup label="FIIs">
+                                @foreach (var t in Model.ListaTickersFiis)
+                                {
+                                    <option value="@t">@t</option>
+                                }
+                            </optgroup>
+                            <optgroup label="Outros (Cripto/BDR)">
+                                @foreach (var t in Model.ListaTickersGerais)
+                                {
+                                    <option value="@t">@t</option>
+                                }
+                            </optgroup>
+                        </select>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Quantidade</label>
+                            <input type="number" name="quantidade" step="0.0001" class="form-control" placeholder="0,00" required />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Preço Médio (R$)</label>
+                            <input type="number" name="precoMedio" step="0.01" class="form-control" placeholder="R$ 0,00" required />
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info small">
+                        Dica: O sistema identificará automaticamente se o ativo é Ação ou FII.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">Salvar na Carteira</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>   

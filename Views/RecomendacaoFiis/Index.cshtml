@@ -1,0 +1,203 @@
+﻿@model IEnumerable<Acoes_Fiis.Models.RecomendacaoFii>
+
+@{
+    ViewData["Title"] = "Carteira de FIIs";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>📊 Meus Fundos Imobiliários</h1>
+        <button type="button" class="btn btn-link p-0 ms-2" data-bs-toggle="modal" data-bs-target="#modalIndicadores">
+            <i class="bi bi-info-circle"></i> O que significa?
+        </button>
+        <a asp-action="Create" class="btn btn-primary">Novo FII Manual</a>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-5">
+                    <form asp-action="BuscarYahoo" method="get" class="d-flex">
+                        <input type="text" name="ticker" class="form-control me-2" placeholder="Ex: HGLG11" required>
+                        <button type="submit" class="btn btn-dark">Analisar</button>
+                    </form>
+                </div>
+
+                <div class="col-md-4">
+                    <form asp-action="Index" method="get" class="d-flex">
+                        <select name="filtroSegmento" class="form-select me-2">
+                            <option value="">Todos os Segmentos</option>
+                            @foreach (var seg in ViewBag.Segmentos)
+                            {
+                                <option value="@seg">@seg</option>
+                            }
+                        </select>
+                        <button type="submit" class="btn btn-secondary">Filtrar</button>
+                    </form>
+                </div>
+
+                <div class="col-md-3 text-end">
+                    <form asp-action="AtualizarTodos" method="post">
+                        <input type="hidden" name="filtroSegmento" value="@Context.Request.Query["filtroSegmento"]" />
+                        <button type="submit" class="btn btn-outline-success w-100">
+                            🔄 Atualizar Filtrados
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (TempData["Sucesso"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @TempData["Sucesso"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="table-responsive shadow rounded">
+        <table class="table table-hover align-middle bg-white mb-0">
+            <thead class="table-dark">
+                <tr>
+                    <th>Ticker</th>
+                    <th>Segmento</th>
+                    <th>Preço Atual</th>
+                    <th>P/VP</th>
+                    <th>Rend. Mensal</th>
+                    <th>Projeção 12m</th>
+                    <th>Recomendação</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr>
+                        <td class="fw-bold">@item.Ticker</td>
+
+                        <td>
+                            <form asp-action="UpdateSegmento" method="post" class="d-flex">
+                                <input type="hidden" name="id" value="@item.Id" />
+                                <select name="novoSegmento" class="form-select form-select-sm" onchange="this.form.submit()">
+                                    <!option value="Logística" @(item.Segmento == "Logística" ? "selected" : "")>Logística</!option>
+                                    <!option value="Papel" @(item.Segmento == "Papel" ? "selected" : "")>Papel (CRI)</!option>
+                                    <!option value="Shopping" @(item.Segmento == "Shopping" ? "selected" : "")>Shopping</!option>
+                                    <!option value="Lajes" @(item.Segmento == "Lajes" ? "selected" : "")>Lajes</!option>
+                                    <!option value="Híbrido" @(item.Segmento == "Híbrido" ? "selected" : "")>Híbrido</!option>
+                                </select>
+                            </form>
+                        </td>
+
+                        <td>R$ @item.PrecoAtual.ToString("N2")</td>
+
+                        <td>
+                            @{
+                                decimal pvp = item.VPA > 0 ? (item.PrecoAtual / item.VPA) : 0;
+                                string pvpCor = pvp > 1.05m ? "text-danger" : (pvp < 0.95m ? "text-success" : "");
+                            }
+                            <span class="fw-bold @pvpCor">@pvp.ToString("N2")</span>
+                        </td>
+
+                        <td>
+                            <form asp-action="UpdateRendimento" method="post" class="d-flex align-items-center">
+                                <input type="hidden" name="id" value="@item.Id" />
+                                <div class="input-group input-group-sm" style="width: 100px;">
+                                    <span class="input-group-text">R$</span>
+                                    <input type="text" name="novoRendimento" value="@item.UltimoRendimento.ToString("N2")"
+                                           class="form-control" onchange="this.form.submit()" />
+                                </div>
+                            </form>
+                        </td>
+
+                        <td class="text-primary fw-bold">
+                            R$ @((item.UltimoRendimento * 12).ToString("N2"))
+                        </td>
+
+                        <td>
+                            @{
+                                string rec = "Aguardar";
+                                string cor = "bg-secondary";
+
+                                if (pvp > 0 && pvp < 0.98m) { rec = "Compra"; cor = "bg-success"; }
+                                else if (pvp >= 0.98m && pvp <= 1.05m) { rec = "Manter"; cor = "bg-primary"; }
+                                else if (pvp > 1.05m) { rec = "Venda / Caro"; cor = "bg-danger"; }
+                            }
+                            <span class="badge @cor">@rec</span>
+                        </td>
+
+                        <td>
+                            <div class="btn-group">
+                                <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">Editar</a>
+                                <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger">Deletar</a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal fade" id="modalIndicadores" tabindex="-1" aria-labelledby="modalIndicadoresLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="modalIndicadoresLabel">📖 Guia de Indicadores de FIIs</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="list-group list-group-flush">
+                    <div class="list-group-item">
+                        <h6><strong>P/VP (Preço sobre Valor Patrimonial)</strong></h6>
+                        <p class="mb-1 small text-muted">Indica se o fundo está caro ou barato em relação ao valor dos imóveis/ativos no balanço.</p>
+                        <ul>
+                            <li><span class="text-success fw-bold">Abaixo de 1.00:</span> Desconto (Barato).</li>
+                            <li><span class="fw-bold">1.00:</span> Preço Justo.</li>
+                            <li><span class="text-danger fw-bold">Acima de 1.05:</span> Ágio (Caro).</li>
+                        </ul>
+                    </div>
+                    <div class="list-group-item">
+                        <h6><strong>VPA (Valor Patrimonial por Cota)</strong></h6>
+                        <p class="mb-1 small text-muted">É a soma de todos os ativos do fundo dividida pelo número de cotas. Representa o valor "contábil" do fundo.</p>
+                    </div>
+                    <div class="list-group-item">
+                        <h6><strong>Dividend Yield (DY) Mensal</strong></h6>
+                        <p class="mb-1 small text-muted">A rentabilidade do dividendo em relação ao preço pago na cota. Essencial para comparar com a taxa de juros (SELIC).</p>
+                    </div>
+                    <div class="list-group-item">
+                        <h6><strong>Vacância</strong></h6>
+                        <p class="mb-1 small text-muted">Percentual de espaço físico desocupado. Vacância alta = Risco de rendimento menor.</p>
+                    </div>
+                    <div class="list-group-item bg-light">
+                        <h6><strong>🏢 Guia de Segmentos (Estratégia)</strong></h6>
+                        <div class="row small">
+                            <div class="col-md-6">
+                                <p><strong>🚛 Logística:</strong> Galpões alugados para e-commerce e indústrias. Contratos longos e inquilinos sólidos.</p>
+                                <p><strong>🛍️ Shopping:</strong> Renda vinda do aluguel das lojas e estacionamento. Possui alta diversificação de inquilinos.</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>💰 Recebíveis (Papel):</strong> Investem em dívida imobiliária (CRI). Rendimento atrelado ao IPCA ou CDI.</p>
+                                <p><strong>🏢 Lajes Corporativas:</strong> Prédios de escritórios de alto padrão. Sofrem mais em crises ou com o Home Office.</p>
+                            </div>
+                            <div class="col-md-12">
+                                <p class="mb-0"><strong>🔄 Híbrido:</strong> Mistura vários segmentos (ex: galpões e escritórios) no mesmo fundo para reduzir o risco.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="list-group-item">
+                        <h6><strong>Tipos (Tijolo vs Papel)</strong></h6>
+                        <p class="mb-1 small text-muted"><strong>Tijolo:</strong> Imóveis físicos (Shoppings, Galpões). <strong>Papel:</strong> Títulos de dívida imobiliária (CRI/LCI) indexados a inflação ou CDI.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer text-center">
+                <small class="text-muted w-100">Dica CPA-20: Sempre analise a liquidez antes de investir!</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+}

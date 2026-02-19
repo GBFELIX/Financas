@@ -1,0 +1,93 @@
+﻿@model Acoes_Fiis.Models.RecomendacaoFii
+
+@{
+    ViewData["Title"] = "Cadastrar FII";
+}
+
+<div class="container mt-4">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">🏢 Confirmar Dados do Fundo: @Model?.Ticker</h4>
+        </div>
+        <div class="card-body">
+            <form asp-action="Create">
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="Ticker" class="form-label fw-bold"></label>
+                        <input asp-for="Ticker" class="form-control bg-light" readonly />
+                        <span asp-validation-for="Ticker" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="PrecoAtual" class="form-label fw-bold">Cotação Atual (R$)</label>
+                        <input asp-for="PrecoAtual" type="text" class="form-control" />
+                        <span asp-validation-for="PrecoAtual" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="VPA" class="form-label fw-bold">Valor Patr. por Cota (VPA)</label>
+                        <input asp-for="VPA" type="text" class="form-control" />
+                        <span asp-validation-for="VPA" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="UltimoRendimento" class="form-label fw-bold">Último Provento (R$)</label>
+                        <input asp-for="UltimoRendimento" type="text" class="form-control" placeholder="Ex: 1,15" />
+                        <span asp-validation-for="UltimoRendimento" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="Vacancia" class="form-label fw-bold">Vacância (%)</label>
+                        <input asp-for="Vacancia" type="text" class="form-control" placeholder="Ex: 5,20" />
+                        <span asp-validation-for="Vacancia" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="TipoFii" class="form-label fw-bold">Tipo de Fundo</label>
+                        <select asp-for="TipoFii" class="form-select">
+                            <option value="Tijolo">🧱 Tijolo</option>
+                            <option value="Papel">📄 Papel (Recebíveis)</option>
+                            <option value="FoF">🏢 FoF (Fundo de Fundos)</option>
+                            <option value="Híbrido">🔄 Híbrido</option>
+                        </select>
+                        <span asp-validation-for="TipoFii" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="Segmento" class="form-label fw-bold">Segmento</label>
+                        <select asp-for="Segmento" class="form-select">
+                            <option value="Logística">🚛 Logística</option>
+                            <option value="Shopping">🛍️ Shoppings</option>
+                            <option value="Lajes Corporativas">🏢 Lajes Corporativas</option>
+                            <option value="Recebíveis">💰 Recebíveis Imobiliários</option>
+                            <option value="Híbrido">🔄 Híbrido</option>
+                            <option value="Outros">❓ Outros</option>
+                        </select>
+                        <span asp-validation-for="Segmento" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <hr />
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <a asp-action="Index" class="btn btn-outline-secondary me-md-2">Cancelar</a>
+                    <button type="submit" class="btn btn-success btn-lg px-5">Salvar FII</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+
+    <script>
+        // Correção para validação de decimais com vírgula (pt-BR)
+        $.validator.methods.number = function (value, element) {
+            return this.optional(element) || /^-?(?:\d+|\d{1,3}(?:[\s\.,]\d{3})+)(?:[\.,]\d+)?$/.test(value);
+        }
+    </script>
+}

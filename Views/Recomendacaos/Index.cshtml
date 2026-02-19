@@ -1,0 +1,259 @@
+﻿@model IEnumerable<Acoes_Fiis.Models.Recomendacao>
+
+@{
+    ViewData["Title"] = "Dashboard de Investimentos";
+}
+
+<style>
+    /* Customizando o visual para parecer um terminal financeiro */
+    .table-hover tbody tr:hover {
+        background-color: rgba(0, 123, 255, 0.05);
+        transition: 0.3s;
+    }
+    .card {
+        border-radius: 15px;
+        border: none;
+    }
+    .badge-custom {
+        padding: 8px 12px;
+        border-radius: 8px;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+    }
+    .header-gradient {
+        background: linear-gradient(90deg, #2c3e50 0%, #000000 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 15px;
+        margin-bottom: 25px;
+    }
+    /* Estilo para manter o Ticker visível ao rolar para o lado */
+    .table-responsive {
+        overflow-x: auto;
+    }
+
+    .sticky-col {
+        position: sticky;
+        left: 0;
+        background-color: white !important;
+        z-index: 1;
+        border-right: 2px solid #dee2e6 !important;
+    }
+
+    /* Diminuir a fonte geral para caber mais dados */
+    .table-custom {
+        font-size: 0.875rem;
+    }
+
+    /* Ajuste de largura mínima para evitar quebra de linha feia */
+    th {
+        white-space: nowrap;
+    }
+</style>
+
+<div class="header-gradient shadow p-4 text-white rounded">
+    <h1 class="display-6"><i class="bi bi-graph-up-arrow"></i> Painel de Recomendações</h1>
+    <p class="mb-3">Análise fundamentalista automatizada via Yahoo Finance</p>
+
+    <button type="button" class="btn btn-sm btn-info text-white" data-bs-toggle="modal" data-bs-target="#modalGlossario">
+        <i class="bi bi-info-circle"></i> O que significam esses números?
+    </button>
+</div>
+
+<div class="modal fade" id="modalGlossario" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content text-dark">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">📚 Guia de Indicadores Financeiros</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <dl class="row">
+                    <dt class="col-sm-4 text-primary">Ticker</dt>
+                    <dd class="col-sm-8">Identificador da empresa na Bolsa (ex: BBAS3, VALE3).</dd>
+
+                    <dt class="col-sm-4 text-primary">Preço Atual</dt>
+                    <dd class="col-sm-8">Cotação do ativo em tempo real (ou com leve atraso da API).</dd>
+
+                    <dt class="col-sm-4 text-primary">P/VP</dt>
+                    <dd class="col-sm-8">Preço sobre Valor Patrimonial. Se estiver abaixo de 1, o mercado está pagando menos que o patrimônio líquido da empresa.</dd>
+
+                    <dt class="col-sm-4 text-primary">P/L</dt>
+                    <dd class="col-sm-8">Preço sobre Lucro. Indica em quantos anos você teria o retorno do investimento apenas com o lucro da empresa.</dd>
+
+                    <dt class="col-sm-4 text-primary">ROE (%)</dt>
+                    <dd class="col-sm-8">Retorno sobre Patrimônio. Mede a capacidade da empresa de gerar lucro com o capital dos sócios.</dd>
+
+                    <dt class="col-sm-4 text-primary">DY (%)</dt>
+                    <dd class="col-sm-8">Dividend Yield. Porcentagem de rendimento paga em dinheiro nos últimos 12 meses.</dd>
+
+                    <dt class="col-sm-4 text-primary">Preço Teto (Venda)</dt>
+                    <dd class="col-sm-8">Baseado no método de Décio Bazin. É o preço máximo para garantir um rendimento mínimo de dividendos (geralmente 6%).</dd>
+
+                    <dt class="col-sm-4 text-primary">Margem de Subida</dt>
+                    <dd class="col-sm-8">Diferença entre o Preço Atual e o Preço Alvo. Indica o potencial de valorização esperado.</dd>
+
+                    <dt class="col-sm-4 text-primary">Preço Justo (Graham)</dt>
+                    <dd class="col-sm-8">$$ \sqrt{22,5 \times LPA \times VPA} $$ Cálculo conservador para encontrar o valor "real" da ação.</dd>
+
+                    <dt class="col-sm-4 text-primary">Margem de Segurança</dt>
+                    <dd class="col-sm-8">O quanto o preço atual está abaixo do Preço Justo. É a proteção do investidor contra erros de análise.</dd>
+
+                    <dt class="col-sm-4 text-primary">Última Atualização</dt>
+                    <dd class="col-sm-8">Data e hora da última coleta de dados via Yahoo Finance.</dd>
+
+                    <dt class="col-sm-4 text-primary">Tipo</dt>
+                    <dd class="col-sm-8">Classificação da tese: Dividendos, Crescimento ou Setor Perene.</dd>
+
+                    <dt class="col-sm-4 text-primary">Recomendação</dt>
+                    <dd class="col-sm-8">Sugestão automática do sistema (Comprar, Aguardar ou Vender) baseada na Margem de Segurança.</dd>
+                </dl>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Entendi!</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title text-muted mb-3">🔍 Consultar Novo Ativo (B3)</h5>
+                
+                <form asp-controller="Recomendacaos" asp-action="BuscarYahoo" method="get" class="row g-2">
+                    <div class="col-md-6">
+                        <input type="text" name="ticker" class="form-control" placeholder="Ex: PETR4" required>
+                    </div>
+                    <div class="col-md-4">
+                        <button type="submit" class="btn btn-primary">Analisar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 d-flex align-items-center justify-content-end">
+        <a asp-action="Create" class="btn btn-outline-dark btn-lg">
+            <i class="bi bi-plus-circle"></i> Novo Manual
+        </a>
+    </div>
+</div>
+<form asp-action="Index" method="get" class="mb-3 row g-2">
+    <div class="col-md-4">
+        <select name="filtroTipo" class="form-select">
+            <option value="">-- Filtrar por Tipo (Todos) --</option>
+            <option value="Setor Perene">🏦 Setor Perene</option>
+            <option value="Dividendos">💰 Dividendos</option>
+            <option value="Crescimento">🚀 Crescimento</option>
+        </select>
+    </div>
+    <div class="col-md-2">
+        <button type="submit" class="btn btn-secondary w-100">Filtrar</button>
+    </div>
+</form>
+<div class="mt-3">
+   @*  <form asp-action="AtualizarTodos" method="post">
+        <button type="submit" class="btn btn-outline-success shadow-sm">
+            <i class="bi bi-arrow-clockwise"></i> Atualizar Preços e Indicadores Agora
+        </button>
+    </form> *@
+    <form asp-action="AtualizarTodos" method="post">
+        <input type="hidden" name="filtroTipo" value="@Context.Request.Query["filtroTipo"]" />
+        <button type="submit" class="btn btn-outline-success">Atualizar Filtrados</button>
+    </form>
+</div>
+@if (TempData["Sucesso"] != null)
+{
+    <div class="alert alert-success mt-3 alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle-fill"></i> @TempData["Sucesso"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+<p></p>
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 table-custom">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Ticket</th>
+                        <th>Preço</th>
+                        <th>P/VP</th>
+                        <th>P/L</th>
+                        <th>ROE</th>
+                        <th>DY</th>
+                        <th>Preço Teto</th>
+                        <th>Margem Subida</th>
+                        <th>Justo (Graham)</th>
+                        <th>Margem Seg.</th>
+                        <th>Atualização</th>
+                        <th style="min-width: 150px;">Tipo</th>
+                        <th class="text-center">Recomendação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td class="ps-4 fw-bold text-primary sticky-col">@item.Ticker</td>
+                            <td><span class="text-nowrap">R$ @item.PrecoAtual.ToString("N2")</span></td>
+                            <td class="text-muted">@item.PVP.ToString("N2")</td>
+                            <td class="text-muted">@(item.PL == 0 ? "N/A" : item.PL.ToString("N2"))</td>
+                            <td class="@(item.Roe > 15 ? "text-success fw-bold" : "")">@item.Roe.ToString("N1")%</td>
+                            <td class="fw-bold">@item.DividendYield.ToString("N2")%</td>
+                            <td class="text-nowrap">R$ @item.PrecoTetoVenda.ToString("N2")</td>
+                            <td class="text-nowrap @(item.DistanciaParaVenda > 0 ? "text-success" : "text-danger")">
+                                @(item.DistanciaParaVenda > 0 ? "+" : "")@item.DistanciaParaVenda.ToString("N1")%
+                            </td>
+                            <td class="text-nowrap">R$ @item.ValorJustoGraham.ToString("N2")</td>
+                            <td>
+                                @if (item.MargemSeguranca > 20)
+                                {
+                                    <span class="text-success fw-bold">@item.MargemSeguranca.ToString("N0")%</span>
+                                }
+                                else if (item.MargemSeguranca > 0)
+                                {
+                                    <span class="text-info">@item.MargemSeguranca.ToString("N0")%</span>
+                                }
+                                else
+                                {
+                                    <span class="text-danger">@item.MargemSeguranca.ToString("N0")%</span>
+                                }
+                            </td>
+                            <td class="small text-muted text-nowrap">
+                                @item.DataAtualizacao.ToString("dd/MM HH:mm")
+                                <i class="bi @(item.DataAtualizacao > DateTime.Now.AddMinutes(-30) ? "bi-patch-check-fill text-success" : "bi-clock text-warning")"></i>
+                            </td>
+                            <td>
+                                <form asp-action="AlterarTipoRapido" method="post">
+                                    <input type="hidden" name="id" value="@item.Id" />
+                                    <select name="novoTipo" onchange="this.form.submit()" class="form-select form-select-sm py-0 shadow-none">
+                                        <!option value="Setor Perene" @(item.TipoAtivo == "Setor Perene" ? "selected" : "")>🏦 Perene</!option>
+                                        <!option value="Dividendos" @(item.TipoAtivo == "Dividendos" ? "selected" : "")>💰 Divs</!option>
+                                        <!option value="Crescimento" @(item.TipoAtivo == "Crescimento" ? "selected" : "")>🚀 Cresc</!option>
+                                    </select>
+                                </form>
+                            </td>
+                            <td class="text-center text-nowrap px-3">
+                                <span class="@item.CorClasse badge rounded-pill" style="padding: 5px 12px; font-size: 0.75rem;">
+                                    @item.Status
+                                </span>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+
+@if (TempData["Erro"] != null)
+{
+    <div class="alert alert-danger mt-3 alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle-fill"></i> @TempData["Erro"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}

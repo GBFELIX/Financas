@@ -1,0 +1,84 @@
+﻿@model Acoes_Fiis.Models.AtivoGeral
+
+@{
+    ViewData["Title"] = "Detalhes do Ativo";
+}
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card shadow-sm">
+                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">🔍 Detalhes: @Model.Ticker</h4>
+                    <span class="badge bg-info text-dark">@Model.ClasseAtivo</span>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 border-end">
+                            <h5 class="text-muted border-bottom pb-2">Informações de Mercado</h5>
+                            <dl class="row">
+                                <dt class="col-sm-5 text-muted">Nome</dt>
+                                <dd class="col-sm-7 fw-bold">@Html.DisplayFor(model => model.Nome)</dd>
+
+                                <dt class="col-sm-5 text-muted">Ticker</dt>
+                                <dd class="col-sm-7 text-primary fw-bold">@Html.DisplayFor(model => model.Ticker)</dd>
+
+                                <dt class="col-sm-5 text-muted">Preço Atual</dt>
+                                <dd class="col-sm-7 fs-5 fw-bold text-success">
+                                    R$ @Model.PrecoAtual.ToString(Model.ClasseAtivo == "Cripto" || Model.ClasseAtivo == "Moeda" ? "N4" : "N2")
+                                </dd>
+
+                                <dt class="col-sm-5 text-muted">Moeda Base</dt>
+                                <dd class="col-sm-7">
+                                    <span class="badge border text-dark">@Html.DisplayFor(model => model.Moeda)</span>
+                                </dd>
+
+                                <dt class="col-sm-5 text-muted">Atualizado em</dt>
+                                <dd class="col-sm-7 small">@Html.DisplayFor(model => model.DataAtualizacao)</dd>
+                            </dl>
+                        </div>
+
+                        <div class="col-md-6 ps-4">
+                            <h5 class="text-muted border-bottom pb-2">Perfil de Risco & Estratégia</h5>
+                            <div class="p-3 bg-light rounded shadow-sm">
+                                @if (Model.ClasseAtivo == "Cripto")
+                                {
+                                    <h6><strong>Risco de Mercado: Crítico</strong></h6>
+                                    <p class="small text-muted mb-0">Ativos digitais possuem volatilidade extrema. Recomendado para alocação de "Capital de Risco" (Small portion of portfolio).</p>
+                                }
+                                else if (Model.ClasseAtivo == "BDR" || Model.Moeda == "USD")
+                                {
+                                    <h6><strong>Risco Cambial: Alto</strong></h6>
+                                    <p class="small text-muted mb-0">A variação do Dólar impacta diretamente o valor deste ativo. Funciona como um <strong>Hedge</strong> contra o Real.</p>
+                                }
+                                else if (Model.ClasseAtivo == "ETF")
+                                {
+                                    <h6><strong>Gestão: Passiva</strong></h6>
+                                    <p class="small text-muted mb-0">Este ativo replica um índice (Benchmark). O objetivo é obter o retorno médio do mercado com baixo custo.</p>
+                                }
+                                else
+                                {
+                                    <h6><strong>Análise Geral</strong></h6>
+                                    <p class="small text-muted mb-0">Ativo diversificado para composição de patrimônio a longo prazo.</p>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 pt-3 border-top d-flex justify-content-between">
+                        <a asp-action="Index" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> Voltar para Lista
+                        </a>
+                        <a asp-action="Edit" asp-route-id="@Model?.Id" class="btn btn-primary px-4">
+                            <i class="bi bi-pencil"></i> Editar Dados
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+}

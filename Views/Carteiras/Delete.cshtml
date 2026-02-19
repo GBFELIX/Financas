@@ -1,0 +1,67 @@
+﻿@model Acoes_Fiis.Models.Carteira
+
+@{
+    ViewData["Title"] = "Remover Ativo";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow border-0">
+                <div class="card-header bg-danger text-white p-3 text-center">
+                    <i class="bi bi-exclua-triangle fs-1 d-block mb-2"></i>
+                    <h4 class="mb-0">Confirmar Exclusão?</h4>
+                    <p class="small mb-0 opacity-75">Esta ação não pode ser desfeita na sua carteira.</p>
+                </div>
+
+                <div class="card-body p-4">
+                    <div class="text-center mb-4">
+                        <h2 class="fw-bold text-primary">@Model.Ticker</h2>
+                        <span class="badge bg-secondary text-uppercase">@Model.TipoAtivo</span>
+                    </div>
+
+                    <div class="list-group list-group-flush border rounded mb-4">
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span class="text-muted fw-bold">Quantidade:</span>
+                            <span class="fs-5">@Model.Quantidade.ToString("N4")</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span class="text-muted fw-bold">Preço Médio:</span>
+                            <span class="fs-5 text-dark">R$ @Model.PrecoMedio.ToString("N2")</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span class="text-muted fw-bold">Setor:</span>
+                            <span>@(Model.Setor ?? "Não informado")</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span class="text-muted fw-bold">Data da Operação:</span>
+                            <span>@Model.DataCompra.ToString("dd/MM/yyyy")</span>
+                        </div>
+                    </div>
+
+                    <form asp-action="Delete">
+                        <input type="hidden" asp-for="Id" />
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-danger btn-lg shadow-sm">
+                                <i class="bi bi-trash"></i> Confirmar Remoção
+                            </button>
+                            <a asp-action="Index" class="btn btn-outline-secondary">
+                                Cancelar e Voltar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="alert alert-warning mt-4 border-0 shadow-sm" role="alert">
+                <div class="d-flex">
+                    <i class="bi bi-exclamation-circle-fill fs-4 me-3"></i>
+                    <div>
+                        <strong>Atenção:</strong> Ao remover este ativo, o cálculo do seu <strong>Patrimônio Total</strong> e <strong>Lucro/Prejuízo Consolidado</strong> será atualizado imediatamente.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

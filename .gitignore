@@ -1,0 +1,60 @@
+# Build results
+bin/
+obj/
+Debug/
+Release/
+
+# Visual Studio files
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Logs
+*.log
+
+# Configurações locais
+appsettings.Development.json
+appsettings.Local.json
+
+# Pacotes NuGet
+*.nupkg
+packages/
+# Se você estiver usando restore automático, ignore apenas a pasta packages
+# !packages/build/
+
+# Arquivos gerados
+*.dll
+*.exe
+*.pdb
+*.cache
+*.dbmdl
+
+# Testes
+TestResults/
+*.coverage
+*.coveragexml
+
+# Publicações
+publish/
+*.publishsettings
+
+# Ferramentas
+_ReSharper*/
+*.DotSettings.user
+*.idea/
+*.ncrunchsolution
+
+# Arquivos temporários
+*.tmp
+*.bak
+*.swp
+
+# Node.js (se usar front-end com npm)
+node_modules/
+npm-debug.log
+
+# Outros
+*.mdf
+*.ldf

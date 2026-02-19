@@ -1,0 +1,85 @@
+﻿@model Acoes_Fiis.Models.Recomendacao
+
+@{
+    ViewData["Title"] = "Confirmar Análise";
+}
+
+<div class="container mt-4">
+    <div class="card shadow">
+        <div class="card-header bg-dark text-white">
+            <h4 class="mb-0">📊 Confirmar Dados do Ativo: @Model?.Ticker</h4>
+        </div>
+        <div class="card-body">
+            <form asp-action="Create">
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="Ticker" class="form-label fw-bold"></label>
+                        <input asp-for="Ticker" class="form-control form-control-lg bg-light" readonly />
+                        <span asp-validation-for="Ticker" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="PrecoAtual" class="form-label fw-bold">Preço de Mercado</label>
+                        <div class="input-group">
+                            <span class="input-group-text">R$</span>
+                            <input asp-for="PrecoAtual" class="form-control form-control-lg" type="text" />
+                        </div>
+                        <span asp-validation-for="PrecoAtual" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="VPA" class="form-label"></label>
+                        <input asp-for="VPA" class="form-control" type="text" />
+                        <span asp-validation-for="VPA" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="LPA" class="form-label"></label>
+                        <input asp-for="LPA" class="form-control" type="text" />
+                        <span asp-validation-for="LPA" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="Roe" class="form-label">ROE (%)</label>
+                        <input asp-for="Roe" class="form-control" type="text" />
+                        <span asp-validation-for="Roe" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label asp-for="DividendYield" class="form-label">Dividend Yield (%)</label>
+                    <input asp-for="DividendYield" class="form-control" type="text" />
+                    <span asp-validation-for="DividendYield" class="text-danger"></span>
+                </div>
+                <div class="form-group mb-3">
+                    <label asp-for="TipoAtivo" class="control-label fw-bold"></label>
+                    <select asp-for="TipoAtivo" class="form-select">
+                        <option value="">-- Selecione o Tipo --</option>
+                        <option value="Setor Perene">Setor Perene</option>
+                        <option value="Dividendos">Dividendos</option>
+                        <option value="Crescimento">Crescimento</option>
+                    </select>
+                    <span asp-validation-for="TipoAtivo" class="text-danger"></span>
+                </div>
+
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <a asp-action="Index" class="btn btn-outline-secondary me-md-2">Cancelar</a>
+                    <button type="submit" class="btn btn-success btn-lg px-5">Salvar na Carteira</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+    <script>
+        // Sobrescreve a validação de números do jQuery para aceitar vírgula (pt-BR)
+        $.validator.methods.number = function (value, element) {
+            return this.optional(element) || /^-?(?:\d+|\d{1,3}(?:[\s\.,]\d{3})+)(?:[\.,]\d+)?$/.test(value);
+        }
+    </script>
+}
