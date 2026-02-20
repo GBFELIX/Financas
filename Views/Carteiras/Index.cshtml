@@ -7,66 +7,87 @@
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="fw-bold">Minha Carteira</h1>
-        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalAdicionarAtivo">
-            <i class="bi bi-plus-circle"></i> Adicionar Ativo à Carteira
+        <button type="button" class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#modalAdicionarAtivo">
+            <i class="bi bi-plus-circle"></i> Adicionar Ativo
         </button>
     </div>
 
     <div class="row mb-4">
-        <div class="col-md-6">
-            <div class="card bg-dark text-white shadow border-0">
-                <div class="card-body">
-                    <h6 class="text-uppercase small fw-bold text-info">Patrimônio Total Atual</h6>
-                    <h2 class="mb-0">R$ @Model.TotalPatrimonio.ToString("N2")</h2>
+        <div class="col-md-3">
+            <div class="card bg-dark text-white shadow border-0 h-100">
+                <div class="card-body text-center">
+                    <h6 class="text-uppercase small fw-bold text-info">Patrimônio Bruto</h6>
+                    <h2 class="mb-0">R$ @((Model.TotalPatrimonio + Model.TotalInvestidoRendaFixa).ToString("N2"))</h2>
                 </div>
             </div>
         </div>
-        <div class="col-md-6">
-            <div class="card shadow border-0 @(Model.TotalLucro >= 0 ? "bg-success" : "bg-danger") text-white">
-                <div class="card-body">
-                    <h6 class="text-uppercase small fw-bold">Lucro/Prejuízo Total</h6>
-                    <h2 class="mb-0">R$ @Model.TotalLucro.ToString("N2")</h2>
+        <div class="col-md-3">
+            <div class="card bg-primary text-white shadow border-0 h-100">
+                <div class="card-body text-center">
+                    <h6 class="text-uppercase small fw-bold">Renda Mensal Total</h6>
+                    <h3 class="mb-0">R$ @Model.RendaMensalTotalConsolidada.ToString("N2")</h3>
+                    <small class="opacity-75">Líquida de Impostos</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-dark shadow border-0 h-100">
+                <div class="card-body text-center">
+                    <h6 class="text-uppercase small fw-bold">Projeção 12 Meses</h6>
+                    <h3 class="mb-0">R$ @Model.ProventoAnualEstimado.ToString("N2")</h3>
+                    <small class="fw-bold text-white">Simulação!</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow border-0 h-100 @(Model.TotalLucro >= 0 ? "bg-success" : "bg-danger") text-white">
+                <div class="card-body text-center">
+                    <h6 class="text-uppercase small fw-bold">Resultado RV</h6>
+                    <h3 class="mb-0">R$ @Model.TotalLucro.ToString("N2")</h3>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="card shadow-sm border-0">
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0 fw-bold text-primary"><i class="bi bi-graph-up-arrow me-2"></i>Renda Variável</h5>
+        </div>
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
+                <thead class="table-light text-secondary small text-uppercase">
                     <tr>
                         <th>Ticker</th>
                         <th>Qtd</th>
-                        <th>Preço Médio</th>
-                        <th>Preço Atual</th>
-                        <th>Total Atual</th>
-                        <th>Resultado</th>
+                        <th>P. Médio</th>
+                        <th>P. Atual</th>
+                        <th class="text-success">Rend./Cota</th>
+                        <th class="text-success">Renda Mensal</th>
+                        <th>Total</th>
+                        <th>Lucro/Prej.</th>
                         <th>Status</th>
                         <th class="text-center">Ações</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var item in Model.Itens)
+                    @foreach (var item in Model.Itens.Where(x => x.TipoAtivo != "RendaFixa"))
                     {
                         <tr>
                             <td class="fw-bold text-primary">@item.Ticker</td>
                             <td>@item.Quantidade.ToString("N2")</td>
                             <td>R$ @item.PrecoMedio.ToString("N2")</td>
                             <td>R$ @item.PrecoAtual.ToString("N2")</td>
+                            <td class="text-success small">@(item.UltimoRendimento > 0 ? item.UltimoRendimento.ToString("C2") : "-")</td>
+                            <td class="fw-bold text-success">@(item.ProventoMensalEstimado > 0 ? item.ProventoMensalEstimado.ToString("C2") : "-")</td>
                             <td class="fw-bold">R$ @item.ValorAtual.ToString("N2")</td>
-                            <td>
-                                <span class="@(item.LucroPrejuizo >= 0 ? "text-success" : "text-danger") fw-bold">
-                                    R$ @item.LucroPrejuizo.ToString("N2")
-                                </span>
+                            <td class="@(item.LucroPrejuizo >= 0 ? "text-success" : "text-danger") fw-bold">
+                                R$ @item.LucroPrejuizo.ToString("N2")
                             </td>
-                            <td>
-                                <span class="badge @item.CorBadge">@item.Recomendacao</span>
-                            </td>
+                            <td><span class="badge @item.CorBadge">@item.Recomendacao</span></td>
                             <td class="text-center">
-                                <div class="btn-group" role="group">
+                                <div class="btn-group">
                                     <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">Editar</a>
-                                    <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger">Remover</a>
+                                    <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger">Deletar</a>
                                 </div>
                             </td>
                         </tr>
@@ -75,7 +96,69 @@
             </table>
         </div>
     </div>
+
+    <div class="row">
+        <div class="col-md-12 mb-3">
+            <label class="form-label">Taxa de Rentabilidade (% ao ano)</label>
+            <div class="input-group">
+                <input type="number" name="taxaRentabilidade" step="0.01" class="form-control" placeholder="Ex: 12.75" />
+                <span class="input-group-text">% a.a.</span>
+            </div>
+            <small class="text-muted">Preencha apenas para Renda Fixa.</small>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-bold text-muted"><i class="bi bi-safe me-2"></i>Renda Fixa & Reserva</h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead class="table-light text-secondary small text-uppercase">
+                    <tr>
+                        <th>Classe / Título</th>
+                        <th>Montante Investido</th>
+                        <th>Taxa (% a.m)</th>
+                        <th>Rend. Bruto</th>
+                        <th>IR (17,5%)</th>
+                        <th class="text-success text-end">Rend. Líquido</th>
+                        <th class="text-center">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var rf in Model.Itens.Where(x => x.TipoAtivo == "RendaFixa"))
+                    {
+                        <tr>
+                            <td class="fw-bold">@rf.Ticker</td>
+                            <td>
+                                <form asp-action="AtualizarRendaFixa" method="post" class="d-flex gap-2">
+                                    <input type="hidden" name="id" value="@rf.Id" />
+                                    <div class="input-group input-group-sm" style="width: 150px;">
+                                        <span class="input-group-text">R$</span>
+                                        <input type="number" name="novoMontante" step="0.01" class="form-control" value="@rf.PrecoMedio" />
+                                    </div>
+                                    <div class="input-group input-group-sm" style="width: 100px;">
+                                        <input type="number" name="novaTaxa" step="0.01" class="form-control" value="@rf.TaxaRentabilidade" />
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                    <button type="submit" class="btn btn-sm btn-success"><i class="bi bi-check-lg"></i></button>
+                                </form>
+                            </td>
+                            <td>@rf.TaxaRentabilidade%</td>
+                            <td class="text-muted small">R$ @((rf.PrecoMedio * (rf.TaxaRentabilidade ?? 0) / 100).ToString("N2"))</td>
+                            <td class="text-danger small">- R$ @((rf.PrecoMedio * (rf.TaxaRentabilidade ?? 0) / 100 * 0.175m).ToString("N2"))</td>
+                            <td class="fw-bold text-success text-end">R$ @rf.ProventoMensalEstimado.ToString("N2")</td>
+                            <td class="text-center">
+                                <a asp-action="Delete" asp-route-id="@rf.Id" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
+
 
 <div class="modal fade" id="modalAdicionarAtivo" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
@@ -114,7 +197,7 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Quantidade</label>
-                            <input type="number" name="quantidade" step="0.0001" class="form-control" placeholder="0,00" required />
+                            <input type="number" name="quantidade" class="form-control" placeholder="0" required />
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Preço Médio (R$)</label>

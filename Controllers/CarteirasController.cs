@@ -22,22 +22,37 @@ namespace Acoes_Fiis.Controllers
         // GET: Carteiras
         public async Task<IActionResult> Index()
         {
-            // 1. Busca os itens reais da sua carteira no banco
-            var itensDoBanco = await _context.Carteira.ToListAsync();
-
-            // 2. Cria a ViewModel que vai para a View
+            var itensBanco = await _context.Carteira.ToListAsync();
             var viewModel = new CarteiraTotalViewModel();
+            decimal totalRFLiquido = 0;
 
-            foreach (var item in itensDoBanco)
+            foreach (var item in itensBanco)
             {
                 var viewItem = new CarteiraItemViewModel
                 {
                     Id = item.Id,
                     Ticker = item.Ticker,
                     Quantidade = item.Quantidade,
-                    PrecoMedio = item.PrecoMedio
+                    PrecoMedio = item.PrecoMedio,
+                    TipoAtivo = item.TipoAtivo,
+                    TaxaRentabilidade = item.TaxaRentabilidade
                 };
 
+                if (item.TipoAtivo == "RendaFixa")
+                {
+                    // Lógica para Renda Fixa
+                    viewItem.PrecoAtual = item.PrecoMedio;
+
+                    // Cálculo do rendimento mensal: (Montante * (Taxa / 12 meses))
+                    decimal taxaMensal = (item.TaxaRentabilidade ?? 0) / 12 / 100;
+                    decimal rendimentoBruto = (item.Quantidade * item.PrecoMedio) * taxaMensal;
+
+                    // Aplicando o IR de 17,5% (CPA-20!)
+                    viewItem.UltimoRendimento = (rendimentoBruto / item.Quantidade) * 0.825m;
+
+                    viewModel.TotalInvestidoRendaFixa += (item.Quantidade * item.PrecoMedio);
+                    totalRFLiquido += rendimentoBruto * 0.825m;
+                }
                 // 3. Busca o Preço Atual e Status nas tabelas de recomendação
                 if (item.TipoAtivo == "Acao")
                 {
@@ -54,6 +69,7 @@ namespace Acoes_Fiis.Controllers
                     var fii = await _context.RecomendacaoFii.FirstOrDefaultAsync(x => x.Ticker == item.Ticker);
                     if (fii != null)
                     {
+                        viewItem.UltimoRendimento = fii.UltimoRendimento;
                         viewItem.PrecoAtual = fii.PrecoAtual;
                         viewItem.Recomendacao = fii.PVP < 0.98m ? "Compra" : "Neutra";
                         viewItem.CorBadge = fii.PVP < 0.98m ? "badge bg-success" : "badge bg-secondary";
@@ -71,22 +87,42 @@ namespace Acoes_Fiis.Controllers
 
             return View(viewModel);
         }
-
+        [HttpPost]
+        public async Task<IActionResult> AtualizarRendaFixa(int id, decimal novoMontante, decimal novaTaxa)
+        {
+            var ativo = await _context.Carteira.FindAsync(id);
+            if (ativo != null && ativo.TipoAtivo == "RendaFixa")
+            {
+                ativo.PrecoMedio = novoMontante;
+                ativo.TaxaRentabilidade = novaTaxa;
+                _context.Update(ativo);
+                await _context.SaveChangesAsync();
+            }
+            return RedirectToAction(nameof(Index));
+        }
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> AdicionarAtivo(string ticker, decimal quantidade, decimal precoMedio)
+        public async Task<IActionResult> AdicionarAtivo(string ticker, decimal quantidade, decimal precoMedio, decimal? taxaRentabilidade)
         {
             // 1. Verifica se já temos esse ativo na carteira
             var ativoExistente = await _context.Carteira.FirstOrDefaultAsync(x => x.Ticker == ticker);
 
             if (ativoExistente != null)
             {
-                // LÓGICA DE PREÇO MÉDIO: (Qtd Antiga * PM Antigo + Qtd Nova * PM Novo) / Qtd Total
-                decimal quantidadeTotal = ativoExistente.Quantidade + quantidade;
-                decimal novoPrecoMedio = ((ativoExistente.Quantidade * ativoExistente.PrecoMedio) + (quantidade * precoMedio)) / quantidadeTotal;
+                decimal qtdAnterior = ativoExistente.Quantidade;
+                decimal pmAnterior = ativoExistente.PrecoMedio;
 
+                // 2. Calculamos a nova quantidade total
+                decimal quantidadeTotal = qtdAnterior + quantidade;
+
+                // 3. CÁLCULO CORRETO: (Patrimônio Antigo + Custo da Nova Compra) / Quantidade Total
+                // O erro comum é usar a 'quantidadeTotal' no lugar errado da fórmula
+                decimal novoPrecoMedio = ((qtdAnterior * pmAnterior) + (quantidade * precoMedio)) / quantidadeTotal;
+
+                // 4. Atualizamos os valores no objeto que veio do banco
                 ativoExistente.Quantidade = quantidadeTotal;
-                ativoExistente.PrecoMedio = novoPrecoMedio;
+                ativoExistente.PrecoMedio = Math.Round(novoPrecoMedio, 2); // Arredonda para 2 casas decimais
+
                 _context.Update(ativoExistente);
             }
             else
@@ -95,6 +131,7 @@ namespace Acoes_Fiis.Controllers
                 string tipo = "Geral";
                 if (await _context.Recomendacao.AnyAsync(x => x.Ticker == ticker)) tipo = "Acao";
                 else if (await _context.RecomendacaoFii.AnyAsync(x => x.Ticker == ticker)) tipo = "Fii";
+                else if (ticker.ToUpper().Contains("CDB") || ticker.ToUpper().Contains("TESOURO")) tipo = "RendaFixa";
 
                 var novoItem = new Carteira
                 {
@@ -102,6 +139,7 @@ namespace Acoes_Fiis.Controllers
                     Quantidade = quantidade,
                     PrecoMedio = precoMedio,
                     TipoAtivo = tipo,
+                    TaxaRentabilidade = taxaRentabilidade,
                     DataCompra = DateTime.Now
                 };
                 _context.Add(novoItem);

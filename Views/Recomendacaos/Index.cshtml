@@ -71,43 +71,70 @@
             <div class="modal-body">
                 <dl class="row">
                     <dt class="col-sm-4 text-primary">Ticker</dt>
-                    <dd class="col-sm-8">Identificador da empresa na Bolsa (ex: BBAS3, VALE3).</dd>
+                    <dd class="col-sm-8">Identificador da empresa na Bolsa. <strong>Exemplo:</strong> <em>BBAS3 (Banco do Brasil), VALE3 (Vale).</em></dd>
+
+                    <hr class="my-2 opacity-25">
 
                     <dt class="col-sm-4 text-primary">Preço Atual</dt>
-                    <dd class="col-sm-8">Cotação do ativo em tempo real (ou com leve atraso da API).</dd>
+                    <dd class="col-sm-8">Cotação do ativo em tempo real. <strong>Exemplo:</strong> <em>Se a ação do Itaú custa R$ 32,10 no mercado agora.</em></dd>
+
+                    <hr class="my-2 opacity-25">
 
                     <dt class="col-sm-4 text-primary">P/VP</dt>
-                    <dd class="col-sm-8">Preço sobre Valor Patrimonial. Se estiver abaixo de 1, o mercado está pagando menos que o patrimônio líquido da empresa.</dd>
+                    <dd class="col-sm-8">Preço sobre Valor Patrimonial. <strong>Exemplo:</strong> <em>P/VP de 0,85 indica que você paga R$ 0,85 para cada R$ 1,00 de patrimônio real da empresa.</em></dd>
+
+                    <hr class="my-2 opacity-25">
 
                     <dt class="col-sm-4 text-primary">P/L</dt>
-                    <dd class="col-sm-8">Preço sobre Lucro. Indica em quantos anos você teria o retorno do investimento apenas com o lucro da empresa.</dd>
+                    <dd class="col-sm-8">Preço sobre Lucro. <strong>Exemplo:</strong> <em>P/L de 6 significa que, mantido o lucro, o investimento se paga em 6 anos.</em></dd>
+
+                    <hr class="my-2 opacity-25">
 
                     <dt class="col-sm-4 text-primary">ROE (%)</dt>
-                    <dd class="col-sm-8">Retorno sobre Patrimônio. Mede a capacidade da empresa de gerar lucro com o capital dos sócios.</dd>
+                    <dd class="col-sm-8">Retorno sobre Patrimônio. <strong>Exemplo:</strong> <em>ROE de 18% mostra que a empresa lucra R$ 18 para cada R$ 100 dos sócios.</em></dd>
+
+                    <hr class="my-2 opacity-25">
 
                     <dt class="col-sm-4 text-primary">DY (%)</dt>
-                    <dd class="col-sm-8">Dividend Yield. Porcentagem de rendimento paga em dinheiro nos últimos 12 meses.</dd>
+                    <dd class="col-sm-8">Dividend Yield. <strong>Exemplo:</strong> <em>Se você tem R$ 1.000 investidos e recebeu R$ 90 de dividendos no ano, seu DY é 9%.</em></dd>
+
+                    <hr class="my-2 opacity-25">
 
                     <dt class="col-sm-4 text-primary">Preço Teto (Venda)</dt>
-                    <dd class="col-sm-8">Baseado no método de Décio Bazin. É o preço máximo para garantir um rendimento mínimo de dividendos (geralmente 6%).</dd>
+                    <dd class="col-sm-8">Método de Bazin (foco em 6% ao ano). <strong>Exemplo:</strong> <em>Se o dividendo anual é R$ 1,20, seu preço teto é R$ 20,00 (1,20 / 0,06).</em></dd>
+
+                    <hr class="my-2 opacity-25">
 
                     <dt class="col-sm-4 text-primary">Margem de Subida</dt>
-                    <dd class="col-sm-8">Diferença entre o Preço Atual e o Preço Alvo. Indica o potencial de valorização esperado.</dd>
+                    <dd class="col-sm-8">Potencial até o Preço Alvo. <strong>Exemplo:</strong> <em>Preço atual R$ 20, Alvo R$ 25. Margem de subida de 25%.</em></dd>
+
+                    <hr class="my-2 opacity-25">
 
                     <dt class="col-sm-4 text-primary">Preço Justo (Graham)</dt>
-                    <dd class="col-sm-8">$$ \sqrt{22,5 \times LPA \times VPA} $$ Cálculo conservador para encontrar o valor "real" da ação.</dd>
+                    <dd class="col-sm-8">
+                        $$ \sqrt{22,5 \times LPA \times VPA} $$
+                        <strong>Exemplo:</strong> <em>Se a fórmula resultar em R$ 30, este é o valor intrínseco teórico da ação.</em>
+                    </dd>
+
+                    <hr class="my-2 opacity-25">
 
                     <dt class="col-sm-4 text-primary">Margem de Segurança</dt>
-                    <dd class="col-sm-8">O quanto o preço atual está abaixo do Preço Justo. É a proteção do investidor contra erros de análise.</dd>
+                    <dd class="col-sm-8">Proteção contra quedas. <strong>Exemplo:</strong> <em>Se o Preço Justo é R$ 30 e você compra por R$ 24, sua margem é de 20%.</em></dd>
+
+                    <hr class="my-2 opacity-25">
 
                     <dt class="col-sm-4 text-primary">Última Atualização</dt>
-                    <dd class="col-sm-8">Data e hora da última coleta de dados via Yahoo Finance.</dd>
+                    <dd class="col-sm-8">Data e hora da coleta de dados. <strong>Exemplo:</strong> <em>19/02/2026 às 15:45.</em></dd>
+
+                    <hr class="my-2 opacity-25">
 
                     <dt class="col-sm-4 text-primary">Tipo</dt>
-                    <dd class="col-sm-8">Classificação da tese: Dividendos, Crescimento ou Setor Perene.</dd>
+                    <dd class="col-sm-8">Tese de investimento. <strong>Exemplo:</strong> <em>Dividendos (foco em renda), Crescimento (valorização do capital).</em></dd>
+
+                    <hr class="my-2 opacity-25">
 
                     <dt class="col-sm-4 text-primary">Recomendação</dt>
-                    <dd class="col-sm-8">Sugestão automática do sistema (Comprar, Aguardar ou Vender) baseada na Margem de Segurança.</dd>
+                    <dd class="col-sm-8">Veredito do sistema. <strong>Exemplo:</strong> <em>"Compra" quando a Margem de Segurança está acima do seu limite estipulado.</em></dd>
                 </dl>
             </div>
             <div class="modal-footer bg-light">
