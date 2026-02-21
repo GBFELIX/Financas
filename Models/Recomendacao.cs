@@ -20,7 +20,7 @@ namespace Acoes_Fiis.Models
         [Column(TypeName = "decimal(18,2)")]
         public decimal DividendYield { get; set; } // Em porcentagem
 
-        [DataType(DataType.DateTime)] // Força o EF a entender que é Data e Hora
+        [DataType(DataType.DateTime)]
         [Column(TypeName = "datetime")]
         public DateTime DataAtualizacao { get; set; }
         // Cálculos Automáticos
@@ -57,7 +57,7 @@ namespace Acoes_Fiis.Models
             "Venda/Risco" => "badge bg-danger",
             _ => "badge bg-secondary"
         };
-        [NotMapped] // Não vai para o banco, é calculado na hora
+        [NotMapped]
         public decimal PrecoTetoVenda
         {
             get

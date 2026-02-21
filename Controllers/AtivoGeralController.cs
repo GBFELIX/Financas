@@ -45,7 +45,7 @@ namespace Acoes_Fiis.Controllers
                     tickerFinal += ".SA";
                 }
 
-                // Busca apenas o preço decimal
+
                 decimal precoEncontrado = await service.ObterPrecoSimples(tickerFinal);
 
                 var novoAtivo = new AtivoGeral
@@ -84,7 +84,6 @@ namespace Acoes_Fiis.Controllers
             decimal cotacaoDolar = 1;
             try
             {
-                // Note que aqui usamos o método de objeto completo para pegar o .PrecoAtual
                 var dolarDados = await service.ObterDadosAtivo("USDBRL=X");
                 cotacaoDolar = dolarDados.PrecoAtual;
             }

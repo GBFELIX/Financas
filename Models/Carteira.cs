@@ -16,14 +16,14 @@ namespace Acoes_Fiis.Models
         public decimal? TaxaRentabilidade { get; set; }
     }
 
-    public class CarteiraTotalViewModel // Sem atributo [Table]
+    public class CarteiraTotalViewModel
     {
         public List<CarteiraItemViewModel> Itens { get; set; } = new List<CarteiraItemViewModel>();
         public decimal TotalPatrimonio => Itens.Where(x => x.TipoAtivo != "RendaFixa").Sum(x => x.ValorAtual);
         public decimal TotalLucro => Itens.Where(x => x.TipoAtivo != "RendaFixa").Sum(x => x.LucroPrejuizo);
         public decimal TotalRendaMensalEstimada => Itens.Sum(x => x.ProventoMensalEstimado);
 
-        // ADICIONE ESTAS LINHAS PARA RESOLVER O ERRO DA IMAGEM 8
+
         public List<string> ListaTickersAcoes { get; set; } = new List<string>();
         public List<string> ListaTickersFiis { get; set; } = new List<string>();
         public List<string> ListaTickersGerais { get; set; } = new List<string>();
@@ -48,7 +48,7 @@ namespace Acoes_Fiis.Models
 
     }
 
-    public class CarteiraItemViewModel // Sem atributo [Table]
+    public class CarteiraItemViewModel
     {
         public int Id { get; set; }
         public string Ticker { get; set; }
@@ -59,8 +59,8 @@ namespace Acoes_Fiis.Models
         public decimal LucroPrejuizo => ValorAtual - (Quantidade * PrecoMedio);
         public string Recomendacao { get; set; }
         public string CorBadge { get; set; }
-        public decimal UltimoRendimento { get; set; } // Valor por cota (ex: R$ 0,10)
-        public decimal ProventoMensalEstimado => Quantidade * UltimoRendimento; // Total que você recebe
+        public decimal UltimoRendimento { get; set; }
+        public decimal ProventoMensalEstimado => Quantidade * UltimoRendimento;
         public string? TipoAtivo { get; set; }
         public decimal? TaxaRentabilidade { get; set; }
     }

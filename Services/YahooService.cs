@@ -73,7 +73,7 @@ namespace Acoes_Fiis.Services
             var dados = security[simbolo];
 
             // 3. Lógica de Proteção: Tenta obter os valores do dicionário interno 'Fields'
-            // Se o campo não existir (comum em FIIs), a variável recebe null em vez de dar erro
+            // Se o campo não existir (comum em FIIs), a variável recebe null
             dados.Fields.TryGetValue(Field.RegularMarketPrice.ToString(), out object precoRaw);
             dados.Fields.TryGetValue(Field.BookValue.ToString(), out object vpaRaw);
             dados.Fields.TryGetValue(Field.TrailingPE.ToString(), out object lpaRaw);

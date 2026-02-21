@@ -35,7 +35,6 @@ namespace Acoes_Fiis.Models
         [NotMapped]
         public decimal PVP => VPA > 0 ? PrecoAtual / VPA : 0;
 
-        // Dica: Em FIIs, o Dividend Yield Anualizado é muito usado na CPA-20
         [NotMapped]
         public decimal DYAnualizado => DividendYieldMensal * 12;
     }

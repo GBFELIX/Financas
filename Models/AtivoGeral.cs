@@ -9,7 +9,7 @@ namespace Acoes_Fiis.Models
         public int Id { get; set; }
 
         [Required]
-        public string Ticker { get; set; } // Ex: BTC-USD, IVVB11.SA, GOGL34.SA
+        public string Ticker { get; set; }
 
         public string Nome { get; set; }
 
@@ -18,7 +18,7 @@ namespace Acoes_Fiis.Models
         public decimal PrecoAtual { get; set; }
 
         [Required]
-        public string ClasseAtivo { get; set; } // BDR, ETF, Cripto, Ouro, Moeda
+        public string ClasseAtivo { get; set; }
 
         public string Moeda { get; set; } = "BRL"; // Para saber se o preço está em Reais ou Dólares
 

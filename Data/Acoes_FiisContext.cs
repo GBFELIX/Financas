@@ -39,8 +39,8 @@ namespace Acoes_Fiis.Data
             modelBuilder.Entity<Acoes_Fiis.Models.Carteira>().ToTable("Carteira");
 
 
-            modelBuilder.Entity<Carteira>().Property(c => c.Quantidade).HasPrecision(18, 4);
-            modelBuilder.Entity<Carteira>().Property(c => c.PrecoMedio).HasPrecision(18, 4);
+            modelBuilder.Entity<Carteira>().Property(c => c.Quantidade).HasPrecision(18, 2); //4
+            modelBuilder.Entity<Carteira>().Property(c => c.PrecoMedio).HasPrecision(18, 2); //4
 
             base.OnModelCreating(modelBuilder);
         }

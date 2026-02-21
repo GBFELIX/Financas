@@ -72,7 +72,7 @@ namespace Acoes_Fiis.Controllers
                 var service = new YahooService();
                 var dados = await service.ObterDadosAtivo(tickerFormatado);
 
-                // Criamos o objeto FII com os dados brutos encontrados
+                //objeto FII com os dados brutos encontrados
                 var novoFii = new RecomendacaoFii
                 {
                     Ticker = ticker.ToUpper(),

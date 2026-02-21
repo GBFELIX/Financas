@@ -40,7 +40,6 @@ namespace Acoes_Fiis.Controllers
 
                 if (item.TipoAtivo == "RendaFixa")
                 {
-                    // Lógica para Renda Fixa
                     viewItem.PrecoAtual = item.PrecoMedio;
 
                     // Cálculo do rendimento mensal: (Montante * (Taxa / 12 meses))
@@ -79,8 +78,7 @@ namespace Acoes_Fiis.Controllers
                 viewModel.Itens.Add(viewItem);
             }
 
-            // --- ADIÇÃO PARA O SELETOR DO MODAL ---
-            // Busca os tickers disponíveis para você escolher na hora de adicionar
+            // Busca os tickers disponíveis
             viewModel.ListaTickersAcoes = await _context.Recomendacao.Select(x => x.Ticker).ToListAsync();
             viewModel.ListaTickersFiis = await _context.RecomendacaoFii.Select(x => x.Ticker).ToListAsync();
             viewModel.ListaTickersGerais = await _context.AtivosGerais.Select(x => x.Ticker).ToListAsync();
@@ -104,7 +102,7 @@ namespace Acoes_Fiis.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> AdicionarAtivo(string ticker, decimal quantidade, decimal precoMedio, decimal? taxaRentabilidade)
         {
-            // 1. Verifica se já temos esse ativo na carteira
+            //  Verifica se já temos esse ativo na carteira
             var ativoExistente = await _context.Carteira.FirstOrDefaultAsync(x => x.Ticker == ticker);
 
             if (ativoExistente != null)
@@ -112,14 +110,11 @@ namespace Acoes_Fiis.Controllers
                 decimal qtdAnterior = ativoExistente.Quantidade;
                 decimal pmAnterior = ativoExistente.PrecoMedio;
 
-                // 2. Calculamos a nova quantidade total
                 decimal quantidadeTotal = qtdAnterior + quantidade;
 
-                // 3. CÁLCULO CORRETO: (Patrimônio Antigo + Custo da Nova Compra) / Quantidade Total
-                // O erro comum é usar a 'quantidadeTotal' no lugar errado da fórmula
+                // CÁLCULO CORRETO: (Patrimônio Antigo + Custo da Nova Compra) / Quantidade Total
                 decimal novoPrecoMedio = ((qtdAnterior * pmAnterior) + (quantidade * precoMedio)) / quantidadeTotal;
 
-                // 4. Atualizamos os valores no objeto que veio do banco
                 ativoExistente.Quantidade = quantidadeTotal;
                 ativoExistente.PrecoMedio = Math.Round(novoPrecoMedio, 2); // Arredonda para 2 casas decimais
 
@@ -154,7 +149,20 @@ namespace Acoes_Fiis.Controllers
         {
             return View();
         }
+        [HttpPost]
+        public async Task<IActionResult> AdicionarRendaFixa(Carteira novoItem)
+        {
+            if (ModelState.IsValid)
+            {
+                novoItem.TipoAtivo = "RendaFixa";
+                novoItem.DataCompra = DateTime.Now;
 
+                _context.Carteira.Add(novoItem);
+                await _context.SaveChangesAsync();
+                return RedirectToAction(nameof(Index));
+            }
+            return RedirectToAction(nameof(Index));
+        }
         // POST: Carteiras/Create
         // To protect from overposting attacks, enable the specific properties you want to bind to.
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
