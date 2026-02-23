@@ -74,7 +74,7 @@
                     {
                         <tr>
                             <td class="fw-bold text-primary">@item.Ticker</td>
-                            <td>@item.Quantidade.ToString("N2")</td>
+                            <td>@item.Quantidade.ToString("N0")</td>
                             <td>R$ @item.PrecoMedio.ToString("N2")</td>
                             <td>R$ @item.PrecoAtual.ToString("N2")</td>
                             <td class="text-success small">@(item.UltimoRendimento > 0 ? item.UltimoRendimento.ToString("C2") : "-")</td>
@@ -127,16 +127,16 @@
                                     <input type="hidden" name="id" value="@rf.Id" />
                                     <div class="input-group input-group-sm" style="width: 150px;">
                                         <span class="input-group-text">R$</span>
-                                        <input type="number" name="novoMontante" step="0.01" class="form-control" value="@rf.PrecoMedio" placeholder="@rf.PrecoMedio" />
+                                        <input type="number" name="novoMontante" step="0.01" class="form-control" value="@rf.PrecoMedio.ToString("N2")" placeholder="@rf.PrecoMedio.ToString("N2")" />
                                     </div>
                                     <div class="input-group input-group-sm" style="width: 100px;">
-                                        <input type="number" name="novaTaxa" step="0.01" class="form-control" value="@rf.TaxaRentabilidade" placeholder="@rf.TaxaRentabilidade" />
+                                        <input type="text" name="novaTaxa" step="0.01" class="form-control" value="@rf.TaxaRentabilidade?.ToString("N2")" placeholder="@rf.TaxaRentabilidade?.ToString("N2")" />
                                         <span class="input-group-text">%</span>
                                     </div>
                                     <button type="submit" class="btn btn-sm btn-success"><i class="bi bi-check-lg"></i></button>
                                 </form>
                             </td>
-                            <td>@rf.TaxaRentabilidade%</td>
+                            <td>@rf.TaxaRentabilidade?.ToString("N2")%</td>
                             <td class="text-muted small">R$ @((rf.PrecoMedio * (rf.TaxaRentabilidade ?? 0) / 100).ToString("N2"))</td>
                             <td class="text-danger small">- R$ @((rf.PrecoMedio * (rf.TaxaRentabilidade ?? 0) / 100 * 0.175m).ToString("N2"))</td>
                             <td class="fw-bold text-success text-end">R$ @rf.ProventoMensalEstimado.ToString("N2")</td>

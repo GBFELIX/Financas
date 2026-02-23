@@ -86,16 +86,32 @@ namespace Acoes_Fiis.Controllers
             return View(viewModel);
         }
         [HttpPost]
-        public async Task<IActionResult> AtualizarRendaFixa(int id, decimal novoMontante, decimal novaTaxa)
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AtualizarRendaFixa(int id, string novoMontante, string novaTaxa)
         {
             var ativo = await _context.Carteira.FindAsync(id);
-            if (ativo != null && ativo.TipoAtivo == "RendaFixa")
+
+            if (ativo != null)
             {
-                ativo.PrecoMedio = novoMontante;
-                ativo.TaxaRentabilidade = novaTaxa;
+                // Cultura brasileira para entender a vírgula (14,5)
+                var culturaBR = new System.Globalization.CultureInfo("pt-BR");
+
+                // Tenta converter o Montante. Se conseguir, atualiza o valor.
+                if (decimal.TryParse(novoMontante, System.Globalization.NumberStyles.Any, culturaBR, out decimal montanteDecimal))
+                {
+                    ativo.PrecoMedio = montanteDecimal;
+                }
+
+                // Tenta converter a Taxa. Se conseguir, atualiza o valor.
+                if (decimal.TryParse(novaTaxa, System.Globalization.NumberStyles.Any, culturaBR, out decimal taxaDecimal))
+                {
+                    ativo.TaxaRentabilidade = taxaDecimal;
+                }
+
                 _context.Update(ativo);
                 await _context.SaveChangesAsync();
             }
+
             return RedirectToAction(nameof(Index));
         }
         [HttpPost]
