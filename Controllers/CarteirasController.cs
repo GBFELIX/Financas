@@ -52,7 +52,7 @@ namespace Acoes_Fiis.Controllers
                     viewModel.TotalInvestidoRendaFixa += (item.Quantidade * item.PrecoMedio);
                     totalRFLiquido += rendimentoBruto * 0.825m;
                 }
-                // 3. Busca o Preço Atual e Status nas tabelas de recomendação
+                // Busca o Preço Atual e Status nas tabelas de recomendação
                 if (item.TipoAtivo == "Acao")
                 {
                     var acao = await _context.Recomendacao.FirstOrDefaultAsync(x => x.Ticker == item.Ticker);

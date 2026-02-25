@@ -74,7 +74,7 @@
                     {
                         <tr>
                             <td class="fw-bold text-primary">@item.Ticker</td>
-                            <td>@item.Quantidade.ToString("N0")</td>
+                            <td class="fw-bold text-success">@item.Quantidade.ToString("N0")</td>
                             <td>R$ @item.PrecoMedio.ToString("N2")</td>
                             <td>R$ @item.PrecoAtual.ToString("N2")</td>
                             <td class="text-success small">@(item.UltimoRendimento > 0 ? item.UltimoRendimento.ToString("C2") : "-")</td>

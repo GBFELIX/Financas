@@ -78,13 +78,11 @@ namespace Acoes_Fiis.Services
             dados.Fields.TryGetValue(Field.BookValue.ToString(), out object vpaRaw);
             dados.Fields.TryGetValue(Field.TrailingPE.ToString(), out object lpaRaw);
 
-            // 4. Converte os valores com segurança
+            // 4. Converte os valores 
             decimal preco = Convert.ToDecimal(precoRaw ?? 0m);
             decimal vpa = Convert.ToDecimal(vpaRaw ?? 0m);
             decimal lpa = Convert.ToDecimal(lpaRaw ?? 0m);
 
-
-            // 5. Retorna o objeto preenchido
             return new Recomendacao
             {
                 Ticker = ticker.Replace(".SA", ""),

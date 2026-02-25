@@ -181,11 +181,6 @@
     </div>
 </form>
 <div class="mt-3">
-   @*  <form asp-action="AtualizarTodos" method="post">
-        <button type="submit" class="btn btn-outline-success shadow-sm">
-            <i class="bi bi-arrow-clockwise"></i> Atualizar Preços e Indicadores Agora
-        </button>
-    </form> *@
     <form asp-action="AtualizarTodos" method="post">
         <input type="hidden" name="filtroTipo" value="@Context.Request.Query["filtroTipo"]" />
         <button type="submit" class="btn btn-outline-success">Atualizar Filtrados</button>
