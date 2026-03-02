@@ -1,9 +1,11 @@
 ﻿using Acoes_Fiis.Data;
 using Acoes_Fiis.Models;
+using Acoes_Fiis.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -18,6 +20,7 @@ namespace Acoes_Fiis.Controllers
         {
             _context = context;
         }
+
 
         // GET: Carteiras
         public async Task<IActionResult> Index()
@@ -46,7 +49,7 @@ namespace Acoes_Fiis.Controllers
                     decimal taxaMensal = (item.TaxaRentabilidade ?? 0) / 12 / 100;
                     decimal rendimentoBruto = (item.Quantidade * item.PrecoMedio) * taxaMensal;
 
-                    // Aplicando o IR de 17,5% (CPA-20!)
+                    // Aplicando o IR de 17,5%
                     viewItem.UltimoRendimento = (rendimentoBruto / item.Quantidade) * 0.825m;
 
                     viewModel.TotalInvestidoRendaFixa += (item.Quantidade * item.PrecoMedio);
@@ -85,6 +88,58 @@ namespace Acoes_Fiis.Controllers
 
             return View(viewModel);
         }
+
+        [HttpPost]
+        public async Task<IActionResult> AtualizarTodos()
+        {
+            var listaParaAtualizar = await _context.Recomendacao.ToListAsync();
+            var service = new YahooService();
+            int atualizados = 0;
+            int pulados = 0;
+
+            foreach (var item in listaParaAtualizar)
+            {
+                // 1. Pula se foi atualizado recentemente (3h 20min)
+                if (item.DataAtualizacao > DateTime.Now.AddMinutes(-200))
+                {
+                    pulados++;
+                    continue;
+                }
+
+                try
+                {
+                    if (item.TipoAtivo == "Acao" || item.TipoAtivo == "Fii")
+                    {
+                        var dadosAtualizados = await service.ObterDadosAtivo(item.Ticker);
+
+                        item.PrecoAtual = dadosAtualizados.PrecoAtual;
+                        item.VPA = dadosAtualizados.VPA;
+                        item.LPA = dadosAtualizados.LPA;
+                        item.Roe = dadosAtualizados.Roe;
+                        item.DividendYield = dadosAtualizados.DividendYield;
+                        item.DataAtualizacao = DateTime.Now;
+
+                        _context.Update(item); // Apenas marca como alterado na memória
+                        atualizados++;
+                    }
+                    else if (item.TipoAtivo == "Geral")
+                    {
+                        continue;
+                    }
+                }
+                catch { continue; }
+            }
+
+            if (atualizados > 0)
+            {
+                await _context.SaveChangesAsync();
+            }
+
+            TempData["Mensagem"] = $"Sucesso! {atualizados} ativos atualizados e {pulados} pulados.";
+            return RedirectToAction(nameof(Index));
+        }
+
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> AtualizarRendaFixa(int id, string novoMontante, string novaTaxa)
@@ -93,7 +148,7 @@ namespace Acoes_Fiis.Controllers
 
             if (ativo != null)
             {
-                // Cultura brasileira para entender a vírgula (14,5)
+                // Cultura brasileira para entender a vírgula
                 var culturaBR = new System.Globalization.CultureInfo("pt-BR");
 
                 // Tenta converter o Montante. Se conseguir, atualiza o valor.
@@ -102,7 +157,7 @@ namespace Acoes_Fiis.Controllers
                     ativo.PrecoMedio = montanteDecimal;
                 }
 
-                // Tenta converter a Taxa. Se conseguir, atualiza o valor.
+                // Mesma logica
                 if (decimal.TryParse(novaTaxa, System.Globalization.NumberStyles.Any, culturaBR, out decimal taxaDecimal))
                 {
                     ativo.TaxaRentabilidade = taxaDecimal;

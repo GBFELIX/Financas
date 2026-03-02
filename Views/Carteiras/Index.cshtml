@@ -11,6 +11,14 @@
             <i class="bi bi-plus-circle"></i> Adicionar Ativo
         </button>
     </div>
+    <div class="col-md-3 text-end">
+        <form asp-action="AtualizarTodos" method="post">
+            <input type="hidden" name="filtroSegmento" value="@Context.Request.Query["filtroSegmento"]" />
+            <button type="submit" class="btn btn-outline-success w-100">
+                🔄 Atualizar Filtrados
+            </button>
+        </form>
+    </div>
 
     <div class="row mb-4">
         <div class="col-md-3">

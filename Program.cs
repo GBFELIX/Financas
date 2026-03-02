@@ -1,6 +1,7 @@
 ﻿using Acoes_Fiis.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<Acoes_FiisContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("Acoes_FiisContext") ?? throw new InvalidOperationException("Connection string 'Acoes_FiisContext' not found.")));
@@ -35,7 +36,7 @@ app.MapControllers();
 
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Recomendacaos}/{action=Index}/{id?}");
+    pattern: "{controller=Carteiras}/{action=Index}/{id?}");
 app.MapControllerRoute(
     name: "fiis",
     pattern: "{controller=RecomendacaoFiis}/{action=Index}/{id?}");
@@ -43,8 +44,8 @@ app.MapControllerRoute(
     name: "Geral",
     pattern: "{controller=AtivoGeral}/{action=Index}/{id?}");
 app.MapControllerRoute(
-    name: "Carteiras",
-    pattern: "{controller=Carteiras}/{action=Index}/{id?}");
+    name: "Acoes",
+    pattern: "{controller=Recomendacaos}/{action=Index}/{id?}");
 
 app.UseRequestLocalization(localizationOptions);
 
