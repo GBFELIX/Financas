@@ -7,7 +7,7 @@ namespace Acoes_Fiis.Models
     {
         public int Id { get; set; }
         public string Ticker { get; set; }
-        public decimal Quantidade { get; set; }
+        public int Quantidade { get; set; }
         public decimal PrecoMedio { get; set; }
         public string? TipoAtivo { get; set; }
         public string? Setor { get; set; }
@@ -43,7 +43,7 @@ namespace Acoes_Fiis.Models
         public decimal ProventoAnualEstimado => RendaMensalTotalConsolidada * 12;
 
         public decimal ProventoMensalEstimado => Quantidade * UltimoRendimento;
-        public decimal Quantidade { get; set; }
+        public int Quantidade { get; set; }
         public decimal UltimoRendimento { get; set; }
 
     }
@@ -52,7 +52,7 @@ namespace Acoes_Fiis.Models
     {
         public int Id { get; set; }
         public string Ticker { get; set; }
-        public decimal Quantidade { get; set; }
+        public int Quantidade { get; set; }
         public decimal PrecoMedio { get; set; }
         public decimal PrecoAtual { get; set; }
         public decimal ValorAtual => Quantidade * PrecoAtual;

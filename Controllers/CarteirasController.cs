@@ -171,17 +171,17 @@ namespace Acoes_Fiis.Controllers
         }
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> AdicionarAtivo(string ticker, decimal quantidade, decimal precoMedio, decimal? taxaRentabilidade)
+        public async Task<IActionResult> AdicionarAtivo(string ticker, int quantidade, decimal precoMedio, decimal? taxaRentabilidade)
         {
             //  Verifica se já temos esse ativo na carteira
             var ativoExistente = await _context.Carteira.FirstOrDefaultAsync(x => x.Ticker == ticker);
 
             if (ativoExistente != null)
             {
-                decimal qtdAnterior = ativoExistente.Quantidade;
+                int qtdAnterior = ativoExistente.Quantidade;
                 decimal pmAnterior = ativoExistente.PrecoMedio;
 
-                decimal quantidadeTotal = qtdAnterior + quantidade;
+                int quantidadeTotal = qtdAnterior + quantidade;
 
                 // CÁLCULO CORRETO: (Patrimônio Antigo + Custo da Nova Compra) / Quantidade Total
                 decimal novoPrecoMedio = ((qtdAnterior * pmAnterior) + (quantidade * precoMedio)) / quantidadeTotal;

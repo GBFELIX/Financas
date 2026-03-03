@@ -19,6 +19,7 @@
             </button>
         </form>
     </div>
+    <p></p>
 
     <div class="row mb-4">
         <div class="col-md-3">
@@ -78,8 +79,21 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var item in Model.Itens.Where(x => x.TipoAtivo != "RendaFixa"))
+                    @{
+                        string ultimoTipo = "";
+                    }
+                    @foreach (var item in Model.Itens.Where(x => x.TipoAtivo != "RendaFixa").OrderBy(x => x.TipoAtivo == "Acao" ? 0 : x.TipoAtivo == "Fii" ? 1 : 2).ThenBy(x => x.Ticker))
                     {
+                        if (ultimoTipo != item.TipoAtivo)
+                        {
+                            <tr class="table-secondary">
+                                <td colspan="10" class="fw-bold small text-uppercase">
+                                    @(item.TipoAtivo == "Fii" ? "Fundos Imobiliários" :
+                                     item.TipoAtivo == "Acao" ? "Ações" : "Geral / Outros")
+                                </td>
+                            </tr>
+                                    ultimoTipo = item.TipoAtivo;
+                        }
                         <tr>
                             <td class="fw-bold text-primary">@item.Ticker</td>
                             <td class="fw-bold text-success">@item.Quantidade.ToString("N0")</td>
