@@ -1,0 +1,160 @@
+﻿@model FluxoCaixaViewModel
+
+@{
+    ViewData["Title"] = "Gestão de Fluxo de Caixa";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="fw-bold mb-0">Controle de Gastos</h1>
+            <p class="text-muted">Planejamento para a entrada do Apartamento</p>
+        </div>
+
+        <form method="get" class="d-flex gap-2">
+            <select name="mes" class="form-select form-select-sm" style="width: 140px;">
+                @for (int i = 1; i <= 12; i++)
+                {
+                    <option value="@i" selected="@(Model.MesAtual == i)">
+                        @System.Globalization.DateTimeFormatInfo.CurrentInfo.GetMonthName(i).ToUpper()
+                    </option>
+                }
+            </select>
+            <input type="number" name="ano" class="form-control form-control-sm" value="@Model.AnoAtual" style="width: 90px;" />
+            <button type="submit" class="btn btn-sm btn-dark">Filtrar</button>
+        </form>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 bg-success text-white shadow-sm h-100">
+                <div class="card-body">
+                    <h6 class="small text-uppercase opacity-75">Entradas (Salário/Extra)</h6>
+                    <h3 class="mb-0">@Model.TotalEntradas.ToString("C2")</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 bg-danger text-white shadow-sm h-100">
+                <div class="card-body">
+                    <h6 class="small text-uppercase opacity-75">Despesas Mensais</h6>
+                    <h3 class="mb-0">@Model.TotalDespesas.ToString("C2")</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 bg-info text-dark shadow-sm h-100">
+                <div class="card-body">
+                    <h6 class="small text-uppercase opacity-75">Juros Renda Fixa (Líquido)</h6>
+                    <h3 class="mb-0">@Model.RendimentoRendaFixaMes.ToString("C2")</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 bg-primary text-white shadow-lg h-100">
+                <div class="card-body">
+                    <h6 class="small text-uppercase opacity-75 fw-bold">Capacidade de Aporte</h6>
+                    <h3 class="mb-0">@Model.SobraEstimada.ToString("C2")</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+            <h5 class="mb-0 fw-bold"><i class="bi bi-list-check me-2"></i>Extrato de Março</h5>
+            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalNovoLancamento">
+                <i class="bi bi-plus-lg"></i> Novo Lançamento
+            </button>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Data</th>
+                        <th>Descrição</th>
+                        <th>Categoria</th>
+                        <th class="text-end">Valor</th>
+                        <th class="text-center">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.Lancamentos.OrderBy(x => x.Data))
+                    {
+                        <tr>
+                            <td class="small">@item.Data.ToString("dd/MM/yyyy")</td>
+                            <td class="fw-bold">@item.Descricao</td>
+                            <td><span class="badge bg-light text-dark border">@item.Categoria</span></td>
+                            <td class="text-end fw-bold @(item.Tipo == "Entrada" ? "text-success" : "text-danger")">
+                                @(item.Tipo == "Entrada" ? "+" : "-") @item.Valor.ToString("N2")
+                            </td>
+                            <td class="text-center">
+                                <form asp-action="Excluir" asp-route-id="@item.Id" method="post" onsubmit="return confirm('Excluir este lançamento?')">
+                                    <button type="submit" class="btn btn-sm btn-link text-danger"><i class="bi bi-trash"></i></button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                    @if (!Model.Lancamentos.Any())
+                    {
+                        <tr>
+                            <td colspan="5" class="text-center py-4 text-muted">Nenhum lançamento encontrado para este período.</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalNovoLancamento" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title">Novo Lançamento</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form asp-action="Adicionar" method="post">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Tipo</label>
+                        <select name="Tipo" class="form-select" required>
+                            <option value="Despesa">Despesa (Saída)</option>
+                            <option value="Entrada">Entrada (Receita)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Descrição</label>
+                        <input type="text" name="Descricao" class="form-control" placeholder="Ex: Salário, Aluguel, Supermercado" required />
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Valor (R$)</label>
+                            <input type="text" name="Valor" class="form-control" placeholder="0,00" required />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Data</label>
+                            <input type="date" name="Data" class="form-control" value="@DateTime.Now.ToString("yyyy-MM-dd")" required />
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Categoria</label>
+                        <select name="Categoria" class="form-select">
+                            <option value="Salario">Salário</option>
+                            <option value="Moradia">Moradia</option>
+                            <option value="Alimentacao">Alimentação</option>
+                            <option value="Transporte">Transporte</option>
+                            <option value="Lazer">Lazer</option>
+                            <option value="Investimento">Investimento</option>
+                            <option value="Outros">Outros</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary px-4">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
