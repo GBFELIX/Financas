@@ -77,6 +77,16 @@ namespace Acoes_Fiis.Controllers
                         viewItem.CorBadge = fii.PVP < 0.98m ? "badge bg-success" : "badge bg-secondary";
                     }
                 }
+                else if (item.TipoAtivo == "Geral")
+                {
+                    var fii = await _context.AtivosGerais.FirstOrDefaultAsync(x => x.Ticker == item.Ticker);
+                    if (fii != null)
+                    {
+
+                        viewItem.PrecoAtual = fii.PrecoAtual;
+                        viewItem.Recomendacao = "Não Avaliado";
+                    }
+                }
 
                 viewModel.Itens.Add(viewItem);
             }

@@ -55,8 +55,36 @@ namespace Acoes_Fiis.Models
         public int Quantidade { get; set; }
         public decimal PrecoMedio { get; set; }
         public decimal PrecoAtual { get; set; }
-        public decimal ValorAtual => Quantidade * PrecoAtual;
-        public decimal LucroPrejuizo => ValorAtual - (Quantidade * PrecoMedio);
+
+        // public decimal ValorAtual => Quantidade * PrecoAtual;
+        public decimal ValorAtual
+        {
+            get
+            {
+                // Se for Bitcoin, consideramos que o valor que você tem "em mãos" 
+                if (Ticker != null && Ticker.Contains("BTC"))
+                {
+                    return PrecoMedio;
+                }
+
+                // Para os demais ativos (Ações, FIIs), mantém o cálculo real de mercado
+                return Quantidade * PrecoAtual;
+            }
+        }
+        //public decimal LucroPrejuizo => ValorAtual - (Quantidade * PrecoMedio);
+        public decimal LucroPrejuizo
+        {
+            get
+            {
+
+                if (Ticker != null && Ticker.Contains("BTC"))
+                {
+                    return 0; // Para Bitcoin, não calculamos lucro/prejuízo
+                }
+
+                return ValorAtual - (Quantidade * PrecoMedio);
+            }
+        }
         public string Recomendacao { get; set; }
         public string CorBadge { get; set; }
         public decimal UltimoRendimento { get; set; }

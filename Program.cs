@@ -38,6 +38,9 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Carteiras}/{action=Index}/{id?}");
 app.MapControllerRoute(
+    name: "controle",
+    pattern: "{controller=Financeiros}/{action=Index}/{id?}");
+app.MapControllerRoute(
     name: "fiis",
     pattern: "{controller=RecomendacaoFiis}/{action=Index}/{id?}");
 app.MapControllerRoute(

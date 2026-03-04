@@ -22,6 +22,8 @@ namespace Acoes_Fiis.Data
 
         public DbSet<Acoes_Fiis.Models.Carteira> Carteira { get; set; } = default!;
 
+        public DbSet<Acoes_Fiis.Models.Carteira> Financeiro { get; set; } = default!;
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             // Configuração para garantir que o Decimal não perca os centavos no banco

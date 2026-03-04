@@ -13,8 +13,8 @@ namespace Acoes_Fiis.Models
 
         public string Nome { get; set; }
 
-        [Column(TypeName = "decimal(18, 4)")]
-        [DisplayFormat(DataFormatString = "{0:N4}", ApplyFormatInEditMode = true)]
+        [Column(TypeName = "decimal(18, 2)")]
+        [DisplayFormat(DataFormatString = "{0:N2}", ApplyFormatInEditMode = true)]
         public decimal PrecoAtual { get; set; }
 
         [Required]
