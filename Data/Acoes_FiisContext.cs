@@ -22,7 +22,7 @@ namespace Acoes_Fiis.Data
 
         public DbSet<Acoes_Fiis.Models.Carteira> Carteira { get; set; } = default!;
 
-        public DbSet<Acoes_Fiis.Models.Carteira> Financeiro { get; set; } = default!;
+        public DbSet<Acoes_Fiis.Models.Financeiro> Financeiro { get; set; } = default!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

@@ -28,13 +28,17 @@ namespace Acoes_Fiis.Controllers
 
 
             var lancamentos = await _context.Financeiro
-                .Where(x => x.Data.Month == filtroMes && x.Data.Year == filtroAno)
+                .Where((Financeiro x) => x.Data.Month == filtroMes && x.Data.Year == filtroAno)
                 .ToListAsync() ?? new List<Financeiro>();
 
-            // 3. Busca o rendimento da Renda Fixa na tabela Carteira
+            //Busca o rendimento da Renda Fixa na tabela Carteira
             var ativosRF = await _context.Carteira
                 .Where(x => x.TipoAtivo == "RendaFixa")
                 .ToListAsync();
+
+            decimal TotalAnual = await _context.Financeiro
+            .Where(x => x.Tipo == "Entrada")
+            .SumAsync(x => x.Valor);
 
             decimal totalRendimentoliquido = 0;
             foreach (var rf in ativosRF)

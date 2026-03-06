@@ -59,7 +59,16 @@
             </div>
         </div>
     </div>
-
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 bg-success text-white shadow-sm h-100">
+                <div class="card-body">
+                    <h6 class="small text-uppercase opacity-75">Anual</h6>
+                    <h3 class="mb-0">@Model.TotalAnual.ToString("C2")</h3>
+                </div>
+            </div>
+        </div>
+     </div>
     <div class="card shadow-sm border-0">
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
             <h5 class="mb-0 fw-bold"><i class="bi bi-list-check me-2"></i>Extrato de Março</h5>
@@ -74,13 +83,36 @@
                         <th>Data</th>
                         <th>Descrição</th>
                         <th>Categoria</th>
-                        <th class="text-end">Valor</th>
-                        <th class="text-center">Ações</th>
+                        <th>Valor</th>
+                        <th>Ações</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var item in Model.Lancamentos.OrderBy(x => x.Data))
+                    @{
+                        string ultimoTipo = "";
+                        var listaOrdenada = Model.Lancamentos
+                        .Where(x => x.Tipo == "Entrada" || x.Tipo == "Despesa")
+                        .OrderByDescending(x => x.Tipo)
+                        .ThenBy(x => x.Data);
+                    }
+                    @foreach (var item in listaOrdenada)
                     {
+                        if (ultimoTipo != item.Tipo)
+                        {
+                            if (!string.IsNullOrEmpty(ultimoTipo))
+                            {
+                                <tr style="height: 30px;">
+                                    <td colspan="10" class="border-0"></td>
+                                </tr>
+                            }
+                            <tr class="table-secondary">
+                                <td colspan="10" class="fw-bold small text-uppercase text-dark">
+                                    <i class="bi @(item.Tipo == "Entrada" ? "bi-cash-stack" : "bi-cart-dash") me-2"></i>
+                                    @(item.Tipo == "Entrada" ? "Entradas / Salários" : "Saídas / Despesas")
+                                </td>
+                            </tr>
+                            ultimoTipo = item.Tipo;
+                        }
                         <tr>
                             <td class="small">@item.Data.ToString("dd/MM/yyyy")</td>
                             <td class="fw-bold">@item.Descricao</td>
@@ -89,9 +121,10 @@
                                 @(item.Tipo == "Entrada" ? "+" : "-") @item.Valor.ToString("N2")
                             </td>
                             <td class="text-center">
-                                <form asp-action="Excluir" asp-route-id="@item.Id" method="post" onsubmit="return confirm('Excluir este lançamento?')">
-                                    <button type="submit" class="btn btn-sm btn-link text-danger"><i class="bi bi-trash"></i></button>
-                                </form>
+                                <div class="btn-group">
+                                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">Editar</a>
+                                    <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger">Deletar</a>
+                                </div>
                             </td>
                         </tr>
                     }

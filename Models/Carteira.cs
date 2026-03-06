@@ -12,7 +12,6 @@ namespace Acoes_Fiis.Models
         public string? TipoAtivo { get; set; }
         public string? Setor { get; set; }
         public DateTime DataCompra { get; set; } = DateTime.Now;
-
         public decimal? TaxaRentabilidade { get; set; }
     }
 
