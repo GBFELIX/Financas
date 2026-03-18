@@ -31,7 +31,7 @@ namespace Acoes_Fiis.Controllers
                 .Where((Financeiro x) => x.Data.Month == filtroMes && x.Data.Year == filtroAno)
                 .ToListAsync() ?? new List<Financeiro>();
 
-            //Busca o rendimento da Renda Fixa na tabela Carteira
+
             var ativosRF = await _context.Carteira
                 .Where(x => x.TipoAtivo == "RendaFixa")
                 .ToListAsync();
@@ -100,7 +100,7 @@ namespace Acoes_Fiis.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,Descricao,Valor,Data,Tipo,Categoria")] Financeiro financeiro)
+        public async Task<IActionResult> Create([Bind("Id,Descricao,Pagamento,Valor,Data,Tipo,Categoria")] Financeiro financeiro)
         {
             if (ModelState.IsValid)
             {
@@ -132,7 +132,7 @@ namespace Acoes_Fiis.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,Descricao,Valor,Data,Tipo,Categoria")] Financeiro financeiro)
+        public async Task<IActionResult> Edit(int id, [Bind("Id,Descricao,Pagamento,Valor,Data,Tipo,Categoria")] Financeiro financeiro)
         {
             if (id != financeiro.Id)
             {

@@ -62,8 +62,34 @@ namespace Acoes_Fiis.Controllers
                     if (acao != null)
                     {
                         viewItem.PrecoAtual = acao.PrecoAtual;
-                        viewItem.Recomendacao = acao.Status;
-                        viewItem.CorBadge = acao.CorClasse;
+
+                        // 1. Cálculo do P/L Atual (Preço / Lucro por Ação)
+                        decimal pl = acao.LPA > 0 ? acao.PrecoAtual / acao.LPA : 0;
+
+                        // 2. Cálculo do P/VP Atual (Preço / Valor Patrimonial por Ação)
+                        decimal pvp = acao.VPA > 0 ? acao.PrecoAtual / acao.VPA : 0;
+
+                        // 3. Lógica de Recomendação Baseada em Indicadores (Exemplo Graham/Bazin)
+                        if (pl > 0 && pl < 10 && acao.Roe > 12)
+                        {
+                            viewItem.Recomendacao = "Forte Compra (Barata + ROE Alto)";
+                            viewItem.CorBadge = "success";
+                        }
+                        else if (pvp < 1.5m && pl < 15)
+                        {
+                            viewItem.Recomendacao = "Compra (Preço Justo)";
+                            viewItem.CorBadge = "primary";
+                        }
+                        else if (pl > 20 || pvp > 3.0m)
+                        {
+                            viewItem.Recomendacao = "Venda / Caro";
+                            viewItem.CorBadge = "danger";
+                        }
+                        else
+                        {
+                            viewItem.Recomendacao = "Neutro / Manter";
+                            viewItem.CorBadge = "secondary";
+                        }
                     }
                 }
                 else if (item.TipoAtivo == "Fii")
@@ -73,8 +99,23 @@ namespace Acoes_Fiis.Controllers
                     {
                         viewItem.UltimoRendimento = fii.UltimoRendimento;
                         viewItem.PrecoAtual = fii.PrecoAtual;
-                        viewItem.Recomendacao = fii.PVP < 0.98m ? "Compra" : "Neutra";
-                        viewItem.CorBadge = fii.PVP < 0.98m ? "badge bg-success" : "badge bg-secondary";
+                        viewItem.Recomendacao = fii.PVP switch
+                        {
+                            < 0.95m => "Forte Compra",
+                            < 1.00m => "Compra (Preço Justo)",
+                            <= 1.05m => "Neutro / Manter",
+                            < 1.10m => "Aguardar / Caro",
+                            _ => "Venda / Realizar Lucro" // Maior que 1.10
+                        };
+                        viewItem.CorBadge = viewItem.Recomendacao switch
+                        {
+                            "Forte Compra" => "success",
+                            "Compra (Preço Justo)" => "primary",
+                            "Neutro / Manter" => "secondary",
+                            "Aguardar / Caro" => "warning",
+                            "Venda / Realizar Lucro" => "danger",
+                            _ => "dark"
+                        };
                     }
                 }
                 else if (item.TipoAtivo == "Geral")
@@ -102,23 +143,25 @@ namespace Acoes_Fiis.Controllers
         [HttpPost]
         public async Task<IActionResult> AtualizarTodos()
         {
-            var listaParaAtualizar = await _context.Recomendacao.ToListAsync();
+            var listaCarteira = await _context.Carteira.ToListAsync();
+            var listaAcoes = await _context.Recomendacao.ToListAsync();
+            var listaFiis = await _context.RecomendacaoFii.ToListAsync();
+
+            var todasRecomendacoes = listaAcoes.Cast<dynamic>().Union(listaFiis.Cast<dynamic>()).ToList();
+
+            var listaFinal = (from c in listaCarteira
+                              join r in todasRecomendacoes on c.Ticker equals r.Ticker
+                              select r).ToList();
             var service = new YahooService();
             int atualizados = 0;
             int pulados = 0;
 
-            foreach (var item in listaParaAtualizar)
-            {
-                // 1. Pula se foi atualizado recentemente (3h 20min)
-                if (item.DataAtualizacao > DateTime.Now.AddMinutes(-200))
-                {
-                    pulados++;
-                    continue;
-                }
 
+            foreach (var item in listaFinal)
+            {
                 try
                 {
-                    if (item.TipoAtivo == "Acao" || item.TipoAtivo == "Fii")
+                    if (item.TipoAtivo == "Dividendos" || item.TipoAtivo == "Crescimento" || item.TipoAtivo == "Setor Perene")
                     {
                         var dadosAtualizados = await service.ObterDadosAtivo(item.Ticker);
 
@@ -145,7 +188,8 @@ namespace Acoes_Fiis.Controllers
                 await _context.SaveChangesAsync();
             }
 
-            TempData["Mensagem"] = $"Sucesso! {atualizados} ativos atualizados e {pulados} pulados.";
+            TempData["Sucesso"] = $"Sucesso! {atualizados} ativos atualizados e {pulados} pulados.";
+
             return RedirectToAction(nameof(Index));
         }
 
@@ -203,7 +247,6 @@ namespace Acoes_Fiis.Controllers
             }
             else
             {
-                // Se for um ativo novo, identifica o tipo e adiciona
                 string tipo = "Geral";
                 if (await _context.Recomendacao.AnyAsync(x => x.Ticker == ticker)) tipo = "Acao";
                 else if (await _context.RecomendacaoFii.AnyAsync(x => x.Ticker == ticker)) tipo = "Fii";

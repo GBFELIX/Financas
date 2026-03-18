@@ -19,6 +19,7 @@ namespace Acoes_Fiis.Models
         public string Tipo { get; set; } = string.Empty;
 
         public string? Categoria { get; set; }
+        public string? Pagamento { get; set; }
     }
     public class FluxoCaixaViewModel
     {
@@ -35,6 +36,8 @@ namespace Acoes_Fiis.Models
         public decimal SobraEstimada => (TotalEntradas - TotalDespesas) + RendimentoRendaFixaMes;
 
         public decimal TotalAnual { get; set; }
+
+
 
     }
 }

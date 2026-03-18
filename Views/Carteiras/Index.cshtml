@@ -13,7 +13,6 @@
     </div>
     <div class="col-md-3 text-end">
         <form asp-action="AtualizarTodos" method="post">
-            <input type="hidden" name="filtroSegmento" value="@Context.Request.Query["filtroSegmento"]" />
             <button type="submit" class="btn btn-outline-success w-100">
                 🔄 Atualizar Filtrados
             </button>
@@ -57,7 +56,13 @@
             </div>
         </div>
     </div>
-
+    @if (TempData["Sucesso"] != null)
+    {
+        <div class="alert alert-success mt-3 alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle-fill"></i> @TempData["Sucesso"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-header bg-white">
             <h5 class="mb-0 fw-bold text-primary"><i class="bi bi-graph-up-arrow me-2"></i>Renda Variável</h5>
@@ -105,7 +110,11 @@
                             <td class="@(item.LucroPrejuizo >= 0 ? "text-success" : "text-danger") fw-bold">
                                 R$ @item.LucroPrejuizo.ToString("N2")
                             </td>
-                            <td><span class="badge @item.CorBadge">@item.Recomendacao</span></td>
+                            <td>
+                                <span class="badge bg-@item.CorBadge">
+                                    @item.Recomendacao
+                                </span>
+                            </td>
                             <td class="text-center">
                                 <div class="btn-group">
                                     <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">Editar</a>

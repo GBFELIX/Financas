@@ -23,9 +23,9 @@ namespace Acoes_Fiis.Models
         public decimal TotalRendaMensalEstimada => Itens.Sum(x => x.ProventoMensalEstimado);
 
 
-        public List<string> ListaTickersAcoes { get; set; } = new List<string>();
-        public List<string> ListaTickersFiis { get; set; } = new List<string>();
-        public List<string> ListaTickersGerais { get; set; } = new List<string>();
+        public List<string> ListaTickersAcoes { get; set; } = [];
+        public List<string> ListaTickersFiis { get; set; } = [];
+        public List<string> ListaTickersGerais { get; set; } = [];
 
         public string? TipoAtivo { get; set; }
 
@@ -60,7 +60,7 @@ namespace Acoes_Fiis.Models
         {
             get
             {
-                // Se for Bitcoin, consideramos que o valor que você tem "em mãos" 
+                // Se for Bitcoin, fica como valor atual
                 if (Ticker != null && Ticker.Contains("BTC"))
                 {
                     return PrecoMedio;
