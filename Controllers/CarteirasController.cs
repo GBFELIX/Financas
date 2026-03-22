@@ -161,7 +161,7 @@ namespace Acoes_Fiis.Controllers
             {
                 try
                 {
-                    if (item.TipoAtivo == "Dividendos" || item.TipoAtivo == "Crescimento" || item.TipoAtivo == "Setor Perene")
+                    if (item.TipoAtivo == "Dividendos" || item.TipoAtivo == "Crescimento" || item.TipoAtivo == "Setor Perene" || item.TipoFii == "Tijolo" || item.TipoFii == "Híbrido" || item.TipoFii == "Recebiveis" || item.TipoFii == "Shopping" || item.TipoFii == "Lajes" || item.TipoFii == "Papel" || item.TipoFii == "Logística")
                     {
                         var dadosAtualizados = await service.ObterDadosAtivo(item.Ticker);
 

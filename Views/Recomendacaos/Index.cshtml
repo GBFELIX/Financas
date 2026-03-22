@@ -144,48 +144,51 @@
     </div>
 </div>
 
-<div class="row mb-4">
-    <div class="col-md-8">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <h5 class="card-title text-muted mb-3">🔍 Consultar Novo Ativo (B3)</h5>
-                
-                <form asp-controller="Recomendacaos" asp-action="BuscarYahoo" method="get" class="row g-2">
-                    <div class="col-md-6">
-                        <input type="text" name="ticker" class="form-control" placeholder="Ex: PETR4" required>
-                    </div>
-                    <div class="col-md-4">
-                        <button type="submit" class="btn btn-primary">Analisar</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4 d-flex align-items-center justify-content-end">
-        <a asp-action="Create" class="btn btn-outline-dark btn-lg">
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="fw-bold mb-0">Consultar Ativos</h2>
+        <a asp-action="Create" class="btn btn-outline-dark shadow-sm">
             <i class="bi bi-plus-circle"></i> Novo Manual
         </a>
     </div>
-</div>
-<form asp-action="Index" method="get" class="mb-3 row g-2">
-    <div class="col-md-4">
-        <select name="filtroTipo" class="form-select">
-            <option value="">-- Filtrar por Tipo (Todos) --</option>
-            <option value="Setor Perene">🏦 Setor Perene</option>
-            <option value="Dividendos">💰 Dividendos</option>
-            <option value="Crescimento">🚀 Crescimento</option>
-        </select>
+
+    <div class="card shadow-sm mb-4 border-0 bg-light">
+        <div class="card-body">
+            <div class="row g-3">
+
+                <div class="col-md-5">
+                    <form asp-controller="Recomendacaos" asp-action="BuscarYahoo" method="get" class="d-flex h-100 align-items-center">
+                        <input type="text" name="ticker" class="form-control me-2" placeholder="Ex: PETR4" required>
+                        <button type="submit" class="btn btn-primary text-nowrap">Analisar</button>
+                    </form>
+                </div>
+
+                <div class="col-md-4">
+                    <form asp-action="Index" method="get" class="d-flex h-100 align-items-center">
+                        <select name="filtroTipo" class="form-select me-2">
+                            <option value="">-- Filtrar por Tipo --</option>
+                            <option value="Setor Perene">🏦 Setor Perene</option>
+                            <option value="Dividendos">💰 Dividendos</option>
+                            <option value="Crescimento">🚀 Crescimento</option>
+                        </select>
+                        <button type="submit" class="btn btn-secondary">Filtrar</button>
+                    </form>
+                </div>
+
+                <div class="col-md-3">
+                    <form asp-action="AtualizarTodos" method="post" class="h-100 d-flex align-items-center">
+                        <input type="hidden" name="filtroTipo" value="@Context.Request.Query["filtroTipo"]" />
+                        <button type="submit" class="btn btn-outline-success w-100 fw-bold">
+                            Atualizar Filtrados
+                        </button>
+                    </form>
+                </div>
+
+            </div>
+        </div>
     </div>
-    <div class="col-md-2">
-        <button type="submit" class="btn btn-secondary w-100">Filtrar</button>
-    </div>
-</form>
-<div class="mt-3">
-    <form asp-action="AtualizarTodos" method="post">
-        <input type="hidden" name="filtroTipo" value="@Context.Request.Query["filtroTipo"]" />
-        <button type="submit" class="btn btn-outline-success">Atualizar Filtrados</button>
-    </form>
 </div>
+
 @if (TempData["Sucesso"] != null)
 {
     <div class="alert alert-success mt-3 alert-dismissible fade show" role="alert">
