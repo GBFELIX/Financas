@@ -30,6 +30,9 @@ namespace Acoes_Fiis.Models
         public string? TipoAtivo { get; set; }
 
 
+
+
+
         // RENDA FIXA
         public decimal TotalInvestidoRendaFixa { get; set; }
         public decimal TaxaMediaRendaFixa { get; set; } // Ex: 0.01 (1% ao mês)
@@ -49,6 +52,7 @@ namespace Acoes_Fiis.Models
 
     public class CarteiraItemViewModel
     {
+        public Carteira ObjetoOriginal { get; set; }
         public int Id { get; set; }
         public string Ticker { get; set; }
         public int Quantidade { get; set; }
@@ -78,7 +82,7 @@ namespace Acoes_Fiis.Models
 
                 if (Ticker != null && Ticker.Contains("BTC"))
                 {
-                    return 0; // Para Bitcoin, não calculamos lucro/prejuízo
+                    return 0; // Para Bitcoin, não calcula lucro/prejuízo
                 }
 
                 return ValorAtual - (Quantidade * PrecoMedio);

@@ -1,0 +1,109 @@
+﻿@model Acoes_Fiis.Models.Price
+
+@{
+    ViewData["Title"] = "Nova Simulação de Financiamento";
+}
+
+<div class="container pb-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm border-0 mt-4">
+                <div class="card-header bg-primary text-white py-3">
+                    <h4 class="mb-0"><i class="bi bi-calculator"></i> Nova Simulação - Tabela Price</h4>
+                </div>
+                <div class="card-body p-4">
+                    <form asp-action="Create">
+                        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5 class="text-muted border-bottom pb-2 mb-3">Valores Base</h5>
+
+                                <div class="mb-3">
+                                    <label asp-for="ValorImovel" class="form-label fw-bold"></label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">R$</span>
+                                        <input asp-for="ValorImovel" class="form-control" type="text placeholder="Ex: 250000" />
+                                    </div>
+                                    <span asp-validation-for="ValorImovel" class="text-danger small"></span>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label asp-for="ValorEntrada" class="form-label fw-bold"></label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">R$</span>
+                                        <input asp-for="ValorEntrada" class="form-control" type="text" placeholder="Ex: 40000" />
+                                    </div>
+                                    <span asp-validation-for="ValorEntrada" class="text-danger small"></span>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label asp-for="DataInicio" class="form-label fw-bold"></label>
+                                    <input asp-for="DataInicio" type="date" class="form-control" value="@DateTime.Now.ToString("yyyy-MM-dd")" />
+                                    <span asp-validation-for="DataInicio" class="text-danger small"></span>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <h5 class="text-muted border-bottom pb-2 mb-3">Condições e Extras</h5>
+
+                                <div class="row">
+                                    <div class="col-6 mb-3">
+                                        <label asp-for="TaxaJurosAnual" class="form-label fw-bold"></label>
+                                        <div class="input-group">
+                                            <input asp-for="TaxaJurosAnual" class="form-control" placeholder="8.5" />
+                                            <span class="input-group-text">%</span>
+                                        </div>
+                                        <span asp-validation-for="TaxaJurosAnual" class="text-danger small"></span>
+                                    </div>
+                                    <div class="col-6 mb-3">
+                                        <label asp-for="PrazoMeses" class="form-label fw-bold"></label>
+                                        <input asp-for="PrazoMeses" class="form-control" placeholder="360" />
+                                        <span asp-validation-for="PrazoMeses" class="text-danger small"></span>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label asp-for="AporteExtraMensal" class="form-label fw-bold"></label>
+                                    <div class="input-group">
+                                        <span class="input-group-text text-success">R$</span>
+                                        <input asp-for="AporteExtraMensal" class="form-control border-success" placeholder="Quanto pretende pagar a mais?" />
+                                    </div>
+                                    <span asp-validation-for="AporteExtraMensal" class="text-danger small"></span>
+                                    <div class="form-text text-muted small">Esse valor será somado à amortização todo mês.</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label asp-for="ValorPrestação" class="form-label fw-bold text-muted">Valor da Prestação Base (Opcional)</label>
+                                    <input asp-for="ValorPrestação" class="form-control bg-light" placeholder="Calculado automaticamente se vazio" />
+                                    <span asp-validation-for="ValorPrestação" class="text-danger small"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="mt-4">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <a asp-action="Index" class="btn btn-link text-decoration-none text-secondary">
+                                <i class="bi bi-arrow-left"></i> Voltar para a lista
+                            </a>
+                            <button type="submit" class="btn btn-primary btn-lg px-5 shadow-sm">
+                                Criar Simulação <i class="bi bi-chevron-right"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="alert alert-info mt-3 small shadow-sm" role="alert">
+                <i class="bi bi-info-circle-fill"></i> <strong>Dica do Desenvolvedor:</strong> O <strong>Mês 1</strong> da simulação corresponderá ao mês seguinte à data de início selecionada.
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+        <script src="~/js/site-fix-decimal.js"></script>
+    }
+}

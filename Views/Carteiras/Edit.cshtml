@@ -1,93 +1,71 @@
 ﻿@model Acoes_Fiis.Models.Carteira
 
 @{
-    ViewData["Title"] = "Editar Ativo";
+    Layout = null; // IMPORTANTE: Para não carregar o layout global dentro do modal
 }
 
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-8 col-lg-6">
-            <div class="card shadow border-0">
-                <div class="card-header bg-dark text-white p-3">
-                    <div class="d-flex align-items-center">
-                        <i class="bi bi-pencil-square fs-4 me-2"></i>
-                        <h4 class="mb-0">Ajustar Ativo: <span class="text-info">@Model.Ticker</span></h4>
+<div class="modal fade" id="editModal-@Model.Id" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title" id="editModalLabel">
+                    <i class="bi bi-pencil-square me-2"></i>Editar Ativo: <strong>@Model.Ticker</strong>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <form asp-action="Edit" method="post">
+                <div class="modal-body">
+                    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                    <input type="hidden" asp-for="Id" />
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Ticker" class="form-label fw-bold">Ticker</label>
+                            <input asp-for="Ticker" class="form-control bg-light" readonly />
+                            <span asp-validation-for="Ticker" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="TipoAtivo" class="form-label fw-bold">Tipo de Ativo</label>
+                            <input asp-for="TipoAtivo" class="form-control bg-light" readonly />
+                            <span asp-validation-for="TipoAtivo" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Quantidade" class="form-label fw-bold">Quantidade</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-hash"></i></span>
+                                <input asp-for="Quantidade" class="form-control" type="number" step="any" />
+                            </div>
+                            <span asp-validation-for="Quantidade" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="PrecoMedio" class="form-label fw-bold">Preço Médio (R$)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">R$</span>
+                                <input asp-for="PrecoMedio" class="form-control" type="number" step="0.01" />
+                            </div>
+                            <span asp-validation-for="PrecoMedio" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                    <div class="mt-2 p-2 bg-light rounded border border-info-subtle">
+                        <p class="mb-0 small text-muted">
+                            <i class="bi bi-info-circle me-1 text-info"></i>
+                            <strong>Atenção:</strong> Alterações aqui refletem no cálculo do seu patrimônio atual para a meta do apartamento.
+                        </p>
                     </div>
                 </div>
-                <div class="card-body p-4">
-                    <form asp-action="Edit">
-                        <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
-                        <input type="hidden" asp-for="Id" />
 
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label asp-for="Ticker" class="form-label fw-bold">Ticker</label>
-                                <input asp-for="Ticker" class="form-control bg-light" readonly />
-                                <span asp-validation-for="Ticker" class="text-danger small"></span>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label asp-for="TipoAtivo" class="form-label fw-bold">Tipo de Ativo</label>
-                                <select asp-for="TipoAtivo" class="form-select">
-                                    <option value="Acao">Ação</option>
-                                    <option value="Fii">FII</option>
-                                    <option value="Geral">Geral (Cripto/BDR)</option>
-                                </select>
-                                <span asp-validation-for="TipoAtivo" class="text-danger small"></span>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label asp-for="Quantidade" class="form-label fw-bold">Quantidade</label>
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="bi bi-hash"></i></span>
-                                    <input asp-for="Quantidade" class="form-control" type="number"/>
-                                </div>
-                                <span asp-validation-for="Quantidade" class="text-danger small"></span>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label asp-for="PrecoMedio" class="form-label fw-bold">Preço Médio (R$)</label>
-                                <div class="input-group">
-                                    <span class="input-group-text">R$</span>
-                                    <input asp-for="PrecoMedio" class="form-control" type="number" step="0.01" />
-                                </div>
-                                <span asp-validation-for="PrecoMedio" class="text-danger small"></span>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label asp-for="Setor" class="form-label fw-bold">Setor</label>
-                                <input asp-for="Setor" class="form-control" placeholder="Ex: Bancário, Energia..." />
-                                <span asp-validation-for="Setor" class="text-danger small"></span>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label asp-for="DataCompra" class="form-label fw-bold">Data da Operação</label>
-                                <input asp-for="DataCompra" class="form-control" type="date" />
-                                <span asp-validation-for="DataCompra" class="text-danger small"></span>
-                            </div>
-                        </div>
-
-                        <hr class="my-4">
-
-                        <div class="d-flex justify-content-between">
-                            <a asp-action="Index" class="btn btn-outline-secondary">
-                                <i class="bi bi-arrow-left"></i> Voltar
-                            </a>
-                            <button type="submit" class="btn btn-success px-4">
-                                <i class="bi bi-check-lg"></i> Salvar Alterações
-                            </button>
-                        </div>
-                    </form>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary px-4">
+                        <i class="bi bi-save me-1"></i>Salvar Alterações
+                    </button>
                 </div>
-            </div>
-
-            <div class="mt-4 p-3 bg-light rounded border">
-                <p class="mb-0 small text-muted">
-                    <i class="bi bi-info-circle me-1"></i>
-                    <strong>Nota:</strong> Alterar o Preço Médio ou a Quantidade impactará diretamente o cálculo de Lucro/Prejuízo exibido no Dashboard principal.
-                </p>
-            </div>
+            </form>
         </div>
     </div>
 </div>

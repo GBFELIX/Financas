@@ -1,0 +1,107 @@
+﻿@model Acoes_Fiis.Models.Price
+
+@{
+    ViewData["Title"] = "Detalhamento da Amortização";
+}
+
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1>Análise do Financiamento</h1>
+        <div>
+            <a asp-action="Edit" asp-route-id="@Model?.Id" class="btn btn-warning">Editar</a>
+            <a asp-action="Index" class="btn btn-secondary">Voltar</a>
+        </div>
+    </div>
+    <div class="card mb-3 border-primary">
+        <div class="card-body">
+            <h5 class="card-title">Simular Aporte Pontual (Ex: 13º ou FGTS)</h5>
+            <form asp-action="AdicionarAporte" method="post" class="row g-3">
+                <input type="hidden" name="priceId" value="@Model.Id" />
+                <div class="col-md-4">
+                    <label class="form-label">Mês do Aporte</label>
+                    <input type="number" name="mes" class="form-control" placeholder="Ex: 12" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Valor do Aporte (R$)</label>
+                    <input type="number" step="0.01" name="valor" class="form-control" placeholder="Ex: 5000" required>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">Injetar Valor</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-dark text-white">Resumo do Contrato</div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-6">Imóvel:</dt>
+                        <dd class="col-sm-6">@Model.ValorImovel.ToString("C")</dd>
+
+                        <dt class="col-sm-6">Entrada:</dt>
+                        <dd class="col-sm-6">@Model.ValorEntrada.ToString("C")</dd>
+
+                        <dt class="col-sm-6">Financiado:</dt>
+                        <dd class="col-sm-6">@((Model.ValorImovel - Model.ValorEntrada).ToString("C"))</dd>
+
+                        <dt class="col-sm-6">Taxa Juros:</dt>
+                        <dd class="col-sm-6">@Model.TaxaJurosAnual.ToString("N2")% ao ano</dd>
+
+                        <dt class="col-sm-6">Aporte Extra:</dt>
+                        <dd class="col-sm-6 text-danger fw-bold">@Model.AporteExtraMensal.ToString("C")</dd>
+
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">Evolução do Saldo Devedor (Mês a Mês)</div>
+                <div class="card-body p-0" style="max-height: 500px; overflow-y: auto;">
+                    <table class="table table-sm table-striped table-hover mb-0">
+                        <thead class="sticky-top bg-light">
+                            <tr>
+                                <th>Mês</th>
+                                <th>Vencimento</th>
+                                <th>Prestação + Extra</th>
+                                <th>Juros</th>
+                                <th>Amortização</th>
+                                <th>Saldo Restante</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.Projecao != null && Model.Projecao.Any())
+                            {
+                                foreach (var p in Model.Projecao)
+                                {
+                                    <tr>
+                                        <td>@p.Numero</td>
+                                        <td class="fw-bold text-primary">
+                                            @p.Data.ToString("MM/yy")
+                                        </td>
+                                        <td>@p.ValorParcela.ToString("C")</td>
+                                        <td class="text-muted">@p.Juros.ToString("C")</td>
+                                        <td class="text-success">@p.Amortizacao.ToString("C")</td>
+                                        <td class="fw-bold">@p.SaldoDevedorRestante.ToString("C")</td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="5" class="text-center p-4">Não há projeção disponível.</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <div class="card-footer text-muted small">
+                    * Amortização inclui a parcela fixa da Price + seu aporte extra mensal.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

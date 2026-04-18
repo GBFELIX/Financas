@@ -180,6 +180,7 @@ namespace Acoes_Fiis.Controllers
             return View(financeiro);
         }
 
+
         // POST: Financeiros/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]

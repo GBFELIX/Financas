@@ -20,6 +20,8 @@ namespace Acoes_Fiis.Models
 
         public string? Categoria { get; set; }
         public string? Pagamento { get; set; }
+
+
     }
     public class FluxoCaixaViewModel
     {

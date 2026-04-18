@@ -46,5 +46,7 @@ namespace Acoes_Fiis.Data
 
             base.OnModelCreating(modelBuilder);
         }
+        public DbSet<Acoes_Fiis.Models.Price> Financiamentos { get; set; } = default!;
+        public DbSet<Acoes_Fiis.Models.AporteExtra> AporteExtras { get; set; } = default!;
     }
 }

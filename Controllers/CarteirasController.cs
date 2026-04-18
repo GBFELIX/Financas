@@ -144,43 +144,54 @@ namespace Acoes_Fiis.Controllers
         public async Task<IActionResult> AtualizarTodos()
         {
             var listaCarteira = await _context.Carteira.ToListAsync();
-            var listaAcoes = await _context.Recomendacao.ToListAsync();
-            var listaFiis = await _context.RecomendacaoFii.ToListAsync();
-
-            var todasRecomendacoes = listaAcoes.Cast<dynamic>().Union(listaFiis.Cast<dynamic>()).ToList();
-
-            var listaFinal = (from c in listaCarteira
-                              join r in todasRecomendacoes on c.Ticker equals r.Ticker
-                              select r).ToList();
             var service = new YahooService();
             int atualizados = 0;
             int pulados = 0;
 
+            var listaAcoes = await _context.Recomendacao.ToListAsync();
+            // Filtra apenas as ações que você tem na carteira
+            var acoesParaAtualizar = listaAcoes.Where(r => listaCarteira.Any(c => c.Ticker == r.Ticker)).ToList();
 
-            foreach (var item in listaFinal)
+            foreach (var item in acoesParaAtualizar)
             {
                 try
                 {
-                    if (item.TipoAtivo == "Dividendos" || item.TipoAtivo == "Crescimento" || item.TipoAtivo == "Setor Perene" || item.TipoFii == "Tijolo" || item.TipoFii == "Híbrido" || item.TipoFii == "Recebiveis" || item.TipoFii == "Shopping" || item.TipoFii == "Lajes" || item.TipoFii == "Papel" || item.TipoFii == "Logística")
+                    var dados = await service.ObterDadosAtivo(item.Ticker);
+                    if (dados != null)
                     {
-                        var dadosAtualizados = await service.ObterDadosAtivo(item.Ticker);
-
-                        item.PrecoAtual = dadosAtualizados.PrecoAtual;
-                        item.VPA = dadosAtualizados.VPA;
-                        item.LPA = dadosAtualizados.LPA;
-                        item.Roe = dadosAtualizados.Roe;
-                        item.DividendYield = dadosAtualizados.DividendYield;
+                        item.PrecoAtual = dados.PrecoAtual;
+                        item.VPA = dados.VPA;
+                        item.LPA = dados.LPA;
+                        item.Roe = dados.Roe;
+                        item.DividendYield = dados.DividendYield;
                         item.DataAtualizacao = DateTime.Now;
 
-                        _context.Update(item); // Apenas marca como alterado na memória
+                        _context.Update(item);
                         atualizados++;
                     }
-                    else if (item.TipoAtivo == "Geral")
+                }
+                catch { pulados++; }
+            }
+            var listaFiis = await _context.RecomendacaoFii.ToListAsync();
+            var fiisParaAtualizar = listaFiis.Where(r => listaCarteira.Any(c => c.Ticker == r.Ticker)).ToList();
+
+            foreach (var item in fiisParaAtualizar)
+            {
+                try
+                {
+                    var dados = await service.ObterDadosAtivo(item.Ticker);
+                    if (dados != null)
                     {
-                        continue;
+                        item.PrecoAtual = dados.PrecoAtual;
+                        item.VPA = dados.VPA;
+                        // Verifique se sua classe RecomendacaoFii tem esses campos:
+                        item.DataAtualizacao = DateTime.Now;
+
+                        _context.Update(item);
+                        atualizados++;
                     }
                 }
-                catch { continue; }
+                catch { pulados++; }
             }
 
             if (atualizados > 0)
@@ -316,7 +327,7 @@ namespace Acoes_Fiis.Controllers
             {
                 return NotFound();
             }
-            return View(carteira);
+            return PartialView("Edit", carteira);
         }
 
         // POST: Carteiras/Edit/5
@@ -390,6 +401,15 @@ namespace Acoes_Fiis.Controllers
         private bool CarteiraExists(int id)
         {
             return _context.Carteira.Any(e => e.Id == id);
+        }
+        public async Task<IActionResult> BaixarExcel()
+        {
+            var lancamentos = await _context.Carteira.ToListAsync();
+            var csv = "Id,Ticker,Quantidade,PrecoMedio,TipoAtivo,Setor,DataCompra\n" +
+                      string.Join("\n", lancamentos.Select(x =>
+                          $"{x.Id},{x.Ticker},{x.Quantidade},{x.PrecoMedio},{x.TipoAtivo},{x.Setor},{x.DataCompra:yyyy-MM-dd}"));
+            var bytes = System.Text.Encoding.UTF8.GetBytes(csv);
+            return File(bytes, "text/csv", "carteira.csv");
         }
     }
 }
