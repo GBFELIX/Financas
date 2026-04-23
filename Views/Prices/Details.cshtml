@@ -12,6 +12,61 @@
             <a asp-action="Index" class="btn btn-secondary">Voltar</a>
         </div>
     </div>
+    @{
+        // Lógica para identificar a parcela do mês atual
+        var hoje = DateTime.Now;
+        var parcelaAtual = Model.Projecao.FirstOrDefault(p => p.Data.Month == hoje.Month && p.Data.Year == hoje.Year);
+        decimal saldoExibicao;
+
+        if (parcelaAtual != null)
+        {
+            // Se já começou, mostra o saldo da parcela de hoje
+            saldoExibicao = parcelaAtual.SaldoDevedorRestante;
+        }
+        else
+        {
+            // Se ainda não começou (ou já acabou), mostra o Saldo Inicial do contrato
+            saldoExibicao = Model.ValorImovel - Model.ValorEntrada;
+        }
+        var parcelasPagas = parcelaAtual != null ? parcelaAtual.Numero - 1 : 0;
+        var totalParcelas = Model.Projecao.Count;
+        var progresso = (totalParcelas > 0) ? (parcelasPagas * 100 / totalParcelas) : 0;
+        var saldoRestante = parcelaAtual?.SaldoDevedorRestante ?? Model.Projecao.LastOrDefault()?.SaldoDevedorRestante ?? 0;
+    }
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card border-0 shadow-sm bg-light">
+                <div class="card-body">
+                    <h5 class="card-title text-primary"><i class="bi bi-graph-up-arrow"></i> Progresso do Financiamento</h5>
+                    <div class="progress mb-3" style="height: 25px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated bg-success"
+                             role="progressbar" style="width: @progresso%"
+                             aria-valuenow="@progresso" aria-valuemin="0" aria-valuemax="100">
+                            @progresso% Concluído
+                        </div>
+                    </div>
+                    <div class="row text-center">
+                        <div class="col-md-4">
+                            <small class="text-muted d-block">Parcelas Restantes</small>
+                            <strong class="h4">@(totalParcelas - parcelasPagas)</strong>
+                        </div>
+                        <div class="col-md-4">
+                            <small class="text-muted d-block">Saldo Devedor Atual</small>
+                            <strong class="h4 text-danger">@saldoExibicao.ToString("C")</strong>
+                            @if (parcelaAtual == null && Model.Projecao.Any() && Model.Projecao.First().Data > hoje)
+                            {
+                                <span class="badge bg-secondary d-block mt-1">Aguardando Início</span>
+                            }
+                        </div>
+                        <div class="col-md-4">
+                            <small class="text-muted d-block">Previsão de Quitação</small>
+                            <strong class="h4 text-dark">@Model.Projecao.LastOrDefault()?.Data.ToString("MM/yyyy")</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     <div class="card mb-3 border-primary">
         <div class="card-body">
             <h5 class="card-title">Simular Aporte Pontual (Ex: 13º ou FGTS)</h5>
@@ -75,17 +130,23 @@
                         <tbody>
                             @if (Model.Projecao != null && Model.Projecao.Any())
                             {
-                                foreach (var p in Model.Projecao)
+                                @foreach (var p in Model.Projecao)
                                 {
-                                    <tr>
-                                        <td>@p.Numero</td>
-                                        <td class="fw-bold text-primary">
-                                            @p.Data.ToString("MM/yy")
+                                    bool ehMesAtual = (p.Data.Month == DateTime.Now.Month && p.Data.Year == DateTime.Now.Year);
+
+                                    <tr class="@(ehMesAtual ? "table-warning border-2 border-primary" : "")">
+                                        <td>
+                                            @p.Numero
+                                            @if (ehMesAtual)
+                                            {
+                                                <span class="badge bg-primary ms-1">Atual</span>
+                                            }
                                         </td>
+                                        <td class="fw-bold">@p.Data.ToString("MM/yy")</td>
                                         <td>@p.ValorParcela.ToString("C")</td>
-                                        <td class="text-muted">@p.Juros.ToString("C")</td>
-                                        <td class="text-success">@p.Amortizacao.ToString("C")</td>
-                                        <td class="fw-bold">@p.SaldoDevedorRestante.ToString("C")</td>
+                                        <td>@p.Juros.ToString("C")</td>
+                                        <td>@p.Amortizacao.ToString("C")</td>
+                                        <td class="@(ehMesAtual ? "fw-bolder text-danger" : "")">@p.SaldoDevedorRestante.ToString("C")</td>
                                     </tr>
                                 }
                             }
