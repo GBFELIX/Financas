@@ -99,16 +99,28 @@ namespace Acoes_Fiis.Controllers
         // To protect from overposting attacks, enable the specific properties you want to bind to.
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,Descricao,Pagamento,Valor,Data,Tipo,Categoria")] Financeiro financeiro)
+        public async Task<IActionResult> Create(Financeiro lancamento, int numParcelas = 1)
         {
             if (ModelState.IsValid)
             {
-                _context.Add(financeiro);
+                for (int i = 0; i < numParcelas; i++)
+                {
+                    var novaParcela = new Financeiro
+                    {
+                        Descricao = numParcelas > 1 ? $"{lancamento.Descricao} ({i + 1}/{numParcelas})" : lancamento.Descricao,
+                        Valor = lancamento.Valor / numParcelas, // Divide o valor total pelas parcelas
+                        Data = lancamento.Data.AddMonths(i),    // Joga para os meses seguintes
+                        Categoria = lancamento.Categoria,
+                        Tipo = "Despesa",
+                        Pagamento = lancamento.Pagamento
+                    };
+
+                    _context.Add(novaParcela);
+                }
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
-            return View(financeiro);
+            return View(lancamento);
         }
 
         // GET: Financeiros/Edit/5
