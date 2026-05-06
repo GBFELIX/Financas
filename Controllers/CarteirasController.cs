@@ -145,6 +145,29 @@ namespace Acoes_Fiis.Controllers
                 .OrderBy(x => x.Ano)
                 .ThenBy(x => x.Mes)
                 .ToList();
+
+            var agora = DateTime.Now;
+
+            // 1. Entradas e Saídas do Mês (Para os cards informativos pequenos)
+            // Mantemos o filtro de mês para você saber quanto entrou/saiu no total de Maio
+            viewModel.EntradasMesCorrente = financeiroData
+                .Where(x => x.Data.Month == agora.Month && x.Data.Year == agora.Year && x.Tipo == "Entrada")
+                .Sum(x => x.Valor);
+
+            viewModel.SaidasMesCorrente = financeiroData
+                .Where(x => x.Data.Month == agora.Month && x.Data.Year == agora.Year && x.Tipo == "Despesa")
+                .Sum(x => x.Valor);
+
+            // 2. Cálculo do Saldo Financeiro "Disponível Hoje"
+            // Aqui está a mágica: ele só soma o que já aconteceu (Data <= hoje)
+            decimal saldoFinanceiroAteHoje = financeiroData
+                .Where(x => x.Data.Date <= agora.Date) // Filtra apenas até o dia atual
+                .Sum(x => x.Tipo == "Entrada" ? x.Valor : -x.Valor);
+
+            // 3. Patrimônio Bruto Real (O que você realmente tem agora)
+            viewModel.PatrimonioTotalReal = viewModel.TotalPatrimonio +
+                                           viewModel.TotalInvestidoRendaFixa +
+                                           saldoFinanceiroAteHoje;
             // Busca os tickers disponíveis
             viewModel.ListaTickersAcoes = await _context.Recomendacao.Select(x => x.Ticker).ToListAsync();
             viewModel.ListaTickersFiis = await _context.RecomendacaoFii.Select(x => x.Ticker).ToListAsync();

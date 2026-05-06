@@ -20,6 +20,14 @@ namespace Acoes_Fiis.Models
         public List<CarteiraItemViewModel> Itens { get; set; } = new List<CarteiraItemViewModel>();
         public List<ResumoMesViewModel> ResumoMensal { get; set; } = new List<ResumoMesViewModel>();
 
+        public decimal PatrimonioTotalReal { get; set; }
+
+        // Soma de tudo que entrou no Mês Atual (Salário, Bônus, etc)
+        public decimal EntradasMesCorrente { get; set; }
+
+        // Soma de tudo que saiu no Mês Atual (Contas, Compras, Lazer)
+        public decimal SaidasMesCorrente { get; set; }
+
         public decimal TotalPatrimonio => Itens.Where(x => x.TipoAtivo != "RendaFixa").Sum(x => x.ValorAtual);
         public decimal TotalLucro => Itens.Where(x => x.TipoAtivo != "RendaFixa").Sum(x => x.LucroPrejuizo);
         public decimal TotalRendaMensalEstimada => Itens.Sum(x => x.ProventoMensalEstimado);

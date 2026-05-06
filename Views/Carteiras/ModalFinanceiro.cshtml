@@ -4,18 +4,48 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content border-0 shadow-lg rounded-4">
             <div class="modal-header bg-dark text-white rounded-top-4">
-                <h5 class="modal-title fw-bold"><i class="bi bi-graph-up-arrow me-2"></i>Histórico de Fluxo de Caixa</h5>
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-graph-up-arrow me-3 fs-4 text-primary"></i>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0">Fluxo de Caixa Consolidado</h5>
+                        <small class="text-muted text-uppercase" style="font-size: 0.7rem;">Histórico de Aportes e Gastos</small>
+                    </div>
+                </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
+
             <div class="modal-body p-4">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle">
-                        <thead class="table-light text-secondary small text-uppercase">
+                @* Filtros e Cards de Topo *@
+                <div class="row g-3 mb-4 align-items-end">
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold text-muted text-uppercase">Filtrar por Ano</label>
+                        <select id="filtroAnoModal" class="form-select form-select-sm border-0 bg-light rounded-pill px-3" onchange="filtrarTabelaModal()">
+                            <option value="todos">Todos os Anos</option>
+                            @foreach (var ano in Model.ResumoMensal.Select(x => x.Ano).Distinct().OrderByDescending(x => x))
+                            {
+                                <option value="@ano">@ano</option>
+                            }
+                        </select>
+                    </div>
+
+                    @* Card de Total de Sobra no Ano Selecionado *@
+                    <div class="col-md-8 text-end">
+                        <div class="bg-primary-subtle p-2 px-3 rounded-pill d-inline-block border border-primary-subtle">
+                            <span class="small text-primary fw-bold text-uppercase me-2" style="font-size: 0.7rem;">Total de Aportes Acumulados:</span>
+                            <span id="totalSobraAno" class="fw-bold text-primary">R$ 0,00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <table id="tabelaResumoFinanceiro" class="table table-hover align-middle">
+                        <thead class="table-light text-secondary small text-uppercase sticky-top" style="top: 0;">
                             <tr>
                                 <th>Mês/Ano</th>
-                                <th class="text-success text-end">Entradas</th>
-                                <th class="text-danger text-end">Saídas</th>
+                                <th class="text-end">Entradas</th>
+                                <th class="text-end">Saídas</th>
                                 <th class="text-end">Sobra (Aporte)</th>
+                                <th class="text-end" style="width: 80px;">% Poupança</th>
                                 <th class="text-center">Status</th>
                             </tr>
                         </thead>
@@ -23,23 +53,33 @@
                             @foreach (var item in Model.ResumoMensal)
                             {
                                 var sobra = item.Entradas - item.Saidas;
-                                <tr>
-                                    <td class="fw-bold">@System.Globalization.DateTimeFormatInfo.CurrentInfo.GetMonthName(item.Mes).ToUpper() / @item.Ano</td>
-                                    <td class="text-end text-success">@item.Entradas.ToString("C2")</td>
-                                    <td class="text-end text-danger">@item.Saidas.ToString("C2")</td>
-                                    <td class="text-end fw-bold">@sobra.ToString("C2")</td>
+                                var taxaPoupanca = item.Entradas > 0 ? (sobra / item.Entradas) * 100 : 0;
+
+                                <tr class="linha-resumo" data-ano="@item.Ano">
+                                    <td class="fw-bold text-dark">
+                                        @System.Globalization.DateTimeFormatInfo.CurrentInfo.GetMonthName(item.Mes).ToUpper()
+                                        <span class="text-muted fw-normal">/@item.Ano</span>
+                                    </td>
+                                    <td class="text-end text-success fw-semibold">@item.Entradas.ToString("C2")</td>
+                                    <td class="text-end text-danger opacity-75">@item.Saidas.ToString("C2")</td>
+                                    <td class="text-end fw-bold text-primary data-sobra" data-valor="@sobra">@sobra.ToString("C2")</td>
+                                    <td class="text-end small">
+                                        <span class="badge @(taxaPoupanca >= 30 ? "bg-success-subtle text-success" : "bg-light text-muted") border">
+                                            @taxaPoupanca.ToString("N0")%
+                                        </span>
+                                    </td>
                                     <td class="text-center">
-                                        @if (sobra > 2000)
-                                        { @* Meta de aporte exemplo *@
-                                            <span class="badge bg-success-subtle text-success rounded-pill">Meta Batida</span>
+                                        @if (sobra >= 2500)
+                                        { @* Ajustado para a sua meta agressiva de R$ 40k *@
+                                            <i class="bi bi-check-circle-fill text-success" title="Meta Batida"></i>
                                         }
                                         else if (sobra > 0)
                                         {
-                                            <span class="badge bg-warning-subtle text-warning rounded-pill">Abaixo da Meta</span>
+                                            <i class="bi bi-dash-circle-fill text-warning" title="Abaixo da Meta"></i>
                                         }
                                         else
                                         {
-                                            <span class="badge bg-danger-subtle text-danger rounded-pill">Déficit</span>
+                                            <i class="bi bi-exclamation-triangle-fill text-danger" title="Déficit"></i>
                                         }
                                     </td>
                                 </tr>
@@ -48,9 +88,42 @@
                     </table>
                 </div>
             </div>
-            <div class="modal-footer border-0">
-                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Fechar</button>
+
+            <div class="modal-footer border-0 bg-light p-3">
+                @* <div class="me-auto small text-muted">
+                    <i class="bi bi-info-circle me-1"></i> Colocar alguma mensagem em algum momento ou nao
+                </div> *@
+                <button type="button" class="btn btn-dark rounded-pill px-4" data-bs-dismiss="modal">Fechar</button>
             </div>
         </div>
     </div>
 </div>
+
+@* Script para filtro instantâneo sem recarregar a página *@
+<script>
+    function filtrarTabelaModal() {
+        var anoSelecionado = document.getElementById("filtroAnoModal").value;
+        var linhas = document.querySelectorAll(".linha-resumo");
+        var totalSobra = 0;
+
+        linhas.forEach(function(linha) {
+            var anoLinha = linha.getAttribute("data-ano");
+            var valorSobra = parseFloat(linha.querySelector(".data-sobra").getAttribute("data-valor").replace(',', '.'));
+
+            if (anoSelecionado === "todos" || anoLinha === anoSelecionado) {
+                linha.style.display = "";
+                totalSobra += valorSobra;
+            } else {
+                linha.style.display = "none";
+            }
+        });
+
+        // Atualiza o card de total formatado
+        document.getElementById("totalSobraAno").innerText = totalSobra.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    // Executa uma vez ao abrir o modal para carregar o total inicial
+    document.getElementById('modalResumoAnual').addEventListener('shown.bs.modal', function () {
+        filtrarTabelaModal();
+    });
+</script>
