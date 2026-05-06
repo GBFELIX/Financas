@@ -18,6 +18,8 @@ namespace Acoes_Fiis.Models
     public class CarteiraTotalViewModel
     {
         public List<CarteiraItemViewModel> Itens { get; set; } = new List<CarteiraItemViewModel>();
+        public List<ResumoMesViewModel> ResumoMensal { get; set; } = new List<ResumoMesViewModel>();
+
         public decimal TotalPatrimonio => Itens.Where(x => x.TipoAtivo != "RendaFixa").Sum(x => x.ValorAtual);
         public decimal TotalLucro => Itens.Where(x => x.TipoAtivo != "RendaFixa").Sum(x => x.LucroPrejuizo);
         public decimal TotalRendaMensalEstimada => Itens.Sum(x => x.ProventoMensalEstimado);
@@ -94,5 +96,13 @@ namespace Acoes_Fiis.Models
         public decimal ProventoMensalEstimado => Quantidade * UltimoRendimento;
         public string? TipoAtivo { get; set; }
         public decimal? TaxaRentabilidade { get; set; }
+    }
+    public class ResumoMesViewModel
+    {
+        public int Mes { get; set; }
+        public int Ano { get; set; }
+        public decimal Entradas { get; set; }
+        public decimal Saidas { get; set; }
+        public decimal Sobra => Entradas - Saidas;
     }
 }

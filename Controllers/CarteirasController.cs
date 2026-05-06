@@ -26,6 +26,7 @@ namespace Acoes_Fiis.Controllers
         public async Task<IActionResult> Index()
         {
             var itensBanco = await _context.Carteira.ToListAsync();
+
             var viewModel = new CarteiraTotalViewModel();
             decimal totalRFLiquido = 0;
 
@@ -55,7 +56,6 @@ namespace Acoes_Fiis.Controllers
                     viewModel.TotalInvestidoRendaFixa += (item.Quantidade * item.PrecoMedio);
                     totalRFLiquido += rendimentoBruto * 0.825m;
                 }
-                // Busca o Preço Atual e Status nas tabelas de recomendação
                 if (item.TipoAtivo == "Acao")
                 {
                     var acao = await _context.Recomendacao.FirstOrDefaultAsync(x => x.Ticker == item.Ticker);
@@ -131,7 +131,20 @@ namespace Acoes_Fiis.Controllers
 
                 viewModel.Itens.Add(viewItem);
             }
+            var financeiroData = await _context.Financeiro.ToListAsync();
 
+            viewModel.ResumoMensal = financeiroData
+                .GroupBy(x => new { x.Data.Year, x.Data.Month })
+                .Select(g => new ResumoMesViewModel
+                {
+                    Ano = g.Key.Year,
+                    Mes = g.Key.Month,
+                    Entradas = g.Where(x => x.Tipo == "Entrada").Sum(x => x.Valor),
+                    Saidas = g.Where(x => x.Tipo == "Despesa").Sum(x => x.Valor)
+                })
+                .OrderBy(x => x.Ano)
+                .ThenBy(x => x.Mes)
+                .ToList();
             // Busca os tickers disponíveis
             viewModel.ListaTickersAcoes = await _context.Recomendacao.Select(x => x.Ticker).ToListAsync();
             viewModel.ListaTickersFiis = await _context.RecomendacaoFii.Select(x => x.Ticker).ToListAsync();
@@ -184,7 +197,6 @@ namespace Acoes_Fiis.Controllers
                     {
                         item.PrecoAtual = dados.PrecoAtual;
                         item.VPA = dados.VPA;
-                        // Verifique se sua classe RecomendacaoFii tem esses campos:
                         item.DataAtualizacao = DateTime.Now;
 
                         _context.Update(item);

@@ -61,7 +61,7 @@ namespace Acoes_Fiis.Controllers
             return View(viewModel);
         }
         [HttpPost]
-        public async Task<IActionResult> Adicionar(Financeiro model)
+        public async Task<IActionResult> Adicionar(Financeiro model, int numParcelas = 1)
         {
             if (ModelState.IsValid)
             {
@@ -101,25 +101,46 @@ namespace Acoes_Fiis.Controllers
         [HttpPost]
         public async Task<IActionResult> Create(Financeiro lancamento, int numParcelas = 1)
         {
+            if (numParcelas < 1) numParcelas = 1;
+
             if (ModelState.IsValid)
             {
+                // Guardamos o valor total para não perdê-lo durante o loop
+                decimal valorTotal = lancamento.Valor;
+                decimal valorParcela = valorTotal / numParcelas;
+
                 for (int i = 0; i < numParcelas; i++)
                 {
                     var novaParcela = new Financeiro
                     {
-                        Descricao = numParcelas > 1 ? $"{lancamento.Descricao} ({i + 1}/{numParcelas})" : lancamento.Descricao,
-                        Valor = lancamento.Valor / numParcelas, // Divide o valor total pelas parcelas
-                        Data = lancamento.Data.AddMonths(i),    // Joga para os meses seguintes
+                        // Formatação: "Compra (01/05)"
+                        Descricao = numParcelas > 1
+                            ? $"{lancamento.Descricao} ({i + 1:D2}/{numParcelas:D2})"
+                            : lancamento.Descricao,
+
+                        Valor = valorParcela,
+
+                        // Avança o mês automaticamente
+                        Data = lancamento.Data.AddMonths(i),
+
                         Categoria = lancamento.Categoria,
-                        Tipo = "Despesa",
+
+                        // Usamos o Tipo que vem do formulário (Entrada ou Despesa)
+                        // em vez de fixar "Despesa"
+                        Tipo = lancamento.Tipo,
+
                         Pagamento = lancamento.Pagamento
                     };
 
                     _context.Add(novaParcela);
                 }
+
                 await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
+
+                // Redireciona para o mês onde a primeira parcela foi criada
+                return RedirectToAction(nameof(Index), new { mes = lancamento.Data.Month, ano = lancamento.Data.Year });
             }
+
             return View(lancamento);
         }
 
@@ -144,7 +165,7 @@ namespace Acoes_Fiis.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,Descricao,Pagamento,Valor,Data,Tipo,Categoria")] Financeiro financeiro)
+        public async Task<IActionResult> Edit(int id, Financeiro financeiro)
         {
             if (id != financeiro.Id)
             {

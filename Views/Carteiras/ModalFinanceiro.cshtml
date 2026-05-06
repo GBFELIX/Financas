@@ -1,0 +1,56 @@
+﻿@model CarteiraTotalViewModel
+
+<div class="modal fade" id="modalResumoAnual" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-dark text-white rounded-top-4">
+                <h5 class="modal-title fw-bold"><i class="bi bi-graph-up-arrow me-2"></i>Histórico de Fluxo de Caixa</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light text-secondary small text-uppercase">
+                            <tr>
+                                <th>Mês/Ano</th>
+                                <th class="text-success text-end">Entradas</th>
+                                <th class="text-danger text-end">Saídas</th>
+                                <th class="text-end">Sobra (Aporte)</th>
+                                <th class="text-center">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in Model.ResumoMensal)
+                            {
+                                var sobra = item.Entradas - item.Saidas;
+                                <tr>
+                                    <td class="fw-bold">@System.Globalization.DateTimeFormatInfo.CurrentInfo.GetMonthName(item.Mes).ToUpper() / @item.Ano</td>
+                                    <td class="text-end text-success">@item.Entradas.ToString("C2")</td>
+                                    <td class="text-end text-danger">@item.Saidas.ToString("C2")</td>
+                                    <td class="text-end fw-bold">@sobra.ToString("C2")</td>
+                                    <td class="text-center">
+                                        @if (sobra > 2000)
+                                        { @* Meta de aporte exemplo *@
+                                            <span class="badge bg-success-subtle text-success rounded-pill">Meta Batida</span>
+                                        }
+                                        else if (sobra > 0)
+                                        {
+                                            <span class="badge bg-warning-subtle text-warning rounded-pill">Abaixo da Meta</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-danger-subtle text-danger rounded-pill">Déficit</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>

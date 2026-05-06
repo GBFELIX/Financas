@@ -9,21 +9,50 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h1 class="fw-bold mb-0 text-dark">Controle de Gastos</h1>
-            <p class="text-muted"><i class="bi bi-calendar3 me-2"></i>Planejamento 2026</p>
+            <p class="text-muted"><i class="bi bi-calendar3 me-2"></i>Planejamento @Model.AnoAtual</p>
         </div>
 
-        <form method="get" class="d-flex gap-2 bg-light p-2 rounded shadow-sm">
-            <select name="mes" class="form-select form-select-sm border-0 bg-transparent" style="width: 140px;">
-                @for (int i = 1; i <= 12; i++)
-                {
-                    <option value="@i" selected="@(Model.MesAtual == i)">
-                        @System.Globalization.DateTimeFormatInfo.CurrentInfo.GetMonthName(i).ToUpper()
-                    </option>
-                }
-            </select>
-            <input type="number" name="ano" class="form-control form-control-sm border-0 bg-transparent" value="@Model.AnoAtual" style="width: 90px;" />
-            <button type="submit" class="btn btn-sm btn-dark px-3 rounded-pill">Filtrar</button>
-        </form>
+        @{
+            // Lógica para calcular meses e anos vizinhos
+            var mesAnterior = Model.MesAtual == 1 ? 12 : Model.MesAtual - 1;
+            var anoParaMesAnterior = Model.MesAtual == 1 ? Model.AnoAtual - 1 : Model.AnoAtual;
+
+            var proximoMes = Model.MesAtual == 12 ? 1 : Model.MesAtual + 1;
+            var anoParaProximoMes = Model.MesAtual == 12 ? Model.AnoAtual + 1 : Model.AnoAtual;
+        }
+
+        <div class="d-flex align-items-center gap-3">
+            @* Seta para Voltar *@
+            <a asp-action="Index" asp-route-mes="@mesAnterior" asp-route-ano="@anoParaMesAnterior"
+               class="btn btn-outline-secondary btn-sm rounded-circle d-flex align-items-center justify-content-center"
+               style="width: 32px; height: 32px;" title="Mês Anterior">
+                <i class="bi bi-chevron-left"></i>
+            </a>
+
+            @* Seu Formulário Original (Pode selecionar direto) *@
+            <form method="get" class="d-flex gap-2 bg-light p-2 rounded shadow-sm border">
+                <select name="mes" class="form-select form-select-sm border-0 bg-transparent fw-bold" style="width: 140px;" onchange="this.form.submit()">
+                    @for (int i = 1; i <= 12; i++)
+                    {
+                        <option value="@i" selected="@(Model.MesAtual == i)">
+                            @System.Globalization.DateTimeFormatInfo.CurrentInfo.GetMonthName(i).ToUpper()
+                        </option>
+                    }
+                </select>
+                <input type="number" name="ano" class="form-control form-control-sm border-0 bg-transparent fw-bold"
+                       value="@Model.AnoAtual" style="width: 80px;" onchange="this.form.submit()" />
+
+                @* O botão de filtrar ainda existe, mas adicionei o "onchange" acima para ser automático *@
+                <button type="submit" class="btn btn-sm btn-dark px-3 rounded-pill d-none d-md-block">Filtrar</button>
+            </form>
+
+            @* Seta para Avançar *@
+            <a asp-action="Index" asp-route-mes="@proximoMes" asp-route-ano="@anoParaProximoMes"
+               class="btn btn-outline-secondary btn-sm rounded-circle d-flex align-items-center justify-content-center"
+               style="width: 32px; height: 32px;" title="Próximo Mês">
+                <i class="bi bi-chevron-right"></i>
+            </a>
+        </div>
     </div>
 
     @* Cards de Resumo Estilo Dashboard *@
@@ -161,7 +190,7 @@
                 <h5 class="modal-title fw-bold"><i class="bi bi-plus-circle me-2"></i>Adicionar Lançamento</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form asp-action="Adicionar" method="post">
+            <form asp-action="Create" method="post">
                 <div class="modal-body p-4">
                     <div class="mb-3">
                         <label class="form-label fw-bold">Tipo de Fluxo</label>
@@ -179,7 +208,7 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold">Valor Total (R$)</label>
-                            <input name="ValorTotal" class="form-control rounded-3" type="number" step="0.01" placeholder="0,00" required />
+                            <input name="Valor" class="form-control rounded-3" type="text" placeholder="0,00" required />
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold">Nº de Parcelas</label>
@@ -190,7 +219,7 @@
 
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">Data do Gasto</label>
+                            <label class="form-label fw-bold">Data</label>
                             <input type="date" name="Data" class="form-control rounded-3" value="@DateTime.Now.ToString("yyyy-MM-dd")" required />
                         </div>
                         <div class="col-md-6 mb-3">
@@ -213,6 +242,7 @@
                             <option value="Pix">Pix / Dinheiro</option>
                             <option value="Cartão Crédito">Cartão de Crédito</option>
                             <option value="Cartão Débito">Cartão de Débito</option>
+                            <option value="Pagamento">Pagamento</option>
                         </select>
                     </div>
                 </div>

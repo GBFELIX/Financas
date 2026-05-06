@@ -20,11 +20,9 @@
     </div>
     <p></p>
     <div class="col-md-3 text-end">
-        <form asp-action="BaixarExcel">
-            <button type="submit" class="btn btn-outline-success w-100">
-                📥 Baixar Excel
-            </button>
-        </form>
+        <button type="button" class="btn btn-outline-primary w-100" data-bs-toggle="modal" data-bs-target="#modalResumoAnual">
+            <i class="bi bi-calendar-check me-2"></i> Resumo Mensal (DRE)
+        </button>
     </div>
     <p></p>
 
@@ -135,7 +133,6 @@
                                 </div>
                             </td>
                         </tr>
-                        @* Criamos um objeto novo com os dados que já temos para evitar o erro de nulo *@
                         @await Html.PartialAsync("Edit", new Acoes_Fiis.Models.Carteira
                         {
                                         Id = item.Id,
@@ -146,11 +143,13 @@
                                         // Setor = item.Setor,
                                         // DataCompra = item.DataCompra
                                         })
-                    }
+                    }  
                 </tbody>
             </table>
         </div>
     </div>
+
+    @await Html.PartialAsync("ModalFinanceiro", Model)
 
     <div class="card shadow-sm border-0">
         <div class="card-header bg-light d-flex justify-content-between align-items-center">
