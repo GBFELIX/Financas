@@ -1,7 +1,8 @@
 ﻿@model CarteiraTotalViewModel
 
 <div class="modal fade" id="modalRadarAporte" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    @* Usamos modal-xl para ter espaço para os 5 quadrados *@
+    <div class="modal-dialog modal-dialog-centered modal-xl">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
             <div class="modal-header bg-warning border-0 py-3">
                 <h5 class="modal-title fw-bold text-dark">
@@ -24,33 +25,43 @@
 
                 @if (Model.SugestoesAporte.Any())
                 {
-                    @foreach (var item in Model.SugestoesAporte)
-                    {
-                        var sobraMes = Model.EntradasMesCorrente - Model.SaidasMesCorrente;
-                        var qtdPossivel = item.PrecoAtual > 0 ? (int)(sobraMes / item.PrecoAtual) : 0;
+                    @* Container Flex para forçar 5 por linha *@
+                    <div class="d-flex flex-wrap gap-3 justify-content-start">
+                        @foreach (var item in Model.SugestoesAporte)
+                        {
+                            var sobraMes = Model.EntradasMesCorrente - Model.SaidasMesCorrente;
+                            var qtdPossivel = item.PrecoAtual > 0 ? (int)(sobraMes / item.PrecoAtual) : 0;
 
-                        <div class="card mb-2 border-0 bg-light rounded-3 hover-shadow transition">
-                            <div class="card-body p-3">
-                                <div class="d-flex justify-content-between align-items-center">
+                            @* Largura calculada: (100% / 5) - compensação do gap *@
+                            <div class="card border-0 bg-light rounded-4 hover-shadow transition text-center p-2"
+                                 style="flex: 0 0 calc(20% - 1rem); min-width: 180px; aspect-ratio: 1 / 1;">
+
+                                <div class="card-body d-flex flex-column justify-content-between p-2">
                                     <div>
-                                        <span class="badge @(item.Tipo == "FII" ? "bg-primary" : "bg-success") mb-1">@item.Tipo</span>
-                                        <h5 class="fw-bold mb-0">@item.Ticker</h5>
-                                        <small class="text-muted">@item.Mensagem</small>
+                                        <span class="badge @(item.Tipo == "FII" ? "bg-primary" : "bg-success") mb-2">@item.Tipo</span>
+                                        <h4 class="fw-bold mb-0">@item.Ticker</h4>
+                                        <div class="fw-bold text-dark fs-5">@item.PrecoAtual.ToString("C2")</div>
                                     </div>
-                                    <div class="text-end">
-                                        <div class="fw-bold text-dark">@item.PrecoAtual.ToString("C2")</div>
-                                        <small class="text-info d-block">P/VP ou P/L: @item.IndicadorDesconto.ToString("N2")</small>
+
+                                    <div class="my-2">
+                                        <small class="text-info d-block fw-bold" style="font-size: 0.75rem;">
+                                            @(item.Tipo == "FII" ? "P/VP" : "P/L"): @item.IndicadorDesconto.ToString("N2")
+                                        </small>
+                                        <small class="text-muted d-block" style="font-size: 0.7rem; line-height: 1;">@item.Mensagem</small>
                                     </div>
+
+                                    @if (qtdPossivel > 0)
+                                    {
+                                        <div class="bg-white rounded-3 py-2 border border-warning-subtle">
+                                            <small class="d-block text-muted" style="font-size: 0.65rem;">VOCÊ COMPRA</small>
+                                            <strong class="text-dark fs-5">@qtdPossivel</strong>
+                                            <small class="text-muted" style="font-size: 0.65rem;">cotas</small>
+                                        </div>
+                                    }
                                 </div>
-                                @if (qtdPossivel > 0)
-                                {
-                                    <div class="mt-2 pt-2 border-top border-2 border-white small">
-                                        <i class="bi bi-cart-plus me-1"></i> Com sua sobra, você compra <strong>@qtdPossivel</strong> cotas.
-                                    </div>
-                                }
                             </div>
-                        </div>
-                    }
+                        }
+                    </div>
                 }
                 else
                 {
@@ -66,3 +77,16 @@
         </div>
     </div>
 </div>
+
+<style>
+    .hover-shadow:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+        background-color: #fff !important;
+        border: 1px solid #ffc107 !important;
+    }
+
+    .transition {
+        transition: all 0.3s ease;
+    }
+</style>
