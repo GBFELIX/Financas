@@ -3,49 +3,105 @@
 <div class="modal fade" id="modalDetalhesPatrimonio" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg rounded-4">
-            <div class="modal-header bg-light border-0 pt-4 px-4">
-                <h5 class="modal-title fw-bold text-dark">Composição do Patrimônio</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <div class="modal-header bg-dark text-white border-0 pt-4 px-4 rounded-top-4">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-pie-chart-fill me-3 fs-3 text-info"></i>
+                    <div>
+                        <h5 class="modal-title fw-bold">Raio-X do Patrimônio</h5>
+                        <small class="text-info opacity-75">Posição consolidada até @DateTime.Now.ToString("dd/MM/yyyy")</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
+
             <div class="modal-body p-4">
-                @* Seção de Ativos *@
+                @* 1. Distribuição de Ativos (O que está investido) *@
                 <div class="mb-4">
-                    <label class="small text-muted text-uppercase fw-bold mb-2 d-block">Ativos Investidos</label>
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span>Renda Variável (Ações/FIIs)</span>
-                        <span class="fw-bold text-dark">R$ @Model.TotalPatrimonio.ToString("N2")</span>
+                    <div class="d-flex justify-content-between align-items-end mb-2">
+                        <label class="small text-muted text-uppercase fw-bold">Alocação de Investimentos</label>
+                        <span class="badge bg-light text-dark border">@((Model.TotalPatrimonio + Model.TotalInvestidoRendaFixa).ToString("C2"))</span>
                     </div>
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span>Renda Fixa</span>
-                        <span class="fw-bold text-dark">R$ @Model.TotalInvestidoRendaFixa.ToString("N2")</span>
+
+                    <div class="p-3 border rounded-4 bg-light">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="small text-secondary"><i class="bi bi-graph-up me-2"></i>Renda Variável</span>
+                            <span class="fw-bold text-dark">@Model.TotalPatrimonio.ToString("C2")</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-0">
+                            <span class="small text-secondary"><i class="bi bi-safe me-2"></i>Renda Fixa / Caixa</span>
+                            <span class="fw-bold text-dark">@Model.TotalInvestidoRendaFixa.ToString("C2")</span>
+                        </div>
                     </div>
                 </div>
 
-                <hr class="opacity-10">
-
-                @* Seção de Fluxo de Caixa (O que você pediu) *@
+                @* 2. Fluxo Vivo (O que mudou pelo seu esforço/gastos) *@
                 <div class="mb-4">
-                    <label class="small text-muted text-uppercase fw-bold mb-2 d-block">Saldo em Conta (Acumulado)</label>
-                    <div class="d-flex justify-content-between align-items-center mb-2 text-success">
-                        <span><i class="bi bi-plus-circle me-2"></i>Total de Entradas</span>
-                        <span class="fw-bold">+ R$ @Model.ResumoMensal.Sum(x => x.Entradas).ToString("N2")</span>
+                    <label class="small text-muted text-uppercase fw-bold mb-3 d-block">Movimentações Financeiras (Histórico Acumulado)</label>
+
+                    <div class="row g-2 text-center mb-3">
+                        @* Entradas JÁ recebidas *@
+                        <div class="col-4">
+                            <div class="p-2 border rounded-3 bg-success-subtle border-success-subtle text-success">
+                                <small class="d-block opacity-75 fw-bold" style="font-size: 0.6rem;">RECEBIDO</small>
+                                <span class="fw-bold" style="font-size: 0.9rem;">R$ @((Model.ResumoMensal.Sum(x => x.Entradas) - Model.EntradasFuturas).ToString("N2"))</span>
+                            </div>
+                        </div>
+
+                        @* Entradas FUTURAS (O que está por vir) *@
+                        <div class="col-4">
+                            <div class="p-2 border rounded-3 bg-info-subtle border-info-subtle text-info">
+                                <small class="d-block opacity-75 fw-bold" style="font-size: 0.6rem;">A RECEBER</small>
+                                <span class="fw-bold" style="font-size: 0.9rem;">@Model.EntradasFuturas.ToString("C2")</span>
+                            </div>
+                        </div>
+
+                        @* Saídas totais *@
+                        <div class="col-4">
+                            <div class="p-2 border rounded-3 bg-danger-subtle border-danger-subtle text-danger">
+                                <small class="d-block opacity-75 fw-bold" style="font-size: 0.6rem;">SAÍDAS</small>
+                                <span class="fw-bold" style="font-size: 0.9rem;">@Model.ResumoMensal.Sum(x => x.Saidas).ToString("C2")</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="d-flex justify-content-between align-items-center text-danger">
-                        <span><i class="bi bi-dash-circle me-2"></i>Total de Saídas</span>
-                        <span class="fw-bold">- R$ @Model.ResumoMensal.Sum(x => x.Saidas).ToString("N2")</span>
+
+                    @* Barra de Saúde Financeira *@
+                    @{
+                        var totalEntradas = Model.ResumoMensal.Sum(x => x.Entradas) - Model.EntradasFuturas;
+                        //var totalEntradas = ((Model.ResumoMensal.Sum(x => x.Entradas) - Model.EntradasFuturas).ToString("N2")) - Model.EntradasFuturas; // Considera apenas o que já foi recebido
+                        var totalSaidas = Model.ResumoMensal.Sum(x => x.Saidas);
+                        var percSaida = totalEntradas > 0 ? (totalSaidas / totalEntradas) * 100 : 0;
+                    }
+                    <div class="mb-2 d-flex justify-content-between small">
+                        <span class="text-muted italic">Taxa de Consumo Global</span>
+                        <span class="fw-bold @(percSaida > 70 ? "text-danger" : "text-success")">@percSaida.ToString("N1")%</span>
+                    </div>
+                    <div class="progress rounded-pill" style="height: 8px;">
+                        <div class="progress-bar @(percSaida > 70 ? "bg-danger" : "bg-success")"
+                             role="progressbar"
+                             style="width: @percSaida.ToString().Replace(",", ".")%"
+                             aria-valuenow="@percSaida" aria-valuemin="0" aria-valuemax="100"></div>
                     </div>
                 </div>
 
-                @* Resultado Final *@
-                <div class="bg-light p-3 rounded-4 border">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="fw-bold text-dark">Patrimônio Real</span>
-                        <span class="fs-4 fw-bold text-primary">R$ @Model.PatrimonioTotalReal.ToString("N2")</span>
+                @* 3. Resultado Final (Liquidez Total) *@
+                <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                    <div class="card-body p-0">
+                        <div class="bg-primary p-3 text-center text-white">
+                            <h6 class="small text-uppercase opacity-75 mb-1">Patrimônio Bruto Real Disponível</h6>
+                            <h2 class="fw-bold mb-0">R$ @((Model.PatrimonioTotalReal - Model.EntradasFuturas).ToString("N2"))</h2>
+                        </div>
+                        <div class="bg-white p-3 border-top text-center">
+                            <small class="text-muted fw-bold italic">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Este é o valor que você possui hoje se liquidar tudo.
+                            </small>
+                        </div>
                     </div>
                 </div>
             </div>
+
             <div class="modal-footer border-0 p-4 pt-0">
-                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Entendi</button>
+                <button type="button" class="btn btn-dark w-100 rounded-pill fw-bold" data-bs-dismiss="modal">Fechar Detalhamento</button>
             </div>
         </div>
     </div>

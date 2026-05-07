@@ -168,7 +168,47 @@ namespace Acoes_Fiis.Controllers
             viewModel.PatrimonioTotalReal = viewModel.TotalPatrimonio +
                                            viewModel.TotalInvestidoRendaFixa +
                                            saldoFinanceiroAteHoje;
-            // Busca os tickers disponíveis
+
+            viewModel.EntradasFuturas = financeiroData
+            .Where(x => x.Data.Date > agora.Date && x.Tipo == "Entrada")
+            .Sum(x => x.Valor);
+
+            var sobraDisponivel = viewModel.PatrimonioTotalReal - (itensBanco.Sum(x => x.Quantidade * x.PrecoMedio));
+
+            var recomendacoesAcoes = await _context.Recomendacao.ToListAsync();
+
+            var acoesBaratas = recomendacoesAcoes
+                .Where(x => x.LPA > 0 && (x.PrecoAtual / x.LPA) < 10 && x.Roe > 12)
+                .OrderBy(x => x.PrecoAtual / x.LPA)
+                .Take(5)
+                .Select(x => new RadarAporteViewModel
+                {
+                    Ticker = x.Ticker,
+                    Tipo = "Ação",
+                    PrecoAtual = x.PrecoAtual,
+                    IndicadorDesconto = x.LPA > 0 ? x.PrecoAtual / x.LPA : 0,
+                    Mensagem = "P/L Atrativo + ROE Eficiente"
+                }).ToList();
+
+            var recomendacoesFiis = await _context.RecomendacaoFii.ToListAsync();
+
+            var fiisDescontados = recomendacoesFiis
+                .Where(x => x.PVP < 0.98m)
+                .OrderBy(x => x.PVP)
+                .Take(5)
+                .Select(x => new RadarAporteViewModel
+                {
+                    Ticker = x.Ticker,
+                    Tipo = "FII",
+                    PrecoAtual = x.PrecoAtual,
+                    IndicadorDesconto = x.PVP,
+                    Mensagem = "Desconto sobre Valor Patrimonial"
+                }).ToList();
+
+            viewModel.SugestoesAporte.Clear();
+            viewModel.SugestoesAporte.AddRange(acoesBaratas);
+            viewModel.SugestoesAporte.AddRange(fiisDescontados);
+
             viewModel.ListaTickersAcoes = await _context.Recomendacao.Select(x => x.Ticker).ToListAsync();
             viewModel.ListaTickersFiis = await _context.RecomendacaoFii.Select(x => x.Ticker).ToListAsync();
             viewModel.ListaTickersGerais = await _context.AtivosGerais.Select(x => x.Ticker).ToListAsync();

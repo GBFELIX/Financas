@@ -28,10 +28,10 @@
             </button>
         </div>
 
-        @* Botão 3: Espaço Reservado (Placeholder) *@
+        @* Botão 3: Radar de Aporte *@
         <div class="col-md-4">
-            <button type="button" class="btn btn-outline-secondary w-100 shadow-sm rounded-3 border-dashed" disabled>
-                <i class="bi bi-plus-circle me-2"></i> Em breve...
+            <button type="button" class="btn btn-outline-warning w-100 shadow-sm rounded-3 fw-bold" data-bs-toggle="modal" data-bs-target="#modalRadarAporte">
+                <i class="bi bi-compass me-2"></i> Radar de Aporte
             </button>
         </div>
     </div>
@@ -45,7 +45,7 @@
                  data-bs-target="#modalDetalhesPatrimonio">
                 <div class="card-body text-center p-4">
                     <h6 class="text-uppercase small fw-bold text-info opacity-75">Patrimônio Bruto Real</h6>
-                    <h2 class="mb-1 fw-bold">R$ @Model.PatrimonioTotalReal.ToString("N2")</h2>
+                    <h2 class="mb-1 fw-bold">R$ @((Model.PatrimonioTotalReal - Model.EntradasFuturas).ToString("N2"))</h2>
                     @* Feedback visual sobre a data *@
                     <small class="text-muted">
                         <i class="bi bi-clock-history"></i> Atualizado até @DateTime.Now.ToString("dd/MM")
@@ -181,6 +181,7 @@
 
     @await Html.PartialAsync("ModalFinanceiro", Model)
     @await Html.PartialAsync("_ModalDetalhesPatrimonio", Model)
+    @await Html.PartialAsync("_ModalRadarAporte", Model)
 
     <div class="card shadow-sm border-0">
         <div class="card-header bg-light d-flex justify-content-between align-items-center">

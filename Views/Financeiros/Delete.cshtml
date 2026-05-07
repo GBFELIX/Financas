@@ -1,51 +1,89 @@
 ﻿@model Acoes_Fiis.Models.Financeiro
 
 @{
-    ViewData["Title"] = "Delete";
+    Layout = null; // IMPORTANTE: Define como nulo para não carregar o Layout padrão dentro do Modal
+
 }
+<div class="modal fade" id="deleteModal-@Model.Id" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Excluir Lançamento Financeiro</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form asp-action="Delete" method="post">
+                <div class="modal-body">
+                    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                    <input type="hidden" asp-for="Id" />
 
-<h1>Delete</h1>
+                    <div class="mb-3">
+                        <label asp-for="Descricao" class="form-label"></label>
+                        <input asp-for="Descricao" class="form-control" />
+                        <span asp-validation-for="Descricao" class="text-danger"></span>
+                    </div>
 
-<h3>Are you sure you want to delete this?</h3>
-<div>
-    <h4>Financeiro</h4>
-    <hr />
-    <dl class="row">
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Descricao)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Descricao)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Valor)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Valor)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Data)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Data)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Tipo)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Tipo)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Categoria)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Categoria)
-        </dd>
-    </dl>
-    
-    <form asp-action="Delete">
-        <input type="hidden" asp-for="Id" />
-        <input type="submit" value="Delete" class="btn btn-danger" /> |
-        <a asp-action="Index">Back to List</a>
-    </form>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Valor" class="form-label"></label>
+                            <input asp-for="Valor" class="form-control" type="number" step="0.01" />
+                            <span asp-validation-for="Valor" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Data" class="form-label"></label>
+                            <input asp-for="Data" class="form-control" type="date" />
+                            <span asp-validation-for="Data" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Tipo" class="form-label"></label>
+                            <select asp-for="Tipo" class="form-select">
+                                <option value="Entrada">Entrada</option>
+                                <option value="Despesa">Despesa</option>
+                            </select>
+                            <span asp-validation-for="Tipo" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Categoria" class="form-label"></label>
+                            <select name="Categoria" class="form-select">
+                                <option value="Salário">Salário</option>
+                                <option value="Moradia">Moradia</option>
+                                <option value="Alimentação">Alimentação</option>
+                                <option value="Transporte">Transporte</option>
+                                <option value="Lazer">Lazer</option>
+                                <option value="Investimento">Investimento</option>
+                                <option value="Roupas/Shopping">Roupas/Shopping</option>
+                                <option value="Estudos">Estudos</option>
+                                <option value="Eletrônicos">Eletrônicos</option>
+                                <option value="Farmácia">Farmácia</option>
+                                <option value="Serviços">Serviços</option>
+                                <option value="Outros">Outros</option>
+                            </select>
+                            <div class="mb-3">
+                                <label asp-for="Pagamento" class="form-label">Método de Pagamento</label>
+                                <select asp-for="Pagamento" class="form-select">
+                                    <option value="Pix">Pix / Dinheiro</option>
+                                    <option value="Cartão Crédito">Cartão de Crédito</option>
+                                    <option value="Cartão Débito">Cartão de Débito</option>
+                                    <option value="Pagamento">Pagamento</option>
+                                </select>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-danger">Deletar</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

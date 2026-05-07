@@ -19,8 +19,10 @@ namespace Acoes_Fiis.Models
     {
         public List<CarteiraItemViewModel> Itens { get; set; } = new List<CarteiraItemViewModel>();
         public List<ResumoMesViewModel> ResumoMensal { get; set; } = new List<ResumoMesViewModel>();
+        public List<RadarAporteViewModel> SugestoesAporte { get; set; } = new();
 
         public decimal PatrimonioTotalReal { get; set; }
+        public decimal EntradasFuturas { get; set; }
 
         // Soma de tudo que entrou no Mês Atual (Salário, Bônus, etc)
         public decimal EntradasMesCorrente { get; set; }
@@ -112,5 +114,14 @@ namespace Acoes_Fiis.Models
         public decimal Entradas { get; set; }
         public decimal Saidas { get; set; }
         public decimal Sobra => Entradas - Saidas;
+    }
+    public class RadarAporteViewModel
+    {
+        public string Ticker { get; set; }
+        public string Tipo { get; set; } // Ação ou FII
+        public decimal PrecoAtual { get; set; }
+        public decimal IndicadorDesconto { get; set; } // P/VP ou P/L
+        public string Mensagem { get; set; }
+        public decimal PotencialAporte { get; set; } // Quantas cotas você consegue comprar com a sobra
     }
 }

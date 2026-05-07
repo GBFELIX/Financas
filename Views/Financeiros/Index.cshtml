@@ -11,7 +11,6 @@
             <h1 class="fw-bold mb-0 text-dark">Controle de Gastos</h1>
             <p class="text-muted"><i class="bi bi-calendar3 me-2"></i>Planejamento @Model.AnoAtual</p>
         </div>
-
         @{
             // Lógica para calcular meses e anos vizinhos
             var mesAnterior = Model.MesAtual == 1 ? 12 : Model.MesAtual - 1;
@@ -102,6 +101,11 @@
             </div>
         </div>
     </div>
+    <div class="position-relative d-none d-lg-block">
+        <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+        <input type="text" id="filtroTexto" class="form-control form-control-sm ps-5 rounded-pill border shadow-sm"
+               placeholder="Buscar lançamento..." style="width: 220px;" onkeyup="filtrarPorTexto()">
+    </div>
 
     @* Tabela de Extrato Modernizada *@
     <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
@@ -163,18 +167,33 @@
                         </td>
                         <td class="text-center">
                             <div class="dropdown">
-                                <button class="btn btn-link text-muted p-0" data-bs-toggle="dropdown">
-                                    <i class="bi bi-three-dots-vertical"></i>
-                                </button>
-                                <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3">
-                                    <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#editModal-@item.Id"><i class="bi bi-pencil me-2"></i>Editar</a></li>
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li><a asp-action="Delete" asp-route-id="@item.Id" class="dropdown-item text-danger" onclick="return confirm('Excluir este lançamento?')"><i class="bi bi-trash me-2"></i>Excluir</a></li>
-                                </ul>
+                                <div class="d-flex gap-2 justify-content-end">
+                                    @* Botão Editar *@
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-primary rounded-circle d-flex align-items-center justify-content-center"
+                                            style="width: 32px; height: 32px;"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#editModal-@item.Id"
+                                            title="Editar">
+                                        <i class="bi bi-pencil-fill"></i>
+                                    </button>
+
+                                        @* Botão Excluir *@
+                                        <a asp-action="Delete"
+                                           asp-route-id="@item.Id"
+                                           class="btn btn-sm btn-outline-danger rounded-circle d-flex align-items-center justify-content-center"
+                                           style="width: 32px; height: 32px;"
+                                           data-bs-toggle="modal"
+                                           data-bs-target="#deleteModal-@item.Id"
+                                           title="Excluir">
+                                            <i class="bi bi-trash-fill"></i>
+                                        </a>
+                                    </div>
                             </div>
                         </td>
                     </tr>
                     @await Html.PartialAsync("Edit", item)
+                    @await Html.PartialAsync("Delete", item)
                                         }
                 </tbody>
             </table>
@@ -231,6 +250,11 @@
                                 <option value="Transporte">Transporte</option>
                                 <option value="Lazer">Lazer</option>
                                 <option value="Investimento">Investimento</option>
+                                <option value="Roupas/Shopping">Roupas/Shopping</option>
+                                <option value="Estudos">Estudos</option>
+                                <option value="Eletrônicos">Eletrônicos</option>
+                                <option value="Serviços">Serviços</option>
+                                <option value="Farmácia">Farmácia</option>
                                 <option value="Outros">Outros</option>
                             </select>
                         </div>
@@ -254,3 +278,36 @@
         </div>
     </div>
 </div>
+
+    <script>
+        function filtrarPorTexto() {
+        // 1. Pega o valor digitado
+        var input = document.getElementById("filtroTexto");
+        var filter = input.value.toUpperCase();
+
+        // 2. Localiza as linhas da tabela
+        var table = document.querySelector(".table");
+        var tr = table.getElementsByTagName("tr");
+
+        for (var i = 0; i < tr.length; i++) {
+            // Pula as linhas que são apenas títulos de seção (Receitas/Despesas)
+            if (tr[i].classList.contains('table-light')) continue;
+
+            var tdDesc = tr[i].getElementsByTagName("td")[1];
+            var tdCat = tr[i].getElementsByTagName("td")[2];
+
+            if (tdDesc || tdCat) {
+                var txtValueDesc = tdDesc.textContent || tdDesc.innerText;
+                var txtValueCat = tdCat.textContent || tdCat.innerText;
+
+                // Se o texto digitado existir em qualquer uma das colunas, mostra a linha
+                if (txtValueDesc.toUpperCase().indexOf(filter) > -1 ||
+                    txtValueCat.toUpperCase().indexOf(filter) > -1) {
+                    tr[i].style.display = "";
+                } else {
+                    tr[i].style.display = "none";
+                }
+            }
+        }
+    }
+    </script>
