@@ -1,57 +1,66 @@
 ﻿@model Acoes_Fiis.Models.Recomendacao
 
 @{
-    ViewData["Title"] = "Delete";
+    ViewData["Title"] = "Excluir Recomendação";
 }
 
-<h1>Delete</h1>
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow border-0 rounded-4">
+                @* Header de Alerta *@
+                <div class="card-header bg-danger text-white py-3 rounded-top-4">
+                    <h4 class="mb-0 text-center">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>Confirmar Exclusão
+                    </h4>
+                </div>
 
-<h3>Are you sure you want to delete this?</h3>
-<div>
-    <h4>Recomendacao</h4>
-    <hr />
-    <dl class="row">
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Ticker)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Ticker)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.PrecoAtual)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.PrecoAtual)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.VPA)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.VPA)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.LPA)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.LPA)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Roe)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Roe)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.DividendYield)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.DividendYield)
-        </dd>
-    </dl>
-    
-    <form asp-action="Delete">
-        <input type="hidden" asp-for="Id" />
-        <input type="submit" value="Delete" class="btn btn-danger" /> |
-        <a asp-action="Index">Back to List</a>
-    </form>
+                <div class="card-body p-4 text-center">
+                    <div class="mb-4">
+                        <p class="text-muted fs-5">Você tem certeza que deseja remover esta recomendação?</p>
+                        <h2 class="fw-bold text-dark">@Model.Ticker</h2>
+                        <hr class="w-25 mx-auto" />
+                    </div>
+
+                    <div class="row text-start px-md-5">
+                        <div class="col-6 mb-3">
+                            <span class="text-muted small d-block text-uppercase">Preço Atual</span>
+                            <span class="fw-bold">@Model.PrecoAtual.ToString("C2")</span>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <span class="text-muted small d-block text-uppercase">Dividend Yield</span>
+                            <span class="fw-bold text-success">@Model.DividendYield %</span>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <span class="text-muted small d-block text-uppercase">VPA</span>
+                            <span class="fw-bold">@Model.VPA.ToString("N2")</span>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <span class="text-muted small d-block text-uppercase">ROE</span>
+                            <span class="fw-bold">@Model.Roe %</span>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-warning border-0 rounded-3 small mt-3">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Ao excluir, os dados históricos deste ativo nesta lista serão perdidos.
+                    </div>
+                </div>
+
+                <div class="card-footer bg-light p-4 rounded-bottom-4">
+                    <form asp-action="Delete">
+                        <input type="hidden" asp-for="Id" />
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                            <a asp-action="Index" class="btn btn-outline-secondary px-4 me-md-2">
+                                <i class="bi bi-arrow-left"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-danger px-5 fw-bold shadow-sm">
+                                <i class="bi bi-trash-fill"></i> Excluir Permanentemente
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>

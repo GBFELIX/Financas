@@ -1,0 +1,123 @@
+﻿@model FluxoCaixaViewModel
+
+<div class="modal fade" id="modalDespesasCasa" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-info text-dark border-0 py-3">
+                <h5 class="modal-title fw-bold">
+                    <i class="bi bi-house-door-fill me-2"></i>Gestão de Despesas de Casa
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body p-4">
+                @* Resumo *@
+                <div class="row g-3 mb-4">
+                    <div class="col-6 text-center border-end">
+                        <small class="text-muted d-block fw-bold">JÁ PAGO</small>
+                        <span class="fs-5 fw-bold text-success">@Model.TotalPagoCasa.ToString("C2")</span>
+                    </div>
+                    <div class="col-6 text-center">
+                        <small class="text-muted d-block fw-bold">PENDENTE</small>
+                        <span class="fs-5 fw-bold text-danger">@Model.TotalPendenteCasa.ToString("C2")</span>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <tbody>
+                            @* --- FINANCIAMENTO --- *@
+                            <tr class="@(Model.ParcelaPaga ? "opacity-50" : "")">
+                                <td style="width: 40px;"><i class="bi @(Model.ParcelaPaga ? "bi-check-circle-fill text-success" : "bi-circle text-muted")"></i></td>
+                                <td><span class="fw-bold">Financiamento Apartamento</span></td>
+                                <td class="text-end fw-bold">@Model.ValorParcelaAtual.ToString("C2")</td>
+                                <td class="text-center">
+                                    @if (!Model.ParcelaPaga)
+                                    {
+                                        <form asp-action="PagarContaCasa" method="post" class="m-0">
+                                            <input type="hidden" name="descricao" value="Financiamento" />
+                                            <input type="hidden" name="valor" value="@Model.ValorParcelaAtual" />
+                                            <input type="hidden" name="categoria" value="Moradia" />
+                                            <button type="submit" class="btn btn-sm btn-info rounded-pill px-3 fw-bold">Pagar</button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-success-subtle text-success">PAGO</span>
+                                    }
+                                </td>
+                            </tr>
+
+                            @* --- CONTAS FIXAS --- *@
+                            @foreach (var conta in Model.ContasFixas)
+                            {
+                                <tr class="@(conta.PagoNoMesAtual ? "opacity-50" : "")">
+                                    <td style="width: 40px;"><i class="bi @(conta.PagoNoMesAtual ? "bi-check-circle-fill text-success" : "bi-circle text-muted")"></i></td>
+
+                                    @* Form único para editar/excluir/pagar envolvendo a linha *@
+                                    <form asp-action="EditarContaFixa" method="post" class="m-0">
+                                        <input type="hidden" name="Id" value="@conta.Id" />
+                                        <input type="hidden" name="Categoria" value="Moradia" />
+                                        <input type="hidden" name="Pagamento" value="Crédito" />
+                                    <td>
+                                        <input type="text" name="Descricao" value="@conta.Descricao"
+                                               class="form-control form-control-sm border-0 bg-transparent fw-bold p-0 shadow-none"
+                                               readonly onclick="ativarEdicao(this)" onblur="desativarEdicao(this)">
+                                    </td>
+                                    <td class="text-end">
+                                        <input type="text" name="Valor" value="@conta.Valor.ToString("F2")"
+                                               class="form-control form-control-sm border-0 bg-transparent fw-bold text-end p-0 shadow-none"
+                                               style="width: 90px;" readonly onclick="ativarEdicao(this)" onblur="desativarEdicao(this)">
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="d-flex gap-2 justify-content-center">
+                                            @if (!conta.PagoNoMesAtual)
+                                            {
+                                                <button type="submit" class="btn btn-sm btn-link text-success p-0 d-none btn-save"><i class="bi bi-check-lg fs-5"></i></button>
+                                                <button type="submit" formaction="@Url.Action("PagarContaCasa")" class="btn btn-sm btn-outline-info rounded-pill px-2 fw-bold btn-pagar" style="font-size:0.65rem">PAGAR</button>
+                                                <input type="hidden" name="categoria" value="@conta.Categoria" />
+                                            }
+                                            <button type="submit" formaction="@Url.Action("ExcluirContaFixa")" class="btn btn-sm btn-link text-danger p-0" onclick="return confirm('Excluir?')">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                    </form>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            @* Footer: Adicionar Nova *@
+            <div class="modal-footer border-0 p-4 bg-light rounded-bottom-4">
+                <form asp-action="AdicionarContaFixa" method="post" class="row g-2 w-100">
+                    <div class="col-6"><input type="text" name="descricao" class="form-control form-control-sm rounded-3" placeholder="Descrição" required></div>
+                    <div class="col-3"><input type="text" step="0.01" name="valor" class="form-control form-control-sm rounded-3" placeholder="R$" required></div>
+                    <div class="col-3"><button type="submit" class="btn btn-dark btn-sm w-100 rounded-3 fw-bold">Cadastrar</button></div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function ativarEdicao(input) {
+        if (input.readOnly) {
+            input.readOnly = false;
+            input.classList.remove('border-0', 'bg-transparent');
+            input.classList.add('border', 'bg-white', 'px-2');
+            const row = input.closest('tr');
+            row.querySelector('.btn-save')?.classList.remove('d-none');
+            row.querySelector('.btn-pagar')?.classList.add('d-none');
+        }
+    }
+    function desativarEdicao(input) {
+        setTimeout(() => {
+            input.readOnly = true;
+            input.classList.add('border-0', 'bg-transparent');
+            input.classList.remove('border', 'bg-white', 'px-2');
+        }, 200);
+    }
+</script>

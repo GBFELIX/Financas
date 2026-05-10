@@ -68,7 +68,12 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card border-0 bg-danger text-white shadow-sm rounded-4">
+            @* Adicionado cursor:pointer e os triggers do modal *@
+            <div class="card border-0 bg-danger text-white shadow-sm rounded-4"
+                 role="button"
+                 data-bs-toggle="modal"
+                 data-bs-target="#modalResumoDespesas"
+                 style="cursor: pointer;">
                 <div class="card-body">
                     <div class="d-flex justify-content-between">
                         <h6 class="small text-uppercase opacity-75">Despesas</h6>
@@ -79,13 +84,26 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card border-0 bg-info text-dark shadow-sm rounded-4">
+            @* O 'data-bs-target' precisa ser idêntico ao id do Modal *@
+            <div class="card border-0 bg-info text-dark shadow-sm rounded-4"
+                 role="button"
+                 data-bs-toggle="modal"
+                 data-bs-target="#modalDespesasCasa"
+                 style="cursor: pointer;">
                 <div class="card-body">
                     <div class="d-flex justify-content-between">
-                        <h6 class="small text-uppercase opacity-75 fw-bold">Juros RF</h6>
-                        <i class="bi bi-percent opacity-50"></i>
+                        <h6 class="small text-uppercase opacity-75 fw-bold">Contas da Casa</h6>
+                        <i class="bi bi-house-check-fill opacity-50"></i>
                     </div>
-                    <h3 class="mb-0 fw-bold">@Model.RendimentoRendaFixaMes.ToString("C2")</h3>
+                    <h3 class="mb-0 fw-bold">@Model.TotalPagoCasa.ToString("C2")</h3>
+                    @if (Model.TotalPendenteCasa > 0)
+                    {
+                        <small class="text-danger fw-bold">Faltam @Model.TotalPendenteCasa.ToString("C2")</small>
+                    }
+                    else
+                    {
+                        <small class="text-success fw-bold"><i class="bi bi-check-all"></i> Tudo pago!</small>
+                    }
                 </div>
             </div>
         </div>
@@ -106,6 +124,15 @@
         <input type="text" id="filtroTexto" class="form-control form-control-sm ps-5 rounded-pill border shadow-sm"
                placeholder="Buscar lançamento..." style="width: 220px;" onkeyup="filtrarPorTexto()">
     </div>
+
+    @if (TempData["Casa"] != null)
+    {
+        <div class="alert alert-success mt-3 alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle-fill"></i> @TempData["Casa"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
 
     @* Tabela de Extrato Modernizada *@
     <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
@@ -129,77 +156,131 @@
                 </thead>
                 <tbody>
                     @{
-                        string ultimoTipo = "";
-                        var listaOrdenada = Model.Lancamentos
-                        .Where(x => x.Tipo == "Entrada" || x.Tipo == "Despesa")
-                        .OrderByDescending(x => x.Tipo)
-                        .ThenBy(x => x.Data);
+                        // 1. SEPARAÇÃO DAS ENTRADAS (RECEITAS)
+                        var entradas = Model.Lancamentos.Where(x => x.Tipo == "Entrada").OrderBy(x => x.Data);
+
+                        // 2. SEPARAÇÃO DAS DESPESAS AGRUPADAS POR CATEGORIA
+                        var despesasPorCategoria = Model.Lancamentos
+                        .Where(x => x.Tipo == "Despesa")
+                        .GroupBy(x => x.Categoria)
+                        .OrderBy(g => g.Key);
                     }
-                    @foreach (var item in listaOrdenada)
+
+                    @* --- BLOCO DE ENTRADAS --- *@
+                    @if (entradas.Any())
                     {
-                        if (ultimoTipo != item.Tipo)
+                        <tr class="table-success opacity-75">
+                            <td colspan="6" class="fw-bold small text-uppercase text-success py-2 px-3">
+                                <i class="bi bi-patch-check-fill me-2"></i>Receitas e Rendimentos
+                            </td>
+                        </tr>
+                        @foreach (var item in entradas)
                         {
-                            <tr class="table-light">
-                                <td colspan="6" class="fw-bold small text-uppercase text-secondary py-2 px-3" style="background-color: #f8f9fa;">
-                                    <i class="bi @(item.Tipo == "Entrada" ? "bi-patch-check text-success" : "bi-dash-circle text-danger") me-2"></i>
-                                    @(item.Tipo == "Entrada" ? "Receitas e Rendimentos" : "Saídas e Despesas")
+                            <tr class="bg-success-subtle">
+                                <td class="text-muted small ps-3">@item.Data.ToString("dd MMM")</td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="rounded-circle bg-white shadow-sm p-2 me-3 d-flex align-items-center justify-content-center" style="width: 35px; height: 35px;">
+                                            <i class="bi bi-cash-stack text-success"></i>
+                                        </div>
+                                        <span class="fw-bold text-dark">@item.Descricao</span>
+                                    </div>
+                                </td>
+                                <td><span class="badge bg-success text-white">@item.Categoria.ToUpper()</span></td>
+                                <td><small class="text-muted"><i class="bi bi-wallet2 me-1"></i>@item.Pagamento</small></td>
+                                <td class="text-end fw-bold text-success">@item.Valor.ToString("C2")</td>
+                                <td class="text-center">
+                                    <div class="d-flex gap-2 justify-content-center">
+                                        <button type="button" class="btn btn-sm btn-link text-primary p-0" data-bs-toggle="modal" data-bs-target="#editModal-@item.Id"><i class="bi bi-pencil"></i></button>
+                                        <button type="button" class="btn btn-sm btn-link text-danger p-0" data-bs-toggle="modal" data-bs-target="#deleteModal-@item.Id"><i class="bi bi-trash"></i></button>
+                                    </div>
                                 </td>
                             </tr>
-                            ultimoTipo = item.Tipo;
+                            @await Html.PartialAsync("Edit", item)
+                            @await Html.PartialAsync("Delete", item)
+                            @await Html.PartialAsync("_ModalResumoDespesas", Model)
                         }
-                        <tr>
-                            <td class="text-muted small">@item.Data.ToString("dd MMM")</td>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <div class="rounded-circle bg-light p-2 me-3 d-flex align-items-center justify-content-center" style="width: 35px; height: 35px;">
-                                        <i class="bi @(item.Categoria == "Alimentação" ? "bi-egg-fried" :
-                                                                                                 item.Categoria == "Transporte" ? "bi-car-front" :
-                                                                                                 item.Categoria == "Moradia" ? "bi-house" :
-                                                                                                 item.Categoria == "Lazer" ? "bi-controller" : "bi-tag") text-secondary"></i>
-                                </div>
-                                <span class="fw-bold text-dark">@item.Descricao</span>
-                            </div>
-                        </td>
-                        <td><span class="badge rounded-pill bg-light text-dark border fw-normal">@item.Categoria</span></td>
-                        <td><span class="text-muted small"><i class="bi bi-wallet2 me-1"></i>@item.Pagamento</span></td>
-                        <td class="text-end fw-bold @(item.Tipo == "Entrada" ? "text-success" : "text-dark")">
-                            @(item.Tipo == "Entrada" ? "+" : "") @item.Valor.ToString("C2")
-                        </td>
-                        <td class="text-center">
-                            <div class="dropdown">
-                                <div class="d-flex gap-2 justify-content-end">
-                                    @* Botão Editar *@
-                                    <button type="button"
-                                            class="btn btn-sm btn-outline-primary rounded-circle d-flex align-items-center justify-content-center"
-                                            style="width: 32px; height: 32px;"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#editModal-@item.Id"
-                                            title="Editar">
-                                        <i class="bi bi-pencil-fill"></i>
-                                    </button>
+                    }
 
-                                        @* Botão Excluir *@
-                                        <a asp-action="Delete"
-                                           asp-route-id="@item.Id"
-                                           class="btn btn-sm btn-outline-danger rounded-circle d-flex align-items-center justify-content-center"
-                                           style="width: 32px; height: 32px;"
-                                           data-bs-toggle="modal"
-                                           data-bs-target="#deleteModal-@item.Id"
-                                           title="Excluir">
-                                            <i class="bi bi-trash-fill"></i>
-                                        </a>
-                                    </div>
+                    @* --- BLOCO DE DESPESAS POR CATEGORIA --- *@
+                    @foreach (var grupo in despesasPorCategoria)
+                    {
+                        <tr class="table-light">
+                            <td colspan="4" class="fw-bold small text-uppercase text-secondary py-2 px-3">
+                                <i class="bi bi-tag-fill me-2"></i>@grupo.Key
+                            </td>
+                            <td class="text-end fw-bold text-secondary pe-3">
+                                <small>Subtotal: @grupo.Sum(x => x.Valor).ToString("C2")</small>
+                            </td>
+                            <td></td>
+                        </tr>
+
+                        @foreach (var item in grupo.OrderBy(x => x.Data))
+                        {
+                            <tr>
+                                <td class="text-muted small ps-3">@item.Data.ToString("dd MMM")</td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="rounded-circle bg-light p-2 me-3 d-flex align-items-center justify-content-center shadow-sm" style="width: 38px; height: 38px;">
+                                            <i class="bi @(item.Categoria == "Salário" ? "bi-cash-stack text-purple" :
+                                                                  item.Categoria == "Moradia" ? "bi-house text-purple" :
+                                                                  item.Categoria == "Alimentação" ? "bi-egg-fried text-purple" :
+                                                                  item.Categoria == "Transporte" ? "bi-car-front text-purple" :
+                                                                  item.Categoria == "Lazer" ? "bi-controller text-purple" :
+                                                                  item.Categoria == "Investimento" ? "bi-graph-up-arrow text-purple" :
+                                                                  item.Categoria == "Roupas/Shopping" ? "bi-bag-check text-purple" :
+                                                                  item.Categoria == "Estudos" ? "bi-book text-purple" :
+                                                                  item.Categoria == "Eletrônicos" ? "bi-cpu text-purple" :
+                                                                  item.Categoria == "Farmácia" ? "bi-capsule text-purple" :
+                                                                  item.Categoria == "Serviços" ? "bi-tools text-purple" : "bi-tag text-purple")"></i>
+                                </div>
+                                <span class="text-dark fw-bold">@item.Descricao</span>
                             </div>
                         </td>
-                    </tr>
-                    @await Html.PartialAsync("Edit", item)
-                    @await Html.PartialAsync("Delete", item)
-                                        }
+                        <td>
+                            @{
+                                        var badgeClass = item.Categoria switch
+                                        {
+                                            "Salário" => "bg-success-subtle text-success-emphasis border-danger text-dark",
+                                            "Moradia" => "bg-info-subtle text-info-emphasis border-danger text-dark",
+                                            "Alimentação" => "bg-warning-subtle text-warning-emphasis border-danger text-dark",
+                                            "Transporte" => "bg-primary-subtle text-primary-emphasis border-danger text-dark",
+                                            "Lazer" => "bg-secondary-subtle text-dark border-danger text-dark",
+                                            "Investimento" => "bg-success-subtle text-dark border-danger",
+                                            "Roupas/Shopping" => "bg-danger-subtle text-danger-emphasis border-danger",
+                                            "Estudos" => "bg-info-subtle text-dark border-danger",
+                                            "Eletrônicos" => "bg-dark-subtle text-dark border-danger text-dark",
+                                            "Farmácia" => "bg-danger-subtle text-danger-emphasis border-danger text-dark",
+                                            "Serviços" => "bg-light text-dark border-danger text-dark",
+                                            _ => "bg-light text-secondary border-danger text-dark"
+                                        };
+                                    }
+                                    <span class="badge rounded-pill border @badgeClass fw-normal" style="font-size: 0.7rem;">@item.Categoria.ToUpper()</span>
+                                </td>
+                                <td>
+                                    <div class="pay-method border small p-1 rounded bg-white d-inline-block">
+                                        <i class="bi @(item.Pagamento.Contains("Crédito") ? "bi-credit-card text-primary" : "bi-qr-code text-info") me-1"></i>
+                                        @item.Pagamento
+                                    </div>
+                                </td>
+                                <td class="text-end fw-bold text-dark">@item.Valor.ToString("C2")</td>
+                                <td class="text-center">
+                                    <div class="d-flex gap-2 justify-content-center">
+                                        <button type="button" class="btn btn-sm btn-link text-primary p-0" data-bs-toggle="modal" data-bs-target="#editModal-@item.Id"><i class="bi bi-pencil-fill"></i></button>
+                                        <button type="button" class="btn btn-sm btn-link text-danger p-0" data-bs-toggle="modal" data-bs-target="#deleteModal-@item.Id"><i class="bi bi-trash-fill"></i></button>
+                                    </div>
+                                </td>
+                            </tr>
+                            @await Html.PartialAsync("Edit", item)
+                            @await Html.PartialAsync("Delete", item)
+                        }
+                    }
                 </tbody>
             </table>
         </div>
     </div>
 </div>
+@await Html.PartialAsync("_ModalDespesasCasa", Model)
 
 @* Modal de Novo Lançamento com Suporte a Parcelamento *@
 <div class="modal fade" id="modalNovoLancamento" tabindex="-1" aria-hidden="true">
@@ -311,3 +392,41 @@
         }
     }
     </script>
+<style>
+    .categoria-block {
+        background: white; */
+        transition: transform 0.2s;
+    }
+
+        .categoria-block:hover {
+             border-color: #dee2e6 !important; 
+        }
+
+    .icon-shape {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .pay-method {
+        font-size: 0.7rem;
+        padding: 2px 8px;
+        border-radius: 5px;
+         background: #f8f9fa;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .text-purple {
+        color: #6f42c1 !important;
+    }
+
+    .bg-purple-subtle {
+        background-color: #f3f0f9 !important;
+        border-color: #d1c4e9 !important;
+        color: #512da8 !important;
+    }
+</style>

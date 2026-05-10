@@ -67,7 +67,7 @@
                  data-bs-target="#modalDetalhesPatrimonio">
                 <div class="card-body text-center p-4">
                     <h6 class="text-uppercase small fw-bold text-info opacity-75">Patrimônio Bruto Real</h6>
-                    <h2 class="mb-1 fw-bold">R$ @((Model.PatrimonioTotalReal - Model.EntradasFuturas).ToString("N2"))</h2>
+                    <h2 class="mb-1 fw-bold">R$ @((Model.PatrimonioTotalReal).ToString("N2"))</h2>
                     @* Feedback visual sobre a data *@
                     <small class="text-muted">
                         <i class="bi bi-clock-history"></i> Atualizado até @DateTime.Now.ToString("dd/MM")
@@ -121,7 +121,7 @@
         <div class="alert alert-success mt-3 alert-dismissible fade show" role="alert">
             <i class="bi bi-check-circle-fill"></i> @TempData["Sucesso"]
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
+        </div> 
     }
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-header bg-white">

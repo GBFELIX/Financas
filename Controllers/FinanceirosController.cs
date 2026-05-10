@@ -1,5 +1,6 @@
 ﻿using Acoes_Fiis.Data;
 using Acoes_Fiis.Models;
+using Acoes_Fiis.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -14,10 +15,12 @@ namespace Acoes_Fiis.Controllers
     public class FinanceirosController : Controller
     {
         private readonly Acoes_FiisContext _context;
+        private readonly FinanciamentoService _service;
 
-        public FinanceirosController(Acoes_FiisContext context)
+        public FinanceirosController(Acoes_FiisContext context, FinanciamentoService service)
         {
             _context = context;
+            _service = service;
         }
 
         // GET: Financeiros
@@ -26,40 +29,146 @@ namespace Acoes_Fiis.Controllers
             int filtroMes = mes ?? DateTime.Now.Month;
             int filtroAno = ano ?? DateTime.Now.Year;
 
-
+            // 1. Lançamentos do mês
             var lancamentos = await _context.Financeiro
-                .Where((Financeiro x) => x.Data.Month == filtroMes && x.Data.Year == filtroAno)
+                .Where(x => x.Data.Month == filtroMes && x.Data.Year == filtroAno)
                 .ToListAsync() ?? new List<Financeiro>();
 
+            // 2. Busca as Contas Fixas cadastradas
+            var contasFixas = await _context.ContasFixas.ToListAsync();
 
-            var ativosRF = await _context.Carteira
-                .Where(x => x.TipoAtivo == "RendaFixa")
-                .ToListAsync();
+            // 3. Busca o Financiamento (Integrando com o seu FinanciamentoService)
+            var financiamento = await _context.Financiamentos.FirstOrDefaultAsync();
+            decimal valorParcela = 0;
+            if (financiamento != null)
+            {
+                // Usamos o seu serviço para gerar a projeção e pegar a parcela do mês/ano filtrado
+                var projecao = _service.GerarSimulacao(financiamento);
+                var parcelaDoMes = projecao.FirstOrDefault(p => p.Data.Month == filtroMes && p.Data.Year == filtroAno);
+                valorParcela = parcelaDoMes?.ValorParcela ?? 0;
+            }
 
-            decimal TotalAnual = await _context.Financeiro
-            .Where(x => x.Tipo == "Entrada")
-            .SumAsync(x => x.Valor);
+            // 4. Lógica de Cruzamento: O que já foi pago?
+            foreach (var conta in contasFixas)
+            {
+                conta.PagoNoMesAtual = lancamentos.Any(l =>
+                    l.Descricao.Contains(conta.Descricao) && l.Tipo == "Despesa");
+            }
 
+            bool parcelaPaga = lancamentos.Any(l =>
+                (l.Descricao.Contains("Financiamento") || l.Categoria == "Moradia") && l.Tipo == "Despesa");
+
+            // 5. Cálculo do Card de Pendências (O que falta pagar)
+            decimal pendente = contasFixas.Where(c => !c.PagoNoMesAtual).Sum(c => c.Valor);
+            if (!parcelaPaga) pendente += valorParcela;
+
+            // 6. Cálculo do Card (Total Pago em Contas de Casa)
+            decimal totalPagoCasa = lancamentos
+                .Where(l => l.Tipo == "Despesa" && (l.Categoria == "Moradia" || l.Categoria == "Serviços" || l.Categoria == "Farmácia"))
+                .Sum(l => l.Valor);
+
+            // Seu cálculo de Renda Fixa original
+            var ativosRF = await _context.Carteira.Where(x => x.TipoAtivo == "RendaFixa").ToListAsync();
             decimal totalRendimentoliquido = 0;
             foreach (var rf in ativosRF)
             {
                 decimal taxaMensal = (rf.TaxaRentabilidade ?? 0) / 12 / 100;
-                decimal montanteInvestido = rf.Quantidade * rf.PrecoMedio;
-
-                totalRendimentoliquido += montanteInvestido * taxaMensal * 0.825m;
+                totalRendimentoliquido += (rf.Quantidade * rf.PrecoMedio) * taxaMensal * 0.825m;
             }
 
-            // 4. Monta a ViewModel para a View
             var viewModel = new FluxoCaixaViewModel
             {
                 Lancamentos = lancamentos,
                 MesAtual = filtroMes,
                 AnoAtual = filtroAno,
-                RendimentoRendaFixaMes = totalRendimentoliquido
+                RendimentoRendaFixaMes = totalRendimentoliquido,
+                ContasFixas = contasFixas,
+                ValorParcelaAtual = valorParcela,
+                ParcelaPaga = parcelaPaga,
+                TotalPagoCasa = totalPagoCasa,
+                TotalPendenteCasa = pendente // Variável agora calculada no passo 5
             };
 
             return View(viewModel);
         }
+        [HttpPost]
+        [ValidateAntiForgeryToken] // Boa prática de segurança
+        public async Task<IActionResult> AdicionarContaFixa(string descricao, decimal valor, string categoria)
+        {
+            if (string.IsNullOrEmpty(descricao) || valor <= 0)
+            {
+                // Você pode adicionar um TempData para exibir um erro se quiser
+                return RedirectToAction(nameof(Index));
+            }
+
+            var novaConta = new ContaFixa
+            {
+                Descricao = descricao,
+                Valor = valor,
+                Categoria = string.IsNullOrEmpty(categoria) ? "Serviços" : categoria,
+                EhRecorrente = true // Por padrão, definimos como fixa/recorrente
+            };
+
+            try
+            {
+                _context.ContasFixas.Add(novaConta);
+                await _context.SaveChangesAsync();
+
+                // Feedback visual opcional
+                TempData["Casa"] = "Conta agendada com sucesso!";
+            }
+            catch (Exception ex)
+            {
+                // Logar erro se necessário
+                TempData["Erro"] = "Erro ao salvar a conta.";
+            }
+
+            return RedirectToAction(nameof(Index));
+        }
+        [HttpPost]
+        public async Task<IActionResult> EditarContaFixa(int id, string descricao, decimal valor)
+        {
+            var conta = await _context.ContasFixas.FindAsync(id);
+            if (conta != null)
+            {
+                conta.Descricao = descricao;
+                conta.Valor = valor;
+                _context.Update(conta);
+                await _context.SaveChangesAsync();
+            }
+            return RedirectToAction(nameof(Index));
+        }
+        [HttpPost]
+        public async Task<IActionResult> ExcluirContaFixa(int id)
+        {
+            var conta = await _context.ContasFixas.FindAsync(id);
+            if (conta != null)
+            {
+                _context.ContasFixas.Remove(conta);
+                await _context.SaveChangesAsync();
+            }
+            return RedirectToAction(nameof(Index));
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> PagarContaCasa(string descricao, decimal valor, string categoria)
+        {
+            var novoGasto = new Financeiro
+            {
+                Data = DateTime.Now,
+                Descricao = descricao,
+                Valor = valor,
+                Tipo = "Despesa",
+                Categoria = categoria,
+                Pagamento = "Débito" // Padrão para contas de casa
+            };
+
+            _context.Financeiro.Add(novoGasto);
+            await _context.SaveChangesAsync();
+
+            return RedirectToAction(nameof(Index));
+        }
+
         [HttpPost]
         public async Task<IActionResult> Adicionar(Financeiro model, int numParcelas = 1)
         {

@@ -1,0 +1,61 @@
+﻿@model FluxoCaixaViewModel
+
+<div class="modal fade" id="modalResumoDespesas" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-0 py-3">
+                <h5 class="modal-title fw-bold text-dark">
+                    <i class="bi bi-pie-chart-fill me-2 text-danger"></i>Resumo por Categoria
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                @{
+                    var resumo = Model.Lancamentos
+                    .Where(x => x.Tipo == "Despesa")
+                    .GroupBy(x => x.Categoria)
+                    .Select(g => new
+                    {
+                        Categoria = g.Key,
+                        Total = g.Sum(v => v.Valor),
+                        Percentual = Model.TotalDespesas > 0 ? (g.Sum(v => v.Valor) / Model.TotalDespesas) * 100 : 0
+                    })
+                    .OrderByDescending(x => x.Total);
+                }
+
+                @foreach (var cat in resumo)
+                {
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="fw-bold text-dark">@cat.Categoria</span>
+                            <span class="text-muted small">@cat.Total.ToString("C2") (@cat.Percentual.ToString("N1")%)</span>
+                        </div>
+                        <div class="progress rounded-pill" style="height: 8px;">
+                            <div class="progress-bar bg-danger opacity-75"
+                                 role="progressbar"
+                                 style="width: @cat.Percentual.ToString().Replace(",", ".")%"
+                                 aria-valuenow="@cat.Percentual"
+                                 aria-valuemin="0"
+                                 aria-valuemax="100">
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                @if (!resumo.Any())
+                {
+                    <div class="text-center py-3 text-muted">
+                        <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                        Nenhuma despesa lançada neste mês.
+                    </div>
+                }
+            </div>
+            <div class="modal-footer border-0">
+                <div class="w-100 d-flex justify-content-between align-items-center bg-light p-3 rounded-4">
+                    <span class="fw-bold text-dark">Total Geral</span>
+                    <h5 class="mb-0 fw-bold text-danger">@Model.TotalDespesas.ToString("C2")</h5>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -16,7 +16,7 @@
 
                     // 2. Seu Custo de Sobrevivência (Média de Saídas + Parcela do Financiamento)
                     var parcelaEstimada = Model.ProjecaoFinanciamento.FirstOrDefault()?.ValorParcela ?? 0;
-                    var custoMensalTotal = Model.ResumoMensal.Average(x => x.Saidas) + parcelaEstimada;
+                    var custoMensalTotal = (Model.ResumoMensal.Select(x => x.Saidas).DefaultIfEmpty(0).Average()) + parcelaEstimada;
 
                     // 3. O Cálculo de Sobrevivência (Meses)
                     var mesesSobrevivencia = custoMensalTotal > 0 ? (int)(liquidezImediata / custoMensalTotal) : 0;

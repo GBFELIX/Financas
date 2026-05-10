@@ -23,29 +23,30 @@ namespace Acoes_Fiis.Data
         public DbSet<Acoes_Fiis.Models.Carteira> Carteira { get; set; } = default!;
 
         public DbSet<Acoes_Fiis.Models.Financeiro> Financeiro { get; set; } = default!;
+        public DbSet<Acoes_Fiis.Models.ContaFixa> ContasFixas { get; set; } = default!;
 
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
-        {
-            // Configuração para garantir que o Decimal não perca os centavos no banco
-            modelBuilder.Entity<RecomendacaoFii>()
-                .Property(r => r.PrecoAtual).HasPrecision(18, 2);
-            modelBuilder.Entity<RecomendacaoFii>()
-                .Property(r => r.VPA).HasPrecision(18, 2);
-            modelBuilder.Entity<RecomendacaoFii>()
-                .Property(r => r.UltimoRendimento).HasPrecision(18, 2);
-            modelBuilder.Entity<RecomendacaoFii>()
-                .Property(r => r.Vacancia).HasPrecision(18, 2);
+        //protected override void OnModelCreating(ModelBuilder modelBuilder)
+        //{
+        //    // Configuração para garantir que o Decimal não perca os centavos no banco
+        //    modelBuilder.Entity<RecomendacaoFii>()
+        //        .Property(r => r.PrecoAtual).HasPrecision(18, 2);
+        //    modelBuilder.Entity<RecomendacaoFii>()
+        //        .Property(r => r.VPA).HasPrecision(18, 2);
+        //    modelBuilder.Entity<RecomendacaoFii>()
+        //        .Property(r => r.UltimoRendimento).HasPrecision(18, 2);
+        //    modelBuilder.Entity<RecomendacaoFii>()
+        //        .Property(r => r.Vacancia).HasPrecision(18, 2);
 
-            modelBuilder.Entity<Carteira>().ToTable("Carteira");
+        //    modelBuilder.Entity<Carteira>().ToTable("Carteira");
 
-            modelBuilder.Entity<Acoes_Fiis.Models.Carteira>().ToTable("Carteira");
+        //    modelBuilder.Entity<Acoes_Fiis.Models.Carteira>().ToTable("Carteira");
 
 
 
-            modelBuilder.Entity<Carteira>().Property(c => c.PrecoMedio).HasPrecision(18, 2); //4
+        //    modelBuilder.Entity<Carteira>().Property(c => c.PrecoMedio).HasPrecision(18, 2); //4
 
-            base.OnModelCreating(modelBuilder);
-        }
+        //    base.OnModelCreating(modelBuilder);
+        //}
         public DbSet<Acoes_Fiis.Models.Price> Financiamentos { get; set; } = default!;
         public DbSet<Acoes_Fiis.Models.AporteExtra> AporteExtras { get; set; } = default!;
     }

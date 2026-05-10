@@ -216,6 +216,7 @@
                         <th>Atualização</th>
                         <th style="min-width: 150px;">Tipo</th>
                         <th class="text-center">Recomendação</th>
+                        <th class="text-center" style="width: 50px;">Ação</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -265,6 +266,12 @@
                                 <span class="@item.CorClasse badge rounded-pill" style="padding: 5px 12px; font-size: 0.75rem;">
                                     @item.Status
                                 </span>
+                            </td>
+                            <td>
+                                <div class="btn-group">
+                                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil-fill"></i></a>
+                                    <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash-fill"></i></a>
+                                </div>
                             </td>
                         </tr>
                     }

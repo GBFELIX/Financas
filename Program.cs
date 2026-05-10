@@ -4,12 +4,15 @@ using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System.Globalization;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<Acoes_FiisContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("Acoes_FiisContext") ?? throw new InvalidOperationException("Connection string 'Acoes_FiisContext' not found.")));
 
+//builder.Services.AddDbContext<Acoes_FiisContext>(options =>
+//    options.UseSqlite("Data Source=Planejamento.db"));
 
 builder.Services.AddScoped<FinanciamentoService>();
 
@@ -27,7 +30,21 @@ var localizationOptions = new RequestLocalizationOptions
 
 var app = builder.Build();
 
-
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<Acoes_FiisContext>();
+        // Migrate() aplica as migrations e cria o arquivo .db automaticamente
+        context.Database.Migrate();
+    }
+    catch (Exception ex)
+    {
+        // Se houver erro na criação do banco, ele avisa no console
+        Console.WriteLine("Erro ao criar/atualizar banco SQLite: " + ex.Message);
+    }
+}
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
