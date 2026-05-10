@@ -1,0 +1,85 @@
+﻿@model CarteiraTotalViewModel
+
+<div class="modal fade" id="modalAmortizacao" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            @* 1. Formulário apontando para a Action de registro *@
+            <form asp-action="RegistrarAporteExtra" asp-controller="Carteiras" method="post">
+
+                @* 2. Campos ocultos necessários para o banco *@
+                <input type="hidden" name="priceId" value="1" />
+                <input type="hidden" name="mesReferencia" value="@DateTime.Now.Month" />
+
+                <div class="modal-header bg-danger text-white border-0 py-3">
+                    <h5 class="modal-title fw-bold">
+                        <i class="bi bi-lightning-charge-fill me-2"></i>Acelerador de Quitação
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    @* 3. Novo Campo de Valor (Editável) *@
+                    <div class="text-center mb-4">
+                        <small class="text-muted text-uppercase fw-bold">Quanto deseja amortizar este mês?</small>
+                        <div class="input-group input-group-lg mt-2">
+                            <span class="input-group-text bg-white border-end-0 text-success fw-bold">R$</span>
+                            <input type="text" name="valor"
+                                   class="form-control border-start-0 fw-bold text-success text-center"
+                                   value="@Model.SobraDisponivelParaAmortizar.ToString("F2")" />
+                        </div>
+                        <p class="small text-muted mt-2">Sobra atual em caixa: @Model.SobraDisponivelParaAmortizar.ToString("C2")</p>
+                    </div>
+
+                    @* Inteligência de Comparação *@
+                    @{
+                        decimal taxaMensalFinanc = (Model.TaxaJurosAnual / 12) / 100;
+                        decimal rendimentoMedioCarteira = 0.01m;
+                        bool valeAmortizar = taxaMensalFinanc > rendimentoMedioCarteira;
+                    }
+
+                    <div class="alert @(valeAmortizar ? "alert-warning" : "alert-info") border-0 rounded-4 mb-4">
+                        <div class="d-flex">
+                            <i class="bi @(valeAmortizar ? "bi-exclamation-triangle" : "bi-info-circle") fs-4 me-3"></i>
+                            <div>
+                                <h6 class="fw-bold mb-1 small text-uppercase">Estratégia Recomendada</h6>
+                                <small>
+                                    Juros do banco: <strong>@(taxaMensalFinanc.ToString("P2"))</strong>/mês.
+                                    @(valeAmortizar ? "Amortizar agora é mais eficaz que investir!" : "Investir ainda rende mais que os juros da dívida.")
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    @* Impacto Projetado *@
+                    <label class="small text-muted text-uppercase fw-bold mb-3 d-block">Impacto Estimado</label>
+                    <div class="row g-2 mb-4">
+                        <div class="col-6">
+                            <div class="p-3 border rounded-4 bg-light text-center">
+                                <i class="bi bi-calendar-x text-danger d-block fs-4 mb-1"></i>
+                                <small class="d-block text-muted">Meses Reduzidos</small>
+                                @{
+                                    var parcelaAtual = Model.ProjecaoFinanciamento.FirstOrDefault();
+                                    var mesesOff = parcelaAtual != null && parcelaAtual.Amortizacao > 0
+                                    ? (int)(Model.SobraDisponivelParaAmortizar / parcelaAtual.Amortizacao)
+                                    : 0;
+                                }
+                                <span class="fw-bold fs-5">- @mesesOff meses</span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="p-3 border rounded-4 bg-light text-center">
+                                <i class="bi bi-piggy-bank text-success d-block fs-4 mb-1"></i>
+                                <small class="d-block text-muted">Juros Poupados</small>
+                                <span class="fw-bold fs-5">~ @((Model.SobraDisponivelParaAmortizar * 2).ToString("C2"))</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    @* 4. Botão agora do tipo Submit *@
+                    <button type="submit" class="btn btn-danger w-100 rounded-pill fw-bold py-3 shadow">
+                        <i class="bi bi-check-circle me-2"></i>Efetuar Amortização Extra
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

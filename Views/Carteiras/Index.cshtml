@@ -35,6 +35,28 @@
             </button>
         </div>
     </div>
+    <div class="row g-3 mb-4">
+        @* Botão 4: Painel de Amortização *@
+        <div class="col-md-4">
+            <button type="button" class="btn btn-outline-danger w-100 shadow-sm rounded-3 fw-bold" data-bs-toggle="modal" data-bs-target="#modalAmortizacao">
+                <i class="bi bi-bank me-2"></i> Simulador de Amortização
+            </button>
+        </div>
+
+        @* Botão 5: Evolução do Saldo Devedor *@
+        <div class="col-md-4">
+            <button type="button" class="btn btn-outline-dark w-100 shadow-sm rounded-3 fw-bold" data-bs-toggle="modal" data-bs-target="#modalEvolucaoDivida">
+                <i class="bi bi-graph-down-arrow me-2"></i> Evolução da Dívida
+            </button>
+        </div>
+
+        @* Botão 6: Planejamento 2029 (Meta Apartamento) *@
+        <div class="col-md-4">
+            <button type="button" class="btn btn-outline-info w-100 shadow-sm rounded-3 fw-bold" data-bs-toggle="modal" data-bs-target="#modalStressTest">
+                <i class="bi bi-shield-check me-2"></i> Escudo de Emergência
+            </button>
+        </div>
+    </div>
 
     <div class="row mb-4 g-3">
         @* Card 1: Patrimônio com Fluxo Automático *@
@@ -80,6 +102,7 @@
             </div>
         </div>
 
+
         @* Card 4: Resultado Geral de Carteira *@
         <div class="col-md-3">
             <div class="card shadow border-0 h-100 rounded-4 @(Model.TotalLucro >= 0 ? "bg-success" : "bg-danger") text-white">
@@ -91,6 +114,7 @@
             </div>
         </div>
     </div>
+
 
     @if (TempData["Sucesso"] != null)
     {
@@ -182,6 +206,9 @@
     @await Html.PartialAsync("ModalFinanceiro", Model)
     @await Html.PartialAsync("_ModalDetalhesPatrimonio", Model)
     @await Html.PartialAsync("_ModalRadarAporte", Model)
+    @await Html.PartialAsync("_ModalAmortizacao", Model)
+    @await Html.PartialAsync("_ModalEvolucaoDivida", Model)
+    @await Html.PartialAsync("_ModalEscudo", Model)
 
     <div class="card shadow-sm border-0">
         <div class="card-header bg-light d-flex justify-content-between align-items-center">

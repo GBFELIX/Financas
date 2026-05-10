@@ -15,10 +15,12 @@ namespace Acoes_Fiis.Controllers
     public class CarteirasController : Controller
     {
         private readonly Acoes_FiisContext _context;
+        private readonly FinanciamentoService _service;
 
-        public CarteirasController(Acoes_FiisContext context)
+        public CarteirasController(Acoes_FiisContext context, FinanciamentoService service)
         {
             _context = context;
+            _service = service;
         }
 
 
@@ -26,6 +28,7 @@ namespace Acoes_Fiis.Controllers
         public async Task<IActionResult> Index()
         {
             var itensBanco = await _context.Carteira.ToListAsync();
+            var financiamento = await _context.Financiamentos.Include(p => p.AportesPontuais).FirstOrDefaultAsync();
 
             var viewModel = new CarteiraTotalViewModel();
             decimal totalRFLiquido = 0;
@@ -205,6 +208,23 @@ namespace Acoes_Fiis.Controllers
                     Mensagem = "Desconto sobre Valor Patrimonial"
                 }).ToList();
 
+            if (financiamento != null)
+            {
+                // 2. Chama o seu Service para gerar a lista de parcelas
+                var simulacaoCompleta = _service.GerarSimulacao(financiamento);
+
+                // 3. Alimenta a ViewModel
+                viewModel.ValorImovel = financiamento.ValorImovel;
+                viewModel.ValorEntrada = financiamento.ValorEntrada;
+                viewModel.TaxaJurosAnual = financiamento.TaxaJurosAnual;
+                viewModel.ProjecaoFinanciamento = simulacaoCompleta;
+
+                // 4. Pega o Saldo Devedor do mês atual na projeção
+                var parcelaAtual = simulacaoCompleta.FirstOrDefault(p => p.Data.Month == DateTime.Now.Month && p.Data.Year == DateTime.Now.Year);
+                viewModel.SaldoDevedorAtual = parcelaAtual?.SaldoDevedorRestante ?? financiamento.SaldoDevedorInicial;
+                viewModel.PrazoMesesRestantes = simulacaoCompleta.Count(p => p.SaldoDevedorRestante > 0);
+            }
+
             viewModel.SugestoesAporte.Clear();
             viewModel.SugestoesAporte.AddRange(acoesBaratas);
             viewModel.SugestoesAporte.AddRange(fiisDescontados);
@@ -214,6 +234,27 @@ namespace Acoes_Fiis.Controllers
             viewModel.ListaTickersGerais = await _context.AtivosGerais.Select(x => x.Ticker).ToListAsync();
 
             return View(viewModel);
+        }
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RegistrarAporteExtra(int priceId, decimal valor, int mesReferencia)
+        {
+
+
+            // Como sua tabela de aportes pontuais tem PriceId, MesReferencia e Valor:
+            var novoAporte = new AporteExtra // Certifique-se do nome da sua classe de modelo
+            {
+                PriceId = priceId,
+                MesReferencia = mesReferencia, // Você pode usar o número do mês ou a lógica do seu service
+                Valor = valor
+            };
+
+            _context.Add(novoAporte);
+            await _context.SaveChangesAsync();
+
+            // Redireciona para a Index. Como a Index chama o FinanciamentoService, 
+            // o novo aporte já será lido e a barra de progresso/saldo será atualizada!
+            return RedirectToAction(nameof(Index));
         }
 
         [HttpPost]

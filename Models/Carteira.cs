@@ -21,6 +21,7 @@ namespace Acoes_Fiis.Models
         public List<ResumoMesViewModel> ResumoMensal { get; set; } = new List<ResumoMesViewModel>();
         public List<RadarAporteViewModel> SugestoesAporte { get; set; } = new();
 
+
         public decimal PatrimonioTotalReal { get; set; }
         public decimal EntradasFuturas { get; set; }
 
@@ -41,19 +42,39 @@ namespace Acoes_Fiis.Models
 
         public string? TipoAtivo { get; set; }
 
+        //financiamento
+        public decimal ValorImovel { get; set; }
+        public decimal SaldoDevedorAtual { get; set; }
+        public decimal ValorEntrada { get; set; }
+        public decimal TaxaJurosAnual { get; set; }
+        public int PrazoMesesRestantes { get; set; }
 
+        // --- Resultados da Simulação (Vem do FinanciamentoService) ---
+        public List<ParcelaProjecao> ProjecaoFinanciamento { get; set; } = new();
+
+        // --- Inteligência de Dados ---
+        // Diferença entre o que você tem e o que deve
+        public decimal PatrimonioLiquido => PatrimonioTotalReal - SaldoDevedorAtual;
+
+        // Porcentagem de quitação do imóvel (Patrimônio / Saldo Devedor)
+        public double PercentualQuitacao => SaldoDevedorAtual > 0
+            ? (double)(PatrimonioTotalReal / SaldoDevedorAtual) * 100
+            : 100;
+
+        // Cálculo da Sobra Real do Mês para Amortizar
+        public decimal SobraDisponivelParaAmortizar => EntradasMesCorrente - SaidasMesCorrente;
 
 
 
         // RENDA FIXA
         public decimal TotalInvestidoRendaFixa { get; set; }
-        public decimal TaxaMediaRendaFixa { get; set; } // Ex: 0.01 (1% ao mês)
+        public decimal TaxaMediaRendaFixa { get; set; } = 0.01m;
 
         // Cálculo de Renda Fixa Líquida (Estimando IR de 17,5% - médio prazo)
         public decimal RendaFixaMensalLiquida => (TotalInvestidoRendaFixa * TaxaMediaRendaFixa) * 0.825m;
 
         // TOTAIS CONSOLIDADOS
-        public decimal RendaMensalTotalConsolidada => TotalRendaMensalEstimada + RendaFixaMensalLiquida;
+        public decimal RendaMensalTotalConsolidada => (TotalRendaMensalEstimada + RendaFixaMensalLiquida);
         public decimal ProventoAnualEstimado => RendaMensalTotalConsolidada * 12;
 
         public decimal ProventoMensalEstimado => Quantidade * UltimoRendimento;

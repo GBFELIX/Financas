@@ -1,0 +1,83 @@
+﻿@model CarteiraTotalViewModel
+
+<div class="modal fade" id="modalEvolucaoDivida" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-dark text-white border-0 py-3">
+                <h5 class="modal-title fw-bold">
+                    <i class="bi bi-graph-down-arrow me-2 text-info"></i>Patrimônio vs. Dívida
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+
+                @* Indicadores de Topo *@
+                <div class="row g-3 mb-4 text-center">
+                    <div class="col-md-4">
+                        <div class="p-3 border rounded-4 bg-light">
+                            <small class="text-muted d-block fw-bold">DÍVIDA LÍQUIDA</small>
+                            <h4 class="fw-bold text-danger">@Model.PatrimonioLiquido.ToString("C2")</h4>
+                            <span class="badge bg-danger-subtle text-danger">O que falta quitar</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-3 border rounded-4 bg-light">
+                            <small class="text-muted d-block fw-bold">PROPORÇÃO</small>
+                            <h4 class="fw-bold text-dark">@Model.PercentualQuitacao.ToString("N1")%</h4>
+                            <span class="badge bg-primary-subtle text-primary">Investido / Dívida</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-3 border rounded-4 bg-light">
+                            <small class="text-muted d-block fw-bold">PRAZO</small>
+                            <h4 class="fw-bold text-dark">@Model.PrazoMesesRestantes</h4>
+                            <span class="badge bg-info-subtle text-info">Meses restantes</span>
+                        </div>
+                    </div>
+                </div>
+
+                @* Barra de Progresso de Quitação Total *@
+                <label class="small text-muted text-uppercase fw-bold mb-2">Progresso para Quitação das Chaves</label>
+                <div class="progress rounded-pill mb-4" style="height: 25px;">
+                    <div class="progress-bar bg-success progress-bar-striped progress-bar-animated"
+                         role="progressbar"
+                         style="width: @Model.PercentualQuitacao.ToString().Replace(",", ".")%"
+                         aria-valuenow="@Model.PercentualQuitacao" aria-valuemin="0" aria-valuemax="100">
+                        @Model.PercentualQuitacao.ToString("N1")%
+                    </div>
+                </div>
+
+                @* Tabela de Projeção Próximos 6 Meses *@
+                <label class="small text-muted text-uppercase fw-bold mb-3 d-block">Projeção de Amortização (Próximas 6 Parcelas)</label>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle border rounded-4">
+                        <thead class="table-light">
+                            <tr class="small text-muted">
+                                <th>Nº</th>
+                                <th>DATA</th>
+                                <th>PARCELA</th>
+                                <th>AMORTIZAÇÃO</th>
+                                <th class="text-end">SALDO DEVEDOR</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var p in Model.ProjecaoFinanciamento.Take(6))
+                            {
+                                <tr>
+                                    <td class="fw-bold">#@p.Numero</td>
+                                    <td>@p.Data.ToString("MM/yyyy")</td>
+                                    <td class="text-muted">@p.ValorParcela.ToString("C2")</td>
+                                    <td class="text-success fw-bold">@p.Amortizacao.ToString("C2")</td>
+                                    <td class="text-end fw-bold">@p.SaldoDevedorRestante.ToString("C2")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary w-100 rounded-pill fw-bold" data-bs-dismiss="modal">Fechar Evolução</button>
+            </div>
+        </div>
+    </div>
+</div>

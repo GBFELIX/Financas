@@ -1,0 +1,72 @@
+﻿@model CarteiraTotalViewModel
+
+<div class="modal fade" id="modalStressTest" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-info text-dark border-0 py-3">
+                <h5 class="modal-title fw-bold">
+                    <i class="bi bi-shield-lock-fill me-2"></i>Análise de Resiliência
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                @{
+                    // 1. Sua Liquidez Imediata (Renda Fixa + Saldo em Conta)
+                    var liquidezImediata = Model.TotalInvestidoRendaFixa + Model.PatrimonioTotalReal;
+
+                    // 2. Seu Custo de Sobrevivência (Média de Saídas + Parcela do Financiamento)
+                    var parcelaEstimada = Model.ProjecaoFinanciamento.FirstOrDefault()?.ValorParcela ?? 0;
+                    var custoMensalTotal = Model.ResumoMensal.Average(x => x.Saidas) + parcelaEstimada;
+
+                    // 3. O Cálculo de Sobrevivência (Meses)
+                    var mesesSobrevivencia = custoMensalTotal > 0 ? (int)(liquidezImediata / custoMensalTotal) : 0;
+                }
+
+                <div class="text-center mb-4">
+                    <label class="small text-muted text-uppercase fw-bold d-block">Sua Sobrevivência Blindada</label>
+                    <h1 class="display-4 fw-bold text-info">@mesesSobrevivencia <small class="fs-4">meses</small></h1>
+                    <p class="text-muted small">Tempo que você mantém o apartamento sem nenhuma renda nova.</p>
+                </div>
+
+                @* Gráfico de Barras Simples (HTML/CSS) *@
+                <div class="mb-4">
+                    <label class="small text-muted text-uppercase fw-bold mb-2 d-block text-center">Composição da Reserva vs. Custos</label>
+                    <div class="progress rounded-pill" style="height: 30px; font-size: 0.7rem;">
+                        <div class="progress-bar bg-info" role="progressbar" style="width: 70%;" title="Custo Mensal">Custo Mensal: @custoMensalTotal.ToString("C2")</div>
+                        <div class="progress-bar bg-dark opacity-25" role="progressbar" style="width: 30%;"></div>
+                    </div>
+                </div>
+
+                <div class="row g-2 mb-4">
+                    <div class="col-12">
+                        <div class="p-3 border rounded-4 bg-light">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="small">Sua Liquidez Total:</span>
+                                <span class="fw-bold text-dark">@liquidezImediata.ToString("C2")</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="small">Sua Parcela (Price):</span>
+                                <span class="fw-bold text-danger">@parcelaEstimada.ToString("C2")</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                @* Veredito *@
+                <div class="alert @(mesesSobrevivencia >= 6 ? "alert-success" : "alert-warning") border-0 rounded-4">
+                    <div class="d-flex">
+                        <i class="bi @(mesesSobrevivencia >= 6 ? "bi-check-circle" : "bi-exclamation-triangle") fs-4 me-3"></i>
+                        <small>
+                            @(mesesSobrevivencia >= 6
+                                                        ? "Sua reserva é sólida. Você pode focar 100% em amortizar ou aportar em FIIs."
+                                                        : "Atenção: Sua reserva cobre menos de 6 meses. Fortaleça seu caixa antes de grandes amortizações.")
+                        </small>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-outline-dark w-100 rounded-pill fw-bold" data-bs-dismiss="modal">Entendido</button>
+            </div>
+        </div>
+    </div>
+</div>
