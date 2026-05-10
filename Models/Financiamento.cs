@@ -30,7 +30,7 @@ namespace Acoes_Fiis.Models
 public class ParcelaProjecao
 {
     public int Numero { get; set; }
-    public DateTime Data { get; set; } // Nova propriedade
+    public DateTime Data { get; set; }
     public decimal ValorParcela { get; set; }
     public decimal Amortizacao { get; set; }
     public decimal Juros { get; set; }

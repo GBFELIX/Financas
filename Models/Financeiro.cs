@@ -44,6 +44,7 @@ namespace Acoes_Fiis.Models
         public decimal TotalPagoCasa { get; set; } // Soma do que está com checkbox 'checked'
         public decimal TotalPendenteCasa { get; set; } // Soma do que falta pagar
         public decimal ValorParcelaAtual { get; set; } // Vem do FinanciamentoService
+        public decimal TotalAmortizacaoMes { get; set; } // Vem do FinanciamentoService
         public bool ParcelaPaga { get; set; } // Se já existe um lançamento de "Despesa" na categoria Moradia com esse valor
         public List<ContaFixa> ContasFixas { get; set; } // Nova tabela ou lista filtrada
 

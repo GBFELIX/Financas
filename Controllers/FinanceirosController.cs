@@ -34,21 +34,33 @@ namespace Acoes_Fiis.Controllers
                 .Where(x => x.Data.Month == filtroMes && x.Data.Year == filtroAno)
                 .ToListAsync() ?? new List<Financeiro>();
 
-            // 2. Busca as Contas Fixas cadastradas
+            // 2. Busca as Contas Fixas
             var contasFixas = await _context.ContasFixas.ToListAsync();
 
-            // 3. Busca o Financiamento (Integrando com o seu FinanciamentoService)
-            var financiamento = await _context.Financiamentos.FirstOrDefaultAsync();
-            decimal valorParcela = 0;
+            // 3. Busca o Financiamento COM OS APORTES (O Pulo do Gato está no Include)
+            var financiamento = await _context.Financiamentos
+                .Include(f => f.AportesPontuais) // Carrega os aportes extras para o service ver
+                .FirstOrDefaultAsync();
+
+            decimal valorParcelaFinal = 0;
+            decimal totalAmortizadoNoMes = 0;
+
             if (financiamento != null)
             {
-                // Usamos o seu serviço para gerar a projeção e pegar a parcela do mês/ano filtrado
                 var projecao = _service.GerarSimulacao(financiamento);
                 var parcelaDoMes = projecao.FirstOrDefault(p => p.Data.Month == filtroMes && p.Data.Year == filtroAno);
-                valorParcela = parcelaDoMes?.ValorParcela ?? 0;
+
+                if (parcelaDoMes != null)
+                {
+                    // ValorParcela aqui já é: Prestação + Juros + Aportes Extras (do seu Service)
+                    valorParcelaFinal = parcelaDoMes.ValorParcela;
+
+                    // TotalAmortizacaoMes pode ser usado para mostrar o "extra" na tela
+                    totalAmortizadoNoMes = parcelaDoMes.Amortizacao;
+                }
             }
 
-            // 4. Lógica de Cruzamento: O que já foi pago?
+            // 4. Lógica de Cruzamento
             foreach (var conta in contasFixas)
             {
                 conta.PagoNoMesAtual = lancamentos.Any(l =>
@@ -58,16 +70,16 @@ namespace Acoes_Fiis.Controllers
             bool parcelaPaga = lancamentos.Any(l =>
                 (l.Descricao.Contains("Financiamento") || l.Categoria == "Moradia") && l.Tipo == "Despesa");
 
-            // 5. Cálculo do Card de Pendências (O que falta pagar)
+            // 5. Cálculo do Pendente (Usando o valor TOTAL que o Service deu)
             decimal pendente = contasFixas.Where(c => !c.PagoNoMesAtual).Sum(c => c.Valor);
-            if (!parcelaPaga) pendente += valorParcela;
+            if (!parcelaPaga) pendente += valorParcelaFinal;
 
-            // 6. Cálculo do Card (Total Pago em Contas de Casa)
+            // 6. Cálculo do Total Pago Casa
             decimal totalPagoCasa = lancamentos
                 .Where(l => l.Tipo == "Despesa" && (l.Categoria == "Moradia" || l.Categoria == "Serviços" || l.Categoria == "Farmácia"))
                 .Sum(l => l.Valor);
 
-            // Seu cálculo de Renda Fixa original
+            // Renda Fixa (seu código original)
             var ativosRF = await _context.Carteira.Where(x => x.TipoAtivo == "RendaFixa").ToListAsync();
             decimal totalRendimentoliquido = 0;
             foreach (var rf in ativosRF)
@@ -83,10 +95,11 @@ namespace Acoes_Fiis.Controllers
                 AnoAtual = filtroAno,
                 RendimentoRendaFixaMes = totalRendimentoliquido,
                 ContasFixas = contasFixas,
-                ValorParcelaAtual = valorParcela,
+                ValorParcelaAtual = valorParcelaFinal, // Já vai com o aporte extra embutido
                 ParcelaPaga = parcelaPaga,
+                TotalAmortizacaoMes = totalAmortizadoNoMes,
                 TotalPagoCasa = totalPagoCasa,
-                TotalPendenteCasa = pendente // Variável agora calculada no passo 5
+                TotalPendenteCasa = pendente
             };
 
             return View(viewModel);

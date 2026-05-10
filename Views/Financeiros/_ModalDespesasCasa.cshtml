@@ -30,20 +30,33 @@
                             <tr class="@(Model.ParcelaPaga ? "opacity-50" : "")">
                                 <td style="width: 40px;"><i class="bi @(Model.ParcelaPaga ? "bi-check-circle-fill text-success" : "bi-circle text-muted")"></i></td>
                                 <td><span class="fw-bold">Financiamento Apartamento</span></td>
-                                <td class="text-end fw-bold">@Model.ValorParcelaAtual.ToString("C2")</td>
+                                <td class="text-end">
+                                    <div class="d-flex flex-column">
+                                        @* Este ValorParcelaAtual já vem do Service com Parcela + Amortização Extra *@
+                                        <span class="fw-bold">@Model.ValorParcelaAtual.ToString("C2")</span>
+
+                                        @if (Model.TotalAmortizacaoMes > 0)
+                                        {
+                                            <small class="text-success fw-bold" style="font-size: 0.65rem;">
+                                                (Inclui Amortização Total: @Model.TotalAmortizacaoMes.ToString("C2"))
+                                            </small>
+                                        }
+                                    </div>
+                                </td>
                                 <td class="text-center">
                                     @if (!Model.ParcelaPaga)
                                     {
                                         <form asp-action="PagarContaCasa" method="post" class="m-0">
                                             <input type="hidden" name="descricao" value="Financiamento" />
-                                            <input type="hidden" name="valor" value="@Model.ValorParcelaAtual" />
+                                            @* Importante: O valor enviado para o extrato deve ser a soma *@
+                                            <input type="hidden" name="valor" value="@((Model.ValorParcelaAtual + Model.TotalAmortizacaoMes).ToString("F2", System.Globalization.CultureInfo.InvariantCulture))" />
                                             <input type="hidden" name="categoria" value="Moradia" />
                                             <button type="submit" class="btn btn-sm btn-info rounded-pill px-3 fw-bold">Pagar</button>
                                         </form>
                                     }
                                     else
                                     {
-                                        <span class="badge bg-success-subtle text-success">PAGO</span>
+                                        <span class="badge bg-success-subtle text-success rounded-pill px-3">PAGO</span>
                                     }
                                 </td>
                             </tr>
@@ -53,36 +66,34 @@
                             {
                                 <tr class="@(conta.PagoNoMesAtual ? "opacity-50" : "")">
                                     <td style="width: 40px;"><i class="bi @(conta.PagoNoMesAtual ? "bi-check-circle-fill text-success" : "bi-circle text-muted")"></i></td>
-
-                                    @* Form único para editar/excluir/pagar envolvendo a linha *@
-                                    <form asp-action="EditarContaFixa" method="post" class="m-0">
-                                        <input type="hidden" name="Id" value="@conta.Id" />
-                                        <input type="hidden" name="Categoria" value="Moradia" />
-                                        <input type="hidden" name="Pagamento" value="Crédito" />
                                     <td>
-                                        <input type="text" name="Descricao" value="@conta.Descricao"
+                                        <input type="text" form="form-@conta.Id" name="Descricao" value="@conta.Descricao"
                                                class="form-control form-control-sm border-0 bg-transparent fw-bold p-0 shadow-none"
                                                readonly onclick="ativarEdicao(this)" onblur="desativarEdicao(this)">
                                     </td>
                                     <td class="text-end">
-                                        <input type="text" name="Valor" value="@conta.Valor.ToString("F2")"
+                                        <input type="text" form="form-@conta.Id" name="Valor" value="@conta.Valor.ToString("F2")"
                                                class="form-control form-control-sm border-0 bg-transparent fw-bold text-end p-0 shadow-none"
                                                style="width: 90px;" readonly onclick="ativarEdicao(this)" onblur="desativarEdicao(this)">
                                     </td>
                                     <td class="text-center">
-                                        <div class="d-flex gap-2 justify-content-center">
-                                            @if (!conta.PagoNoMesAtual)
-                                            {
-                                                <button type="submit" class="btn btn-sm btn-link text-success p-0 d-none btn-save"><i class="bi bi-check-lg fs-5"></i></button>
-                                                <button type="submit" formaction="@Url.Action("PagarContaCasa")" class="btn btn-sm btn-outline-info rounded-pill px-2 fw-bold btn-pagar" style="font-size:0.65rem">PAGAR</button>
-                                                <input type="hidden" name="categoria" value="@conta.Categoria" />
-                                            }
-                                            <button type="submit" formaction="@Url.Action("ExcluirContaFixa")" class="btn btn-sm btn-link text-danger p-0" onclick="return confirm('Excluir?')">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
-                                        </div>
+                                        @* Formulário Único por Linha *@
+                                        <form asp-action="EditarContaFixa" method="post" id="form-@conta.Id" class="m-0">
+                                            <input type="hidden" name="Id" value="@conta.Id" />
+                                            <input type="hidden" name="Categoria" value="@conta.Categoria" />
+
+                                            <div class="d-flex gap-2 justify-content-center">
+                                                @if (!conta.PagoNoMesAtual)
+                                                {
+                                                    <button type="submit" class="btn btn-sm btn-link text-success p-0 d-none btn-save"><i class="bi bi-check-lg fs-5"></i></button>
+                                                    <button type="submit" formaction="@Url.Action("PagarContaCasa")" class="btn btn-sm btn-outline-info rounded-pill px-2 fw-bold btn-pagar" style="font-size:0.65rem">PAGAR</button>
+                                                }
+                                                <button type="submit" formaction="@Url.Action("ExcluirContaFixa")" class="btn btn-sm btn-link text-danger p-0" onclick="return confirm('Excluir?')">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </div>
+                                        </form>
                                     </td>
-                                    </form>
                                 </tr>
                             }
                         </tbody>
@@ -94,7 +105,7 @@
             <div class="modal-footer border-0 p-4 bg-light rounded-bottom-4">
                 <form asp-action="AdicionarContaFixa" method="post" class="row g-2 w-100">
                     <div class="col-6"><input type="text" name="descricao" class="form-control form-control-sm rounded-3" placeholder="Descrição" required></div>
-                    <div class="col-3"><input type="text" step="0.01" name="valor" class="form-control form-control-sm rounded-3" placeholder="R$" required></div>
+                    <div class="col-3"><input type="text" name="valor" class="form-control form-control-sm rounded-3" placeholder="R$" required></div>
                     <div class="col-3"><button type="submit" class="btn btn-dark btn-sm w-100 rounded-3 fw-bold">Cadastrar</button></div>
                 </form>
             </div>
