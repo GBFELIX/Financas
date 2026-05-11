@@ -29,6 +29,9 @@ namespace Acoes_Fiis.Controllers
             int filtroMes = mes ?? DateTime.Now.Month;
             int filtroAno = ano ?? DateTime.Now.Year;
 
+            DateTime seisMesesAtras = DateTime.Now.AddMonths(-6);
+            DateTime primeiroDiaMesAtual = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+
             // 1. Lançamentos do mês
             var lancamentos = await _context.Financeiro
                 .Where(x => x.Data.Month == filtroMes && x.Data.Year == filtroAno)
@@ -88,6 +91,27 @@ namespace Acoes_Fiis.Controllers
                 totalRendimentoliquido += (rf.Quantidade * rf.PrecoMedio) * taxaMensal * 0.825m;
             }
 
+            var historico = await _context.Financeiro
+            .Where(x => x.Data >= seisMesesAtras && x.Data < primeiroDiaMesAtual)
+            .ToListAsync();
+
+            decimal mediaSobraHistorica = 0;
+
+            if (historico.Any())
+            {
+
+                var mesesAgrupados = historico
+                    .GroupBy(x => new { x.Data.Month, x.Data.Year })
+                    .Select(g => new
+                    {
+                        Sobra = g.Where(x => x.Tipo == "Entrada").Sum(x => x.Valor) -
+                                g.Where(x => x.Tipo == "Despesa").Sum(x => x.Valor)
+                    })
+                    .ToList();
+
+                mediaSobraHistorica = mesesAgrupados.Average(m => m.Sobra);
+            }
+
             var viewModel = new FluxoCaixaViewModel
             {
                 Lancamentos = lancamentos,
@@ -99,7 +123,8 @@ namespace Acoes_Fiis.Controllers
                 ParcelaPaga = parcelaPaga,
                 TotalAmortizacaoMes = totalAmortizadoNoMes,
                 TotalPagoCasa = totalPagoCasa,
-                TotalPendenteCasa = pendente
+                TotalPendenteCasa = pendente,
+                MediaSobraHistorica = mediaSobraHistorica
             };
 
             return View(viewModel);

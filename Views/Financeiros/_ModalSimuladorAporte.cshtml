@@ -1,0 +1,159 @@
+﻿<div class="modal fade" id="modalSimuladorAporte" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4 shadow-lg">
+            <div class="modal-header bg-dark text-white border-0 py-3">
+                <h5 class="modal-title fw-bold"><i class="bi bi-cpu me-2"></i>Simulador de Projeção</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="row">
+                    <div class="col-md-4 border-end">
+                        <h6 class="fw-bold mb-3 text-uppercase small">Configurações</h6>
+
+                        @* Toggle de Origem dos Dados *@
+                        <div class="btn-group w-100 mb-3" role="group">
+                            <input type="radio" class="btn-check" name="modoSim" id="modoManual" checked onchange="toggleModo('manual')">
+                            <label class="btn btn-outline-primary btn-sm" for="modoManual">Manual</label>
+
+                            <input type="radio" class="btn-check" name="modoSim" id="modoHistorico" onchange="toggleModo('historico')">
+                            <label class="btn btn-outline-primary btn-sm" for="modoHistorico">Média Real</label>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small">Aporte Mensal (R$)</label>
+                            <input type="number" id="simAporte" class="form-control" value="@Model.SobraEstimada">
+                            <input type="hidden" id="valHistorico" value="@Model.MediaSobraHistorica">
+                            <small id="helpHistorico" class="text-success d-none">Usando média real: @Model.MediaSobraHistorica.ToString("C2")</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small">Taxa de Juros Anual (%)</label>
+                            <input type="number" id="simTaxa" class="form-control" value="11.75"> @* Selic aproximada *@
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small">Período (Anos)</label>
+                            @* Agora um input numérico aberto *@
+                            <input type="number" id="simAnos" class="form-control" value="5" min="1" max="50">
+                        </div>
+
+                        <button class="btn btn-primary w-100 fw-bold rounded-3 shadow-sm" onclick="atualizarGrafico()">
+                            <i class="bi bi-play-fill"></i> Simular Agora
+                        </button>
+
+                        <div class="mt-4 p-3 bg-primary bg-opacity-10 rounded-4 border border-primary border-opacity-25">
+                            <small class="text-muted d-block">Patrimônio Estimado:</small>
+                            <h3 class="fw-bold text-primary mb-0" id="txtPatrimonioFinal">R$ 0,00</h3>
+                        </div>
+                    </div>
+
+                    <div class="col-md-8 px-4">
+                        <canvas id="chartSimulacao" style="width: 100%; height: 380px;"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    let meuGrafico;
+
+    function toggleModo(modo) {
+        const inputAporte = document.getElementById('simAporte');
+        const valHistorico = document.getElementById('valHistorico').value;
+        const helpH = document.getElementById('helpHistorico');
+
+        if (modo === 'historico') {
+            inputAporte.value = parseFloat(valHistorico).toFixed(2);
+            inputAporte.readOnly = true;
+            inputAporte.classList.add('bg-light');
+            helpH.classList.remove('d-none');
+        } else {
+            inputAporte.readOnly = false;
+            inputAporte.classList.remove('bg-light');
+            helpH.classList.add('d-none');
+        }
+        atualizarGrafico();
+    }
+
+    function atualizarGrafico() {
+        const aporte = parseFloat(document.getElementById('simAporte').value) || 0;
+        const taxaAnual = parseFloat(document.getElementById('simTaxa').value) / 100;
+        const anos = parseInt(document.getElementById('simAnos').value) || 1;
+
+        const meses = anos * 12;
+        const taxaMensal = Math.pow(1 + taxaAnual, 1/12) - 1;
+
+        let labels = [];
+        let dadosPatrimonio = [];
+        let dadosAportado = [];
+        let acumulado = 0;
+        let totalAportado = 0;
+
+        for (let i = 1; i <= meses; i++) {
+            acumulado = (acumulado + aporte) * (1 + taxaMensal);
+            totalAportado += aporte;
+
+            // Plota um ponto a cada 6 meses para o gráfico não ficar pesado mas manter a curva
+            if (i % 6 === 0 || i === meses) {
+                labels.push('Mês ' + i);
+                dadosPatrimonio.push(acumulado.toFixed(2));
+                dadosAportado.push(totalAportado.toFixed(2));
+            }
+        }
+
+        document.getElementById('txtPatrimonioFinal').innerText = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(acumulado);
+
+        const ctx = document.getElementById('chartSimulacao').getContext('2d');
+        if (meuGrafico) meuGrafico.destroy();
+
+        meuGrafico = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Patrimônio Total (Juros Compostos)',
+                        data: dadosPatrimonio,
+                        borderColor: '#0d6efd',
+                        backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                        fill: true,
+                        tension: 0.3
+                    },
+                    {
+                        label: 'Total Aportado (Sem Juros)',
+                        data: dadosAportado,
+                        borderColor: '#6c757d',
+                        borderDash: [5, 5],
+                        fill: false,
+                        tension: 0
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => context.dataset.label + ': ' +
+                                new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(context.raw)
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { callback: (v) => 'R$ ' + v.toLocaleString('pt-BR') }
+                    }
+                }
+            }
+        });
+    }
+
+    // Inicializa ao abrir o modal
+    document.getElementById('modalSimuladorAporte').addEventListener('shown.bs.modal', atualizarGrafico);
+</script>

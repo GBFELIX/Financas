@@ -48,5 +48,6 @@ namespace Acoes_Fiis.Models
         public bool ParcelaPaga { get; set; } // Se já existe um lançamento de "Despesa" na categoria Moradia com esse valor
         public List<ContaFixa> ContasFixas { get; set; } // Nova tabela ou lista filtrada
 
+        public decimal MediaSobraHistorica { get; set; } // Cálculo da média dos últimos 6 meses para comparação
     }
 }
