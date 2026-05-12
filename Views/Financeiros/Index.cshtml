@@ -64,6 +64,7 @@
                         <i class="bi bi-arrow-up-right-circle opacity-50"></i>
                     </div>
                     <h3 class="mb-0 fw-bold">@Model.TotalEntradas.ToString("C2")</h3>
+                    <small class="opacity-75" style="font-size: 0.7rem;">Em construção</small>
                 </div>
             </div>
         </div>
@@ -80,6 +81,7 @@
                         <i class="bi bi-arrow-down-left-circle opacity-50"></i>
                     </div>
                     <h3 class="mb-0 fw-bold">@Model.TotalDespesas.ToString("C2")</h3>
+                    <small class="opacity-75" style="font-size: 0.7rem;">Clique para ver mais</small>
                 </div>
             </div>
         </div>
@@ -296,10 +298,21 @@
                 <div class="modal-body p-4">
                     <div class="mb-3">
                         <label class="form-label fw-bold">Tipo de Fluxo</label>
-                        <select name="Tipo" class="form-select rounded-3" required>
+                        <select id="selectTipoFluxo" name="Tipo" class="form-select rounded-3" required>
                             <option value="Despesa">Saída (Gasto)</option>
                             <option value="Entrada">Entrada (Ganho)</option>
                         </select>
+                    </div>
+
+                    <div id="secaoSugestoes" class="mb-3 d-none animate__animated animate__fadeIn">
+                        <label class="form-label small fw-bold text-muted text-uppercase">Preenchimento Rápido</label>
+                        <div class="d-flex flex-wrap gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-success rounded-pill" onclick="preencher('Salário do dia 15', 1137.00, 'Salário', 15, 'Pagamento')">Salário (Dia 15)</button>
+                            <button type="button" class="btn btn-sm btn-outline-success rounded-pill" onclick="preencher('Salário do dia 30', 1340.00, 'Salário', 30, 'Pagamento')">Salário (Dia 30)</button>
+                            <button type="button" class="btn btn-sm btn-outline-warning rounded-pill" onclick="preencher('PPR / Bônus', 6000.00, 'Salário', 01, 'Pagamento')">PPR</button>
+                            <button type="button" class="btn btn-sm btn-outline-info rounded-pill" onclick="preencher('13º Salário', 1420.00, 'Salário', 30, 'Pagamento')">13º 1º parcela</button>
+                            <button type="button" class="btn btn-sm btn-outline-info rounded-pill" onclick="preencher('Ajuda', 226.00, 'Salário', 10, 'Pix / Dinheiro')">Ajuda facul</button>
+                        </div>
                     </div>
 
                     <div class="mb-3">
@@ -363,6 +376,50 @@
 </div>
 
     <script>
+        function preencher(desc, valor, cat, dia, Pagamento) {
+        // Buscamos os elementos no momento do clique para evitar erro de referência nula
+        const modal = document.getElementById('modalNovoLancamento');
+        const inputDesc = modal.querySelector('input[name="Descricao"]');
+        const inputValor = modal.querySelector('input[name="Valor"]');
+        const selectCat = modal.querySelector('select[name="Categoria"]');
+        const inputData = modal.querySelector('input[name="Data"]');
+        const selectPag = modal.querySelector('select[name="Pagamento"]');
+
+        if (inputDesc) inputDesc.value = desc;
+        if (inputValor) inputValor.value = valor.toFixed(2).replace('.', ',');
+        if (selectCat) selectCat.value = cat;
+        if (selectPag) selectPag.value = Pagamento;
+
+        if (dia && inputData) {
+            const agora = new Date();
+            const ano = agora.getFullYear();
+            const mes = String(agora.getMonth() + 1).padStart(2, '0');
+            const diaFormatado = String(dia).padStart(2, '0');
+            inputData.value = `${ano}-${mes}-${diaFormatado}`;
+        }
+    }
+
+    // 2. Lógica para mostrar/esconder as sugestões
+    document.addEventListener("DOMContentLoaded", function() {
+        const selectTipo = document.getElementById('selectTipoFluxo');
+        const secao = document.getElementById('secaoSugestoes');
+
+        if (selectTipo && secao) {
+            selectTipo.addEventListener('change', function() {
+                if (this.value === 'Entrada') {
+                    secao.classList.remove('d-none');
+                } else {
+                    secao.classList.add('d-none');
+                }
+            });
+
+            // Disparar uma vez no início caso o modal abra já em "Entrada"
+            if (selectTipo.value === 'Entrada') {
+                secao.classList.remove('d-none');
+            }
+        }
+    });
+
         function filtrarPorTexto() {
         // 1. Pega o valor digitado
         var input = document.getElementById("filtroTexto");

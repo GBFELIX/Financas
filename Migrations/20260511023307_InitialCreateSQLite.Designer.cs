@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Acoes_Fiis.Migrations
 {
     [DbContext(typeof(Acoes_FiisContext))]
-    [Migration("20260510205513_InitialCreateSQLite")]
+    [Migration("20260511023307_InitialCreateSQLite")]
     partial class InitialCreateSQLite
     {
         /// <inheritdoc />

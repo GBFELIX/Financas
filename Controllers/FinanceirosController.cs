@@ -29,18 +29,16 @@ namespace Acoes_Fiis.Controllers
             int filtroMes = mes ?? DateTime.Now.Month;
             int filtroAno = ano ?? DateTime.Now.Year;
 
-            DateTime seisMesesAtras = DateTime.Now.AddMonths(-6);
+            DateTime dozeMesesAtras = DateTime.Now.AddMonths(-12);
             DateTime primeiroDiaMesAtual = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
 
-            // 1. Lançamentos do mês
             var lancamentos = await _context.Financeiro
                 .Where(x => x.Data.Month == filtroMes && x.Data.Year == filtroAno)
                 .ToListAsync() ?? new List<Financeiro>();
 
-            // 2. Busca as Contas Fixas
             var contasFixas = await _context.ContasFixas.ToListAsync();
 
-            // 3. Busca o Financiamento COM OS APORTES (O Pulo do Gato está no Include)
+            // Busca o Financiamento COM OS APORTES
             var financiamento = await _context.Financiamentos
                 .Include(f => f.AportesPontuais) // Carrega os aportes extras para o service ver
                 .FirstOrDefaultAsync();
@@ -55,15 +53,14 @@ namespace Acoes_Fiis.Controllers
 
                 if (parcelaDoMes != null)
                 {
-                    // ValorParcela aqui já é: Prestação + Juros + Aportes Extras (do seu Service)
+                    // ValorParcela aqui é Prestação + Juros + Aportes Extras do  Service
                     valorParcelaFinal = parcelaDoMes.ValorParcela;
 
-                    // TotalAmortizacaoMes pode ser usado para mostrar o "extra" na tela
                     totalAmortizadoNoMes = parcelaDoMes.Amortizacao;
                 }
             }
 
-            // 4. Lógica de Cruzamento
+            // 4. Cruzamento
             foreach (var conta in contasFixas)
             {
                 conta.PagoNoMesAtual = lancamentos.Any(l =>
@@ -82,8 +79,9 @@ namespace Acoes_Fiis.Controllers
                 .Where(l => l.Tipo == "Despesa" && (l.Categoria == "Moradia" || l.Categoria == "Serviços" || l.Categoria == "Farmácia"))
                 .Sum(l => l.Valor);
 
-            // Renda Fixa (seu código original)
+            // Renda Fixa 
             var ativosRF = await _context.Carteira.Where(x => x.TipoAtivo == "RendaFixa").ToListAsync();
+
             decimal totalRendimentoliquido = 0;
             foreach (var rf in ativosRF)
             {
@@ -92,7 +90,7 @@ namespace Acoes_Fiis.Controllers
             }
 
             var historico = await _context.Financeiro
-            .Where(x => x.Data >= seisMesesAtras && x.Data < primeiroDiaMesAtual)
+            .Where(x => x.Data >= dozeMesesAtras && x.Data < primeiroDiaMesAtual)
             .ToListAsync();
 
             decimal mediaSobraHistorica = 0;

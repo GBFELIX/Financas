@@ -49,7 +49,7 @@
                                         <form asp-action="PagarContaCasa" method="post" class="m-0">
                                             <input type="hidden" name="descricao" value="Financiamento" />
                                             @* Importante: O valor enviado para o extrato deve ser a soma *@
-                                            <input type="hidden" name="valor" value="@((Model.ValorParcelaAtual + Model.TotalAmortizacaoMes).ToString("F2", System.Globalization.CultureInfo.InvariantCulture))" />
+                                            <input type="hidden" name="valor" value="@Model.ValorParcelaAtual" />
                                             <input type="hidden" name="categoria" value="Moradia" />
                                             <button type="submit" class="btn btn-sm btn-info rounded-pill px-3 fw-bold">Pagar</button>
                                         </form>
