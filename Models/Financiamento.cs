@@ -10,7 +10,7 @@ namespace Acoes_Fiis.Models
         public decimal ValorEntrada { get; set; }
         public decimal TaxaJurosAnual { get; set; }
         public int PrazoMeses { get; set; }
-        public decimal AporteExtraMensal { get; set; }
+        public decimal? AporteExtraMensal { get; set; }
         public decimal ValorPrestação { get; set; }
 
         [Display(Name = "Data da Primeira Parcela")]
@@ -19,8 +19,8 @@ namespace Acoes_Fiis.Models
 
         public decimal SaldoDevedorInicial => ValorImovel - ValorEntrada;
 
-        // Adicione esta propriedade para a Service preencher
-        [NotMapped] // Importante: System.ComponentModel.DataAnnotations.Schema
+        //Service preenche
+        [NotMapped]
         public List<ParcelaProjecao> Projecao { get; set; } = new List<ParcelaProjecao>();
 
         public List<AporteExtra> AportesPontuais { get; set; } = new List<AporteExtra>();

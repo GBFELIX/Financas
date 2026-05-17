@@ -69,12 +69,8 @@ namespace Acoes_Fiis.Models
         // RENDA FIXA
         public decimal TotalInvestidoRendaFixa { get; set; }
         public decimal TaxaMediaRendaFixa { get; set; } = 0.01m;
-
-        // Cálculo de Renda Fixa Líquida (Estimando IR de 17,5% - médio prazo)
-        public decimal RendaFixaMensalLiquida => (TotalInvestidoRendaFixa * TaxaMediaRendaFixa) * 0.825m;
-
-        // TOTAIS CONSOLIDADOS
-        public decimal RendaMensalTotalConsolidada => (TotalRendaMensalEstimada + RendaFixaMensalLiquida);
+        public decimal RendaFixaMensalLiquida { get; set; }
+        public decimal RendaMensalTotalConsolidada { get; set; }
         public decimal ProventoAnualEstimado => RendaMensalTotalConsolidada * 12;
 
         public decimal ProventoMensalEstimado => Quantidade * UltimoRendimento;

@@ -27,12 +27,52 @@ namespace Acoes_Fiis.Controllers
         // GET: Carteiras
         public async Task<IActionResult> Index()
         {
+            var agora = DateTime.Now;
             var itensBanco = await _context.Carteira.ToListAsync();
+            var financeiroData = await _context.Financeiro.ToListAsync();
             var financiamento = await _context.Financiamentos.Include(p => p.AportesPontuais).FirstOrDefaultAsync();
 
             var viewModel = new CarteiraTotalViewModel();
             decimal totalRFLiquido = 0;
 
+            // --- GATILHO: FECHAMENTO DE RENDIMENTO DO MÊS ANTERIOR ---
+            DateTime mesAnterior = agora.AddMonths(-1);
+            string descricaoRendimentoNode = $"Rendimento Automático Caixinhas - {mesAnterior:MM/yyyy}";
+            bool jaLancado = financeiroData.Any(x => x.Descricao == descricaoRendimentoNode);
+
+            if (!jaLancado)
+            {
+                DateTime ultimoSegundoMesAnterior = new DateTime(agora.Year, agora.Month, 1).AddSeconds(-1);
+                decimal saldoFinalMesAnterior = financeiroData
+                    .Where(x => x.Data.Date <= ultimoSegundoMesAnterior.Date)
+                    .Sum(x => x.Tipo == "Entrada" ? x.Valor : -x.Valor);
+
+                if (saldoFinalMesAnterior > 0)
+                {
+                    decimal taxaAnualCaixinha = 10.75m;
+                    decimal taxaMensalCaixinha = (taxaAnualCaixinha / 12) / 100;
+                    decimal rendimentoLiquido = (saldoFinalMesAnterior * taxaMensalCaixinha) * 0.825m;
+
+                    if (rendimentoLiquido > 0.01m)
+                    {
+                        var novoLancamento = new Financeiro
+                        {
+                            Descricao = descricaoRendimentoNode,
+                            Valor = Math.Round(rendimentoLiquido, 2),
+                            Data = new DateTime(agora.Year, agora.Month, 1).AddDays(-1),
+                            Tipo = "Entrada",
+                            Categoria = "Investimento",
+                            Pagamento = "Pix"
+                        };
+
+                        _context.Financeiro.Add(novoLancamento);
+                        await _context.SaveChangesAsync();
+                        financeiroData.Add(novoLancamento);
+                    }
+                }
+            }
+
+            // --- PROCESSAMENTO DOS ITENS DA CARTEIRA ATIVA ---
             foreach (var item in itensBanco)
             {
                 var viewItem = new CarteiraItemViewModel
@@ -48,31 +88,22 @@ namespace Acoes_Fiis.Controllers
                 if (item.TipoAtivo == "RendaFixa")
                 {
                     viewItem.PrecoAtual = item.PrecoMedio;
-
-                    // Cálculo do rendimento mensal: (Montante * (Taxa / 12 meses))
                     decimal taxaMensal = (item.TaxaRentabilidade ?? 0) / 12 / 100;
                     decimal rendimentoBruto = (item.Quantidade * item.PrecoMedio) * taxaMensal;
 
-                    // Aplicando o IR de 17,5%
                     viewItem.UltimoRendimento = (rendimentoBruto / item.Quantidade) * 0.825m;
-
                     viewModel.TotalInvestidoRendaFixa += (item.Quantidade * item.PrecoMedio);
                     totalRFLiquido += rendimentoBruto * 0.825m;
                 }
-                if (item.TipoAtivo == "Acao")
+                else if (item.TipoAtivo == "Acao")
                 {
                     var acao = await _context.Recomendacao.FirstOrDefaultAsync(x => x.Ticker == item.Ticker);
                     if (acao != null)
                     {
                         viewItem.PrecoAtual = acao.PrecoAtual;
-
-                        // 1. Cálculo do P/L Atual (Preço / Lucro por Ação)
                         decimal pl = acao.LPA > 0 ? acao.PrecoAtual / acao.LPA : 0;
-
-                        // 2. Cálculo do P/VP Atual (Preço / Valor Patrimonial por Ação)
                         decimal pvp = acao.VPA > 0 ? acao.PrecoAtual / acao.VPA : 0;
 
-                        // 3. Lógica de Recomendação Baseada em Indicadores (Exemplo Graham/Bazin)
                         if (pl > 0 && pl < 10 && acao.Roe > 12)
                         {
                             viewItem.Recomendacao = "Forte Compra (Barata + ROE Alto)";
@@ -108,7 +139,7 @@ namespace Acoes_Fiis.Controllers
                             < 1.00m => "Compra (Preço Justo)",
                             <= 1.05m => "Neutro / Manter",
                             < 1.10m => "Aguardar / Caro",
-                            _ => "Venda / Realizar Lucro" // Maior que 1.10
+                            _ => "Venda / Realizar Lucro"
                         };
                         viewItem.CorBadge = viewItem.Recomendacao switch
                         {
@@ -123,19 +154,18 @@ namespace Acoes_Fiis.Controllers
                 }
                 else if (item.TipoAtivo == "Geral")
                 {
-                    var fii = await _context.AtivosGerais.FirstOrDefaultAsync(x => x.Ticker == item.Ticker);
-                    if (fii != null)
+                    var ativoGeral = await _context.AtivosGerais.FirstOrDefaultAsync(x => x.Ticker == item.Ticker);
+                    if (ativoGeral != null)
                     {
-
-                        viewItem.PrecoAtual = fii.PrecoAtual;
+                        viewItem.PrecoAtual = ativoGeral.PrecoAtual;
                         viewItem.Recomendacao = "Não Avaliado";
                     }
                 }
 
                 viewModel.Itens.Add(viewItem);
             }
-            var financeiroData = await _context.Financeiro.ToListAsync();
 
+            // --- FLUXO FINANCEIRO E COMPOSIÇÃO DE SALDOS ---
             viewModel.ResumoMensal = financeiroData
                 .GroupBy(x => new { x.Data.Year, x.Data.Month })
                 .Select(g => new ResumoMesViewModel
@@ -149,10 +179,6 @@ namespace Acoes_Fiis.Controllers
                 .ThenBy(x => x.Mes)
                 .ToList();
 
-            var agora = DateTime.Now;
-
-            // 1. Entradas e Saídas do Mês (Para os cards informativos pequenos)
-            // Mantemos o filtro de mês para você saber quanto entrou/saiu no total de Maio
             viewModel.EntradasMesCorrente = financeiroData
                 .Where(x => x.Data.Month == agora.Month && x.Data.Year == agora.Year && x.Tipo == "Entrada")
                 .Sum(x => x.Valor);
@@ -161,25 +187,32 @@ namespace Acoes_Fiis.Controllers
                 .Where(x => x.Data.Month == agora.Month && x.Data.Year == agora.Year && x.Tipo == "Despesa")
                 .Sum(x => x.Valor);
 
-            // 2. Cálculo do Saldo Financeiro "Disponível Hoje"
-            // Aqui está a mágica: ele só soma o que já aconteceu (Data <= hoje)
             decimal saldoFinanceiroAteHoje = financeiroData
-                .Where(x => x.Data.Date <= agora.Date) // Filtra apenas até o dia atual
+                .Where(x => x.Data.Date <= agora.Date)
                 .Sum(x => x.Tipo == "Entrada" ? x.Valor : -x.Valor);
 
-            // 3. Patrimônio Bruto Real (O que você realmente tem agora)
+            // --- CÁLCULO DE RENDIMENTO CAIXINHA (MÊS CORRENTE) ---
+            decimal taxaAnualCaixinhaAtual = 10.75m;
+            decimal taxaMensalCaixinhaAtual = (taxaAnualCaixinhaAtual / 12) / 100;
+            decimal rendimentoLiquidoCaixinha = (saldoFinanceiroAteHoje * taxaMensalCaixinhaAtual) * 0.825m;
+
+            // Inicialização e consolidação da renda mensal total
+            viewModel.RendaMensalTotalConsolidada = viewModel.TotalRendaMensalEstimada + viewModel.RendaFixaMensalLiquida;
+            viewModel.RendaMensalTotalConsolidada += rendimentoLiquidoCaixinha;
+
             viewModel.PatrimonioTotalReal = viewModel.TotalPatrimonio +
-                                           viewModel.TotalInvestidoRendaFixa +
-                                           saldoFinanceiroAteHoje;
+                                            viewModel.TotalInvestidoRendaFixa +
+                                            saldoFinanceiroAteHoje +
+                                            rendimentoLiquidoCaixinha;
 
             viewModel.EntradasFuturas = financeiroData
-            .Where(x => x.Data.Date > agora.Date && x.Tipo == "Entrada")
-            .Sum(x => x.Valor);
+                .Where(x => x.Data.Date > agora.Date && x.Tipo == "Entrada")
+                .Sum(x => x.Valor);
 
             var sobraDisponivel = viewModel.PatrimonioTotalReal - (itensBanco.Sum(x => x.Quantidade * x.PrecoMedio));
 
+            // --- RADAR DE APORTES E SUGESTÕES ---
             var recomendacoesAcoes = await _context.Recomendacao.ToListAsync();
-
             var acoesBaratas = recomendacoesAcoes
                 .Where(x => x.LPA > 0 && (x.PrecoAtual / x.LPA) < 10 && x.Roe > 12)
                 .OrderBy(x => x.PrecoAtual / x.LPA)
@@ -194,7 +227,6 @@ namespace Acoes_Fiis.Controllers
                 }).ToList();
 
             var recomendacoesFiis = await _context.RecomendacaoFii.ToListAsync();
-
             var fiisDescontados = recomendacoesFiis
                 .Where(x => x.PVP < 0.98m)
                 .OrderBy(x => x.PVP)
@@ -208,52 +240,47 @@ namespace Acoes_Fiis.Controllers
                     Mensagem = "Desconto sobre Valor Patrimonial"
                 }).ToList();
 
+            viewModel.SugestoesAporte.Clear();
+            viewModel.SugestoesAporte.AddRange(acoesBaratas);
+            viewModel.SugestoesAporte.AddRange(fiisDescontados);
+
+            // --- SIMULAÇÃO DO FINANCIAMENTO IMOBILIÁRIO ---
             if (financiamento != null)
             {
-                // 2. Chama o seu Service para gerar a lista de parcelas
                 var simulacaoCompleta = _service.GerarSimulacao(financiamento);
 
-                // 3. Alimenta a ViewModel
                 viewModel.ValorImovel = financiamento.ValorImovel;
                 viewModel.ValorEntrada = financiamento.ValorEntrada;
                 viewModel.TaxaJurosAnual = financiamento.TaxaJurosAnual;
                 viewModel.ProjecaoFinanciamento = simulacaoCompleta;
 
-                // 4. Pega o Saldo Devedor do mês atual na projeção
-                var parcelaAtual = simulacaoCompleta.FirstOrDefault(p => p.Data.Month == DateTime.Now.Month && p.Data.Year == DateTime.Now.Year);
+                var parcelaAtual = simulacaoCompleta.FirstOrDefault(p => p.Data.Month == agora.Month && p.Data.Year == agora.Year);
                 viewModel.SaldoDevedorAtual = parcelaAtual?.SaldoDevedorRestante ?? financiamento.SaldoDevedorInicial;
                 viewModel.PrazoMesesRestantes = simulacaoCompleta.Count(p => p.SaldoDevedorRestante > 0);
             }
 
-            viewModel.SugestoesAporte.Clear();
-            viewModel.SugestoesAporte.AddRange(acoesBaratas);
-            viewModel.SugestoesAporte.AddRange(fiisDescontados);
-
+            // --- AUTO-COMPLETE LISTS ---
             viewModel.ListaTickersAcoes = await _context.Recomendacao.Select(x => x.Ticker).ToListAsync();
             viewModel.ListaTickersFiis = await _context.RecomendacaoFii.Select(x => x.Ticker).ToListAsync();
             viewModel.ListaTickersGerais = await _context.AtivosGerais.Select(x => x.Ticker).ToListAsync();
 
             return View(viewModel);
         }
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> RegistrarAporteExtra(int priceId, decimal valor, int mesReferencia)
         {
-
-
-            // Como sua tabela de aportes pontuais tem PriceId, MesReferencia e Valor:
-            var novoAporte = new AporteExtra // Certifique-se do nome da sua classe de modelo
+            var novoAporte = new AporteExtra
             {
                 PriceId = priceId,
-                MesReferencia = mesReferencia, // Você pode usar o número do mês ou a lógica do seu service
+                MesReferencia = mesReferencia,
                 Valor = valor
             };
 
             _context.Add(novoAporte);
             await _context.SaveChangesAsync();
 
-            // Redireciona para a Index. Como a Index chama o FinanciamentoService, 
-            // o novo aporte já será lido e a barra de progresso/saldo será atualizada!
             return RedirectToAction(nameof(Index));
         }
 
@@ -266,7 +293,6 @@ namespace Acoes_Fiis.Controllers
             int pulados = 0;
 
             var listaAcoes = await _context.Recomendacao.ToListAsync();
-            // Filtra apenas as ações que você tem na carteira
             var acoesParaAtualizar = listaAcoes.Where(r => listaCarteira.Any(c => c.Ticker == r.Ticker)).ToList();
 
             foreach (var item in acoesParaAtualizar)

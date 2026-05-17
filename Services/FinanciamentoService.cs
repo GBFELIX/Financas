@@ -15,7 +15,7 @@ namespace Acoes_Fiis.Services
 
 
             double fator = Math.Pow(1 + (double)taxaMensal, f.PrazoMeses);
-            decimal prestacaoFixa = f.SaldoDevedorInicial * (taxaMensal * (decimal)fator) / ((decimal)fator - 1);
+            decimal prestacaoFixa = f.SaldoDevedorInicial * (taxaMensal * (decimal)fator) / ((decimal)fator - 1) + 54;
 
             for (int i = 1; i <= f.PrazoMeses && saldo > 0.01m; i++)
             {
@@ -23,7 +23,7 @@ namespace Acoes_Fiis.Services
                 decimal amortizacaoNoMes = prestacaoFixa - jurosNoMes;
 
                 // 1. Pega o aporte extra fixo que você já tinha
-                decimal extraDoMes = f.AporteExtraMensal;
+                decimal extraDoMes = f.AporteExtraMensal ?? 0;
 
                 // 2. BUSCA SE TEM APORTE PONTUAL PARA ESTE MÊS ESPECÍFICO
                 var aportePontual = f.AportesPontuais?.FirstOrDefault(a => a.MesReferencia == i);

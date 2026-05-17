@@ -21,14 +21,12 @@
         }
 
         <div class="d-flex align-items-center gap-3">
-            @* Seta para Voltar *@
             <a asp-action="Index" asp-route-mes="@mesAnterior" asp-route-ano="@anoParaMesAnterior"
                class="btn btn-outline-secondary btn-sm rounded-circle d-flex align-items-center justify-content-center"
                style="width: 32px; height: 32px;" title="Mês Anterior">
                 <i class="bi bi-chevron-left"></i>
             </a>
 
-            @* Seu Formulário Original (Pode selecionar direto) *@
             <form method="get" class="d-flex gap-2 bg-light p-2 rounded shadow-sm border">
                 <select name="mes" class="form-select form-select-sm border-0 bg-transparent fw-bold" style="width: 140px;" onchange="this.form.submit()">
                     @for (int i = 1; i <= 12; i++)
@@ -159,6 +157,8 @@
                 </thead>
                 <tbody>
                     @{
+                        var hoje = DateTime.Today;
+
                         // 1. SEPARAÇÃO DAS ENTRADAS (RECEITAS)
                         var entradas = Model.Lancamentos.Where(x => x.Tipo == "Entrada").OrderBy(x => x.Data);
 
@@ -201,7 +201,6 @@
                             </tr>
                             @await Html.PartialAsync("Edit", item)
                             @await Html.PartialAsync("Delete", item)
-                            @await Html.PartialAsync("_ModalResumoDespesas", Model)
                         }
                     }
 
@@ -220,42 +219,53 @@
 
                         @foreach (var item in grupo.OrderBy(x => x.Data))
                         {
+                            // Lógica de cores baseada na proximidade da data
+                            var diasParaVencer = (item.Data.Date - hoje).Days;
+                            var classeCorData = "text-muted";
+
+                            if (diasParaVencer <= 0)
+                            {
+                                classeCorData = "text-primary fw-bold"; // Azul para HOJE
+                            }
+                            else if (diasParaVencer == 1)
+                            {
+                                classeCorData = "text-danger fw-bold"; // Vermelho para AMANHÃ
+                            }
+
                             <tr>
-                                <td class="text-muted small ps-3">@item.Data.ToString("dd MMM")</td>
+                                <td class="ps-3 @classeCorData">
+                                    <i class="bi bi-clock me-1"></i>@item.Data.ToString("dd MMM")
+                                </td>
                                 <td>
                                     <div class="d-flex align-items-center">
                                         <div class="rounded-circle bg-light p-2 me-3 d-flex align-items-center justify-content-center shadow-sm" style="width: 38px; height: 38px;">
                                             <i class="bi @(item.Categoria == "Salário" ? "bi-cash-stack text-purple" :
-                                                                  item.Categoria == "Moradia" ? "bi-house text-purple" :
-                                                                  item.Categoria == "Alimentação" ? "bi-egg-fried text-purple" :
-                                                                  item.Categoria == "Transporte" ? "bi-car-front text-purple" :
-                                                                  item.Categoria == "Lazer" ? "bi-controller text-purple" :
-                                                                  item.Categoria == "Investimento" ? "bi-graph-up-arrow text-purple" :
-                                                                  item.Categoria == "Roupas/Shopping" ? "bi-bag-check text-purple" :
-                                                                  item.Categoria == "Estudos" ? "bi-book text-purple" :
-                                                                  item.Categoria == "Eletrônicos" ? "bi-cpu text-purple" :
-                                                                  item.Categoria == "Farmácia" ? "bi-capsule text-purple" :
-                                                                  item.Categoria == "Serviços" ? "bi-tools text-purple" : "bi-tag text-purple")"></i>
+                                                                                         item.Categoria == "Moradia" ? "bi-house text-purple" :
+                                                                                         item.Categoria == "Alimentação" ? "bi-egg-fried text-purple" :
+                                                                                         item.Categoria == "Transporte" ? "bi-car-front text-purple" :
+                                                                                         item.Categoria == "Lazer" ? "bi-controller text-purple" :
+                                                                                         item.Categoria == "Investimento" ? "bi-graph-up-arrow text-purple" :
+                                                                                         item.Categoria == "Roupas/Shopping" ? "bi-bag-check text-purple" :
+                                                                                         item.Categoria == "Estudos" ? "bi-book text-purple" :
+                                                                                         item.Categoria == "Eletrônicos" ? "bi-cpu text-purple" :
+                                                                                         item.Categoria == "Farmácia" ? "bi-capsule text-purple" :
+                                                                                         item.Categoria == "Serviços" ? "bi-tools text-purple" :
+                                                                                         item.Categoria == "Estudos" ? "bi-book text-purple" : "bi-tag text-purple")"></i>
                                 </div>
-                                <span class="text-dark fw-bold">@item.Descricao</span>
+                                <span class="fw-bold @classeCorData">@item.Descricao</span>
                             </div>
                         </td>
                         <td>
                             @{
                                         var badgeClass = item.Categoria switch
                                         {
-                                            "Salário" => "bg-success-subtle text-success-emphasis border-danger text-dark",
-                                            "Moradia" => "bg-info-subtle text-info-emphasis border-danger text-dark",
-                                            "Alimentação" => "bg-warning-subtle text-warning-emphasis border-danger text-dark",
-                                            "Transporte" => "bg-primary-subtle text-primary-emphasis border-danger text-dark",
-                                            "Lazer" => "bg-secondary-subtle text-dark border-danger text-dark",
-                                            "Investimento" => "bg-success-subtle text-dark border-danger",
-                                            "Roupas/Shopping" => "bg-danger-subtle text-danger-emphasis border-danger",
-                                            "Estudos" => "bg-info-subtle text-dark border-danger",
-                                            "Eletrônicos" => "bg-dark-subtle text-dark border-danger text-dark",
-                                            "Farmácia" => "bg-danger-subtle text-danger-emphasis border-danger text-dark",
-                                            "Serviços" => "bg-light text-dark border-danger text-dark",
-                                            _ => "bg-light text-secondary border-danger text-dark"
+                                            "Salário" => "bg-success-subtle text-dark",
+                                            "Moradia" => "bg-info-subtle text-dark",
+                                            "Alimentação" => "bg-warning-subtle text-dark",
+                                            "Transporte" => "bg-primary-subtle text-dark",
+                                            "Investimento" => "bg-success-subtle text-dark",
+                                            "Farmácia" => "bg-danger-subtle text-dark",
+                                            _ => "bg-light text-dark"
                                         };
                                     }
                                     <span class="badge rounded-pill border @badgeClass fw-normal" style="font-size: 0.7rem;">@item.Categoria.ToUpper()</span>
@@ -285,8 +295,8 @@
 </div>
 @await Html.PartialAsync("_ModalDespesasCasa", Model)
 @await Html.PartialAsync("_ModalSimuladorAporte", Model)
+@await Html.PartialAsync("_ModalResumoDespesas", Model)
 
-@* Modal de Novo Lançamento com Suporte a Parcelamento *@
 <div class="modal fade" id="modalNovoLancamento" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content border-0 shadow-lg rounded-4">
@@ -311,7 +321,7 @@
                             <button type="button" class="btn btn-sm btn-outline-success rounded-pill" onclick="preencher('Salário do dia 30', 1340.00, 'Salário', 30, 'Pagamento')">Salário (Dia 30)</button>
                             <button type="button" class="btn btn-sm btn-outline-warning rounded-pill" onclick="preencher('PPR / Bônus', 6000.00, 'Salário', 01, 'Pagamento')">PPR</button>
                             <button type="button" class="btn btn-sm btn-outline-info rounded-pill" onclick="preencher('13º Salário', 1420.00, 'Salário', 30, 'Pagamento')">13º 1º parcela</button>
-                            <button type="button" class="btn btn-sm btn-outline-info rounded-pill" onclick="preencher('Ajuda', 226.00, 'Salário', 10, 'Pix / Dinheiro')">Ajuda facul</button>
+                            <button type="button" class="btn btn-sm btn-outline-info rounded-pill" onclick="preencher('Ajuda', 226.00, 'Salário', 10, 'Pix')">Ajuda facul</button>
                         </div>
                     </div>
 
@@ -351,6 +361,7 @@
                                 <option value="Eletrônicos">Eletrônicos</option>
                                 <option value="Serviços">Serviços</option>
                                 <option value="Farmácia">Farmácia</option>
+                                <option value="Estudos">Estudos</option>
                                 <option value="Outros">Outros</option>
                             </select>
                         </div>
@@ -376,6 +387,38 @@
 </div>
 
     <script>
+        console.log("Script de monitoramento carregado!"); 
+
+        document.addEventListener("click", function (e) {
+            if (e.target && e.target.classList.contains('btn-salvar-edicao')) {
+
+                const form = e.target.closest('form');
+                
+                if (form) {
+                    const valorInput = form.querySelector('input[name="Valor"]');
+                    const acrescimoInput = form.querySelector('input[id^="inputAcrescimo-"]');
+
+                    if (acrescimoInput && acrescimoInput.value && acrescimoInput.value !== "0" && acrescimoInput.value !== "") {
+                        
+                        console.log("Valor atual no campo: " + valorInput.value);
+                        console.log("Valor a adicionar: " + acrescimoInput.value);
+
+                        let valorLimpo = valorInput.value;
+                        let valorAtual = parseFloat(valorLimpo) || 0;
+                        
+                        let valorAdicional = parseFloat(acrescimoInput.value) || 0;
+
+                        let novoTotal = valorAtual + valorAdicional;
+
+                        valorInput.value = novoTotal;
+                        
+                        console.log("Sucesso! Novo total enviado: " + valorInput.value);
+
+                        acrescimoInput.value = "";
+                    }
+                }
+            }
+        });
         function preencher(desc, valor, cat, dia, Pagamento) {
         // Buscamos os elementos no momento do clique para evitar erro de referência nula
         const modal = document.getElementById('modalNovoLancamento');
@@ -450,6 +493,7 @@
             }
         }
     }
+
     </script>
 
 <style>

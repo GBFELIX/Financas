@@ -20,7 +20,7 @@
                         <input type="hidden" asp-for="Id" />
 
                         <div class="mb-3">
-                            <label asp-for="ValorImovel" class="form-label fw-bold"></label>
+                            <label asp-for="ValorImovel" class="form-label fw-bold">Valor do Imovel</label>
                             <div class="input-group">
                                 <span class="input-group-text">R$</span>
                                 <input asp-for="ValorImovel" type="text" data-val="false" class="form-control" />
@@ -29,7 +29,7 @@
                         </div>
 
                         <div class="mb-3">
-                            <label asp-for="ValorEntrada" class="form-label fw-bold"></label>
+                            <label asp-for="ValorEntrada" class="form-label fw-bold">Valor da Entrada</label>
                             <div class="input-group">
                                 <span class="input-group-text">R$</span>
                                 <input asp-for="ValorEntrada" type="text" data-val="false" class="form-control" />
@@ -39,7 +39,7 @@
 
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label asp-for="TaxaJurosAnual" class="form-label fw-bold"></label>
+                                <label asp-for="TaxaJurosAnual" class="form-label fw-bold">Taxa de Juros Anual</label>
                                 <div class="input-group">
                                     <input asp-for="TaxaJurosAnual" type="text" data-val="false" class="form-control" />
                                     <span class="input-group-text">%</span>
@@ -47,26 +47,35 @@
                                 <span asp-validation-for="TaxaJurosAnual" class="text-danger"></span>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label asp-for="PrazoMeses" class="form-label fw-bold"></label>
+                                <label asp-for="PrazoMeses" class="form-label fw-bold">Quantos Meses?</label>
                                 <input asp-for="PrazoMeses" class="form-control" />
                                 <span asp-validation-for="PrazoMeses" class="text-danger"></span>
                             </div>
                         </div>
 
                         <div class="mb-3">
-                            <label asp-for="DataInicio" class="form-label fw-bold"></label>
+                            <label asp-for="DataInicio" class="form-label fw-bold">Inicio</label>
                             <input asp-for="DataInicio" type="date" class="form-control" />
                             <span asp-validation-for="DataInicio" class="text-danger"></span>
                             <small class="text-muted">Altere para ajustar o início do cronograma.</small>
                         </div>
 
                         <div class="mb-3">
-                            <label asp-for="AporteExtraMensal" class="form-label fw-bold"></label>
+                            <label asp-for="AporteExtraMensal" class="form-label fw-bold">Aporte Extra Mensal</label>
                             <div class="input-group">
                                 <span class="input-group-text">R$</span>
                                 <input asp-for="AporteExtraMensal" type="text" data-val="false" class="form-control border-success" />
                             </div>
                             <span asp-validation-for="AporteExtraMensal" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="ValorPrestação" class="form-label fw-bold">Valor da Prestação</label>
+                            <div class="input-group">
+                                <span class="input-group-text">R$</span>
+                                <input asp-for="ValorPrestação" type="text" data-val="false" class="form-control border-success" />
+                            </div>
+                            <span asp-validation-for="ValorPrestação" class="text-danger"></span>
                         </div>
 
                         <div class="form-group mt-4">
@@ -77,7 +86,7 @@
                     </form>
                 </div>
             </div>
-            <a asp-action="Index" class="btn btn-outline-secondary w-100 mb-4">Voltar para a lista</a>
+            <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary w-100 mb-4">Voltar para o financiamento</a>
         </div>
 
         <div class="col-md-7">

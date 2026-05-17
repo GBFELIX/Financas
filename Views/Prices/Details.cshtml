@@ -105,7 +105,7 @@
                         <dd class="col-sm-6">@Model.TaxaJurosAnual.ToString("N2")% ao ano</dd>
 
                         <dt class="col-sm-6">Aporte Extra:</dt>
-                        <dd class="col-sm-6 text-danger fw-bold">@Model.AporteExtraMensal.ToString("C")</dd>
+                        <dd class="col-sm-6 text-danger fw-bold">@(Model.AporteExtraMensal.HasValue ? Model.AporteExtraMensal.Value.ToString("C") : "0")</dd>
 
                     </dl>
                 </div>

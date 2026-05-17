@@ -46,7 +46,7 @@
                             @item.DataInicio.ToString("MM/yyyy")
                         </td>
                         <td class="text-danger">
-                            @item.AporteExtraMensal.ToString("C")
+                            @(item.AporteExtraMensal.HasValue ? item.AporteExtraMensal.Value.ToString("C") : "-")
                         </td>
                         <td>
                             @item.ValorPrestação.ToString("C")
