@@ -25,7 +25,7 @@ namespace Acoes_Fiis.Controllers
 
 
         // GET: Carteiras
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string visao)
         {
             var agora = DateTime.Now;
             var itensBanco = await _context.Carteira.ToListAsync();
@@ -207,6 +207,10 @@ namespace Acoes_Fiis.Controllers
 
             viewModel.EntradasFuturas = financeiroData
                 .Where(x => x.Data.Date > agora.Date && x.Tipo == "Entrada")
+                .Sum(x => x.Valor);
+
+            viewModel.SaidasFuturas = financeiroData
+                .Where(x => x.Data.Date > agora.Date && x.Tipo == "Despesa")
                 .Sum(x => x.Valor);
 
             var sobraDisponivel = viewModel.PatrimonioTotalReal - (itensBanco.Sum(x => x.Quantidade * x.PrecoMedio));

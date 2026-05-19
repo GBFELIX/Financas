@@ -42,9 +42,22 @@
             padding: 20px 0;
             margin-top: 50px;
         }
+
+        /* Estilização para o seletor de perfil */
+        .selector-perfil .btn {
+            font-size: 0.85rem;
+            font-weight: 600;
+            padding: 0.4rem 0.8rem;
+        }
     </style>
 </head>
 <body>
+    @{
+        // Captura o modo de visão atual da URL para marcar o botão ativo
+        var visaoAtual = Context.Request.Query["visao"].ToString();
+        if (string.IsNullOrEmpty(visaoAtual)) visaoAtual = "Gabriel";
+    }
+
     <header>
         <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom mb-4 py-3">
             <div class="container">
@@ -75,6 +88,20 @@
                         </li>
                     </ul>
 
+                    <div class="me-lg-3 my-2 my-lg-0 selector-perfil">
+                        <div class="btn-group border rounded-3 p-1 bg-light shadow-sm" role="group">
+                            <button type="button" class="btn btn-sm btn-nav-profile @(visaoAtual == "Gabriel" ? "btn-dark text-white rounded-2" : "text-secondary")" data-profile="Gabriel">
+                                <i class="bi bi-person-fill me-1"></i> Eu
+                            </button>
+                            <button type="button" class="btn btn-sm btn-nav-profile @(visaoAtual == "Ela" ? "btn-danger text-white rounded-2" : "text-secondary")" data-profile="Ela">
+                                <i class="bi bi-person-heart me-1"></i> Ela
+                            </button>
+                            <button type="button" class="btn btn-sm btn-nav-profile @(visaoAtual == "Casal" ? "btn-success text-white rounded-2" : "text-secondary")" data-profile="Casal">
+                                <i class="bi bi-people-fill me-1"></i> Nós
+                            </button>
+                        </div>
+                    </div>
+
                     <ul class="navbar-nav border-start ps-lg-3">
                         <li class="nav-item">
                             <a class="nav-link text-secondary small" asp-controller="Recomendacaos" asp-action="Index">AÇÕES</a>
@@ -102,12 +129,42 @@
             <span class="text-muted small">
                 <i class="bi bi-shield-check"></i>
                 &copy; 2026 - <strong>Sistema de Administração Financeira</strong>
+            </span>
         </div>
     </footer>
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const urlParams = new URLSearchParams(window.location.search);
+            const visaoPura = urlParams.get('visao') || 'Gabriel';
+
+            // 1. Ao clicar em um perfil, recarrega aplicando o parâmetro
+            document.querySelectorAll('.btn-nav-profile').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const perfil = this.getAttribute('data-profile');
+                    urlParams.set('visao', perfil);
+                    window.location.search = urlParams.toString();
+                });
+            });
+
+            // 2. Intercepta cliques nos links internos do menu para injetar o parâmetro automaticamente
+            document.querySelectorAll('.navbar-nav a[href]').forEach(link => {
+                link.addEventListener('click', function (e) {
+                    const href = this.getAttribute('href');
+                    if (href && !href.startsWith('#') && !href.includes('visao=')) {
+                        e.preventDefault();
+                        const separador = href.includes('?') ? '&' : '?';
+                        window.location.href = href + separador + 'visao=' + visaoPura;
+                    }
+                });
+            });
+        });
+    </script>
+
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

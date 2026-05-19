@@ -117,7 +117,7 @@ namespace Acoes_Fiis.Controllers
                 AnoAtual = filtroAno,
                 RendimentoRendaFixaMes = totalRendimentoliquido,
                 ContasFixas = contasFixas,
-                ValorParcelaAtual = valorParcelaFinal, // Já vai com o aporte extra embutido
+                ValorParcelaAtual = valorParcelaFinal,
                 ParcelaPaga = parcelaPaga,
                 TotalAmortizacaoMes = totalAmortizadoNoMes,
                 TotalPagoCasa = totalPagoCasa,

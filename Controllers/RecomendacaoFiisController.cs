@@ -19,7 +19,6 @@ namespace Acoes_Fiis.Controllers
             _context = context;
         }
 
-        // GET: RecomendacaoFiis com Filtro por Segmento
         public async Task<IActionResult> Index(string filtroSegmento)
         {
             var query = _context.RecomendacaoFii.AsQueryable();
@@ -29,10 +28,11 @@ namespace Acoes_Fiis.Controllers
                 query = query.Where(f => f.Segmento == filtroSegmento);
             }
 
-            // Lista para o Dropdown de filtros na View
             ViewBag.Segmentos = new List<string> { "Logística", "Recebíveis", "Shopping", "Lajes Corporativas", "Híbrido", "Outros" };
 
-            return View(await query.ToListAsync());
+            var listaFiltrada = await query.ToListAsync();
+
+            return View(listaFiltrada);
         }
         [HttpPost]
         public async Task<IActionResult> UpdateRendimento(int id, string novoRendimento)

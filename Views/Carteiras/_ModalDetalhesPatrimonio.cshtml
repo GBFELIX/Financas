@@ -59,7 +59,13 @@
                         <div class="col-4">
                             <div class="p-2 border rounded-3 bg-danger-subtle border-danger-subtle text-danger">
                                 <small class="d-block opacity-75 fw-bold" style="font-size: 0.6rem;">SAÍDAS</small>
-                                <span class="fw-bold" style="font-size: 0.9rem;">@Model.ResumoMensal.Sum(x => x.Saidas).ToString("C2")</span>
+                                <span class="fw-bold" style="font-size: 0.9rem;">@((Model.ResumoMensal.Sum(x => x.Saidas) - Model.SaidasFuturas).ToString("C2"))</span>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="p-2 border rounded-3 bg-danger-subtle border-danger-subtle text-danger">
+                                <small class="d-block opacity-75 fw-bold" style="font-size: 0.6rem;">SAÍDAS FUTURAS</small>
+                                <span class="fw-bold" style="font-size: 0.9rem;">@Model.SaidasFuturas.ToString("C2")</span>
                             </div>
                         </div>
                     </div>
@@ -67,7 +73,7 @@
                     @* Barra de Saúde Financeira *@
                     @{
                         var totalEntradas = Model.ResumoMensal.Sum(x => x.Entradas) - Model.EntradasFuturas;
-                        //var totalEntradas = ((Model.ResumoMensal.Sum(x => x.Entradas) - Model.EntradasFuturas).ToString("N2")) - Model.EntradasFuturas; // Considera apenas o que já foi recebido
+                        //var totalEntradas = ((Model.ResumoMensal.Sum(x => x.Entradas) - Model.EntradasFuturas).ToString("N2")) - Model.EntradasFuturas;
                         var totalSaidas = Model.ResumoMensal.Sum(x => x.Saidas);
                         var percSaida = totalEntradas > 0 ? (totalSaidas / totalEntradas) * 100 : 0;
                     }

@@ -89,16 +89,21 @@ namespace Acoes_Fiis.Controllers
         // GET: Recomendacaos
         public async Task<IActionResult> Index(string filtroTipo)
         {
-            var recomendacoes = from r in _context.Recomendacao select r;
+            var query = _context.Recomendacao.AsQueryable();
 
-            // Lógica do Filtro
+            // 2. Aplica a lógica do filtro se houver parâmetro
             if (!string.IsNullOrEmpty(filtroTipo))
             {
-                recomendacoes = recomendacoes.Where(s => s.TipoAtivo == filtroTipo);
+                query = query.Where(s => s.TipoAtivo == filtroTipo);
             }
 
+            // 3. Monta a ViewBag para a View renderizar o select
             ViewBag.Tipos = new List<string> { "Setor Perene", "Dividendos", "Crescimento" };
-            return View(await recomendacoes.ToListAsync());
+
+            // 4. Executa a busca no banco de dados de forma instantânea
+            var listaFiltrada = await query.ToListAsync();
+
+            return View(listaFiltrada);
         }
         [HttpPost]
         public async Task<IActionResult> AlterarTipoRapido(int id, string novoTipo)

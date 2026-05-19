@@ -44,7 +44,7 @@ namespace Acoes_Fiis.Services
             };
         }
 
-        // Método auxiliar para Ativos Gerais (Cripto/ETF) que você já tem
+        // Método auxiliar para Ativos Gerais (Cripto/ETF)
         public async Task<decimal> ObterPrecoSimples(string ticker)
         {
             var security = await Yahoo.Symbols(ticker)

@@ -8,16 +8,14 @@ namespace Acoes_Fiis.Models
         public string Descricao { get; set; }
         public decimal Valor { get; set; }
 
-        // Indica se essa conta deve ser gerada automaticamente todo mês
         public bool EhRecorrente { get; set; } = true;
 
-        // Relacionamento opcional com a categoria para o ícone roxo bater
         public string Categoria { get; set; } = "Serviços";
 
-        // Controle de Status para o mês atual
-        // Nota: Em um sistema real, você pode ter uma tabela de 'PagamentosMensais' 
-        // que referencia a ContaFixa para manter histórico.
+        public string Dono { get; set; } = "Gabriel";
+
         [NotMapped]
         public bool PagoNoMesAtual { get; set; }
+
     }
 }
