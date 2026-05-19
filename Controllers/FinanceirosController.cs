@@ -24,23 +24,56 @@ namespace Acoes_Fiis.Controllers
         }
 
         // GET: Financeiros
-        public async Task<IActionResult> Index(int? mes, int? ano)
+        public async Task<IActionResult> Index(int? mes, int? ano, string visao)
         {
+            // 1. Define o perfil padrão e joga para a ViewBag manter o estado no Layout global
+            if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
+            ViewBag.VisaoAtual = visao;
+
             int filtroMes = mes ?? DateTime.Now.Month;
             int filtroAno = ano ?? DateTime.Now.Year;
 
             DateTime dozeMesesAtras = DateTime.Now.AddMonths(-12);
             DateTime primeiroDiaMesAtual = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
 
-            var lancamentos = await _context.Financeiro
+            // 2. Prepara as consultas em modo IQueryable para aplicar o isolamento de perfis antes de ir ao banco
+            var queryFinanceiro = _context.Financeiro.AsQueryable();
+            var queryContasFixas = _context.ContasFixas.AsQueryable();
+            var queryCarteira = _context.Carteira.AsQueryable();
+
+            // 3. Aplica a Regra de Negócio de Isolamento (Individual vs Compartilhado)
+            if (visao == "Gabriel")
+            {
+                queryFinanceiro = queryFinanceiro.Where(x => x.Dono == "Gabriel" || x.Dono == "Casal");
+                queryContasFixas = queryContasFixas.Where(x => x.Dono == "Gabriel" || x.Dono == "Casal");
+                queryCarteira = queryCarteira.Where(x => x.Dono == "Gabriel" || x.Dono == "Casal");
+            }
+            else if (visao == "Ela")
+            {
+                queryFinanceiro = queryFinanceiro.Where(x => x.Dono == "Ela" || x.Dono == "Casal");
+                queryContasFixas = queryContasFixas.Where(x => x.Dono == "Ela" || x.Dono == "Casal");
+                queryCarteira = queryCarteira.Where(x => x.Dono == "Ela" || x.Dono == "Casal");
+            }
+            // No modo "Casal", as consultas não recebem filtros de Dono, consolidando tudo
+
+            // 4. Executa as buscas filtradas por período e escopo de perfil
+            var lancamentos = await queryFinanceiro
                 .Where(x => x.Data.Month == filtroMes && x.Data.Year == filtroAno)
                 .ToListAsync() ?? new List<Financeiro>();
 
-            var contasFixas = await _context.ContasFixas.ToListAsync();
+            var contasFixas = await queryContasFixas.ToListAsync();
 
-            // Busca o Financiamento COM OS APORTES
+            var ativosRF = await queryCarteira
+                .Where(x => x.TipoAtivo == "RendaFixa")
+                .ToListAsync();
+
+            var historico = await queryFinanceiro
+                .Where(x => x.Data >= dozeMesesAtras && x.Data < primeiroDiaMesAtual)
+                .ToListAsync();
+
+            // 5. Busca o Financiamento (Global do casal)
             var financiamento = await _context.Financiamentos
-                .Include(f => f.AportesPontuais) // Carrega os aportes extras para o service ver
+                .Include(f => f.AportesPontuais)
                 .FirstOrDefaultAsync();
 
             decimal valorParcelaFinal = 0;
@@ -53,14 +86,12 @@ namespace Acoes_Fiis.Controllers
 
                 if (parcelaDoMes != null)
                 {
-                    // ValorParcela aqui é Prestação + Juros + Aportes Extras do  Service
                     valorParcelaFinal = parcelaDoMes.ValorParcela;
-
                     totalAmortizadoNoMes = parcelaDoMes.Amortizacao;
                 }
             }
 
-            // 4. Cruzamento
+            // 6. Cruzamento de Contas Pagas (Baseado estritamente nos lançamentos da visão ativa)
             foreach (var conta in contasFixas)
             {
                 conta.PagoNoMesAtual = lancamentos.Any(l =>
@@ -70,18 +101,15 @@ namespace Acoes_Fiis.Controllers
             bool parcelaPaga = lancamentos.Any(l =>
                 (l.Descricao.Contains("Financiamento") || l.Categoria == "Moradia") && l.Tipo == "Despesa");
 
-            // 5. Cálculo do Pendente (Usando o valor TOTAL que o Service deu)
+            // 7. Cálculo do Pendente e totais do lar com base no escopo ativo
             decimal pendente = contasFixas.Where(c => !c.PagoNoMesAtual).Sum(c => c.Valor);
             if (!parcelaPaga) pendente += valorParcelaFinal;
 
-            // 6. Cálculo do Total Pago Casa
             decimal totalPagoCasa = lancamentos
                 .Where(l => l.Tipo == "Despesa" && (l.Categoria == "Moradia" || l.Categoria == "Serviços" || l.Categoria == "Farmácia"))
                 .Sum(l => l.Valor);
 
-            // Renda Fixa 
-            var ativosRF = await _context.Carteira.Where(x => x.TipoAtivo == "RendaFixa").ToListAsync();
-
+            // 8. Cálculo de Rendimento Líquido de Renda Fixa Isolado
             decimal totalRendimentoliquido = 0;
             foreach (var rf in ativosRF)
             {
@@ -89,15 +117,10 @@ namespace Acoes_Fiis.Controllers
                 totalRendimentoliquido += (rf.Quantidade * rf.PrecoMedio) * taxaMensal * 0.825m;
             }
 
-            var historico = await _context.Financeiro
-            .Where(x => x.Data >= dozeMesesAtras && x.Data < primeiroDiaMesAtual)
-            .ToListAsync();
-
+            // 9. Cálculo da Média de Sobra Histórica com base no dono selecionado
             decimal mediaSobraHistorica = 0;
-
             if (historico.Any())
             {
-
                 var mesesAgrupados = historico
                     .GroupBy(x => new { x.Data.Month, x.Data.Year })
                     .Select(g => new
@@ -110,6 +133,7 @@ namespace Acoes_Fiis.Controllers
                 mediaSobraHistorica = mesesAgrupados.Average(m => m.Sobra);
             }
 
+            // 10. Alimenta a ViewModel final
             var viewModel = new FluxoCaixaViewModel
             {
                 Lancamentos = lancamentos,
@@ -128,13 +152,14 @@ namespace Acoes_Fiis.Controllers
             return View(viewModel);
         }
         [HttpPost]
-        [ValidateAntiForgeryToken] // Boa prática de segurança
-        public async Task<IActionResult> AdicionarContaFixa(string descricao, decimal valor, string categoria)
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AdicionarContaFixa(string descricao, decimal valor, string categoria, string visao)
         {
+            if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
+
             if (string.IsNullOrEmpty(descricao) || valor <= 0)
             {
-                // Você pode adicionar um TempData para exibir um erro se quiser
-                return RedirectToAction(nameof(Index));
+                return RedirectToAction(nameof(Index), new { visao = visao });
             }
 
             var novaConta = new ContaFixa
@@ -142,28 +167,29 @@ namespace Acoes_Fiis.Controllers
                 Descricao = descricao,
                 Valor = valor,
                 Categoria = string.IsNullOrEmpty(categoria) ? "Serviços" : categoria,
-                EhRecorrente = true // Por padrão, definimos como fixa/recorrente
+                EhRecorrente = true,
+                Dono = visao
             };
 
             try
             {
                 _context.ContasFixas.Add(novaConta);
                 await _context.SaveChangesAsync();
-
-                // Feedback visual opcional
                 TempData["Casa"] = "Conta agendada com sucesso!";
             }
-            catch (Exception ex)
+            catch
             {
-                // Logar erro se necessário
                 TempData["Erro"] = "Erro ao salvar a conta.";
             }
 
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(Index), new { visao = visao });
         }
+
         [HttpPost]
-        public async Task<IActionResult> EditarContaFixa(int id, string descricao, decimal valor)
+        public async Task<IActionResult> EditarContaFixa(int id, string descricao, decimal valor, string visao)
         {
+            if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
+
             var conta = await _context.ContasFixas.FindAsync(id);
             if (conta != null)
             {
@@ -172,23 +198,28 @@ namespace Acoes_Fiis.Controllers
                 _context.Update(conta);
                 await _context.SaveChangesAsync();
             }
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(Index), new { visao = visao });
         }
+
         [HttpPost]
-        public async Task<IActionResult> ExcluirContaFixa(int id)
+        public async Task<IActionResult> ExcluirContaFixa(int id, string visao)
         {
+            if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
+
             var conta = await _context.ContasFixas.FindAsync(id);
             if (conta != null)
             {
                 _context.ContasFixas.Remove(conta);
                 await _context.SaveChangesAsync();
             }
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(Index), new { visao = visao });
         }
 
         [HttpPost]
-        public async Task<IActionResult> PagarContaCasa(string descricao, decimal valor, string categoria)
+        public async Task<IActionResult> PagarContaCasa(string descricao, decimal valor, string categoria, string visao)
         {
+            if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
+
             var novoGasto = new Financeiro
             {
                 Data = DateTime.Now,
@@ -196,61 +227,66 @@ namespace Acoes_Fiis.Controllers
                 Valor = valor,
                 Tipo = "Despesa",
                 Categoria = categoria,
-                Pagamento = "Débito" // Padrão para contas de casa
+                Pagamento = "Débito",
+                Dono = visao
             };
 
             _context.Financeiro.Add(novoGasto);
             await _context.SaveChangesAsync();
 
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(Index), new { visao = visao });
         }
 
         [HttpPost]
-        public async Task<IActionResult> Adicionar(Financeiro model, int numParcelas = 1)
+        public async Task<IActionResult> Adicionar(Financeiro model, string visao)
         {
+            if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
+
             if (ModelState.IsValid)
             {
+                if (string.IsNullOrEmpty(model.Dono)) model.Dono = visao;
+
                 _context.Financeiro.Add(model);
                 await _context.SaveChangesAsync();
             }
-            return RedirectToAction(nameof(Index), new { mes = model.Data.Month, ano = model.Data.Year });
+            return RedirectToAction(nameof(Index), new { mes = model.Data.Month, ano = model.Data.Year, visao = visao });
         }
 
-        // GET: Financeiros/Details/5
-        public async Task<IActionResult> Details(int? id)
+        public async Task<IActionResult> Details(int? id, string visao)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
+            ViewBag.VisaoAtual = visao;
 
-            var financeiro = await _context.Financeiro
-                .FirstOrDefaultAsync(m => m.Id == id);
-            if (financeiro == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
+
+            var financeiro = await _context.Financeiro.FirstOrDefaultAsync(m => m.Id == id);
+            if (financeiro == null) return NotFound();
 
             return View(financeiro);
         }
 
-        // GET: Financeiros/Create
-        public IActionResult Create()
+        public IActionResult Create(string visao)
         {
-            return View();
+            return RedirectToAction(nameof(Index), new { visao = visao });
         }
 
-        // POST: Financeiros/Create
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
-        public async Task<IActionResult> Create(Financeiro lancamento, int numParcelas = 1)
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create(Financeiro lancamento, string visao, int numParcelas = 1)
         {
+            if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
+
+            if (string.IsNullOrEmpty(lancamento.Dono))
+            {
+                lancamento.Dono = visao;
+            }
+
+            ModelState.Remove("Dono");
+
             if (numParcelas < 1) numParcelas = 1;
 
             if (ModelState.IsValid)
             {
-                // Guardamos o valor total para não perdê-lo durante o loop
                 decimal valorTotal = lancamento.Valor;
                 decimal valorParcela = valorTotal / numParcelas;
 
@@ -258,23 +294,15 @@ namespace Acoes_Fiis.Controllers
                 {
                     var novaParcela = new Financeiro
                     {
-                        // Formatação: "Compra (01/05)"
                         Descricao = numParcelas > 1
                             ? $"{lancamento.Descricao} ({i + 1:D2}/{numParcelas:D2})"
                             : lancamento.Descricao,
-
                         Valor = valorParcela,
-
-                        // Avança o mês automaticamente
                         Data = lancamento.Data.AddMonths(i),
-
                         Categoria = lancamento.Categoria,
-
-                        // Usamos o Tipo que vem do formulário (Entrada ou Despesa)
-                        // em vez de fixar "Despesa"
                         Tipo = lancamento.Tipo,
-
-                        Pagamento = lancamento.Pagamento
+                        Pagamento = lancamento.Pagamento,
+                        Dono = lancamento.Dono
                     };
 
                     _context.Add(novaParcela);
@@ -282,40 +310,33 @@ namespace Acoes_Fiis.Controllers
 
                 await _context.SaveChangesAsync();
 
-                // Redireciona para o mês onde a primeira parcela foi criada
-                return RedirectToAction(nameof(Index), new { mes = lancamento.Data.Month, ano = lancamento.Data.Year });
+                return RedirectToAction(nameof(Index), new { mes = lancamento.Data.Month, ano = lancamento.Data.Year, visao = lancamento.Dono });
             }
 
-            return View(lancamento);
+            TempData["Erro"] = "Preencha todos os campos do lançamento corretamente.";
+            return RedirectToAction(nameof(Index), new { mes = lancamento.Data.Month, ano = lancamento.Data.Year, visao = visao });
         }
 
-        // GET: Financeiros/Edit/5
-        public async Task<IActionResult> Edit(int? id)
+        public async Task<IActionResult> Edit(int? id, string visao)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
+            ViewBag.VisaoAtual = visao;
+
+            if (id == null) return NotFound();
 
             var financeiro = await _context.Financeiro.FindAsync(id);
-            if (financeiro == null)
-            {
-                return NotFound();
-            }
+            if (financeiro == null) return NotFound();
+
             return View(financeiro);
         }
 
-        // POST: Financeiros/Edit/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, Financeiro financeiro)
+        public async Task<IActionResult> Edit(int id, Financeiro financeiro, string visao)
         {
-            if (id != financeiro.Id)
-            {
-                return NotFound();
-            }
+            if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
+
+            if (id != financeiro.Id) return NotFound();
 
             if (ModelState.IsValid)
             {
@@ -326,52 +347,47 @@ namespace Acoes_Fiis.Controllers
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    if (!FinanceiroExists(financeiro.Id))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
+                    if (!FinanceiroExists(financeiro.Id)) return NotFound();
+                    else throw;
                 }
-                return RedirectToAction(nameof(Index));
+                return RedirectToAction(nameof(Index), new { mes = financeiro.Data.Month, ano = financeiro.Data.Year, visao = visao });
             }
-            return View(financeiro);
+
+            return RedirectToAction(nameof(Index), new { mes = financeiro.Data.Month, ano = financeiro.Data.Year, visao = visao });
         }
 
-        // GET: Financeiros/Delete/5
-        public async Task<IActionResult> Delete(int? id)
+        public async Task<IActionResult> Delete(int? id, string visao)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
+            ViewBag.VisaoAtual = visao;
 
-            var financeiro = await _context.Financeiro
-                .FirstOrDefaultAsync(m => m.Id == id);
-            if (financeiro == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
+
+            var financeiro = await _context.Financeiro.FirstOrDefaultAsync(m => m.Id == id);
+            if (financeiro == null) return NotFound();
 
             return View(financeiro);
         }
 
-
-        // POST: Financeiros/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(int id)
+        public async Task<IActionResult> DeleteConfirmed(int id, string visao)
         {
+            if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
+
             var financeiro = await _context.Financeiro.FindAsync(id);
+            int mesRedirect = DateTime.Now.Month;
+            int anoRedirect = DateTime.Now.Year;
+
             if (financeiro != null)
             {
+                mesRedirect = financeiro.Data.Month;
+                anoRedirect = financeiro.Data.Year;
                 _context.Financeiro.Remove(financeiro);
             }
 
             await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(Index), new { mes = mesRedirect, ano = anoRedirect, visao = visao });
         }
 
         private bool FinanceiroExists(int id)

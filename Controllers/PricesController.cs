@@ -38,9 +38,30 @@ namespace Acoes_Fiis.Controllers
             return RedirectToAction(nameof(Details), new { id = priceId });
         }
         // GET: Prices
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string visao)
         {
-            return View(await _context.Financiamentos.ToListAsync());
+            // 1. Mantém o perfil padrão e joga na ViewBag para o Layout funcionar
+            if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
+            ViewBag.VisaoAtual = visao;
+
+            // 2. Prepara a query em modo IQueryable
+            var query = _context.Financiamentos.AsQueryable();
+
+            // 3. Aplica o isolamento por Dono
+            if (visao == "Gabriel")
+            {
+                query = query.Where(x => x.Dono == "Gabriel" || x.Dono == "Casal");
+            }
+            else if (visao == "Ela")
+            {
+                query = query.Where(x => x.Dono == "Ela" || x.Dono == "Casal");
+            }
+            // No modo "Casal" traz todos os financiamentos cadastrados sem filtro
+
+            // 4. Executa a busca e envia para a View
+            var listaFinanciamentos = await query.ToListAsync();
+
+            return View(listaFinanciamentos);
         }
 
         // GET: Prices/Details/5

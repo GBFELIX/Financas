@@ -1,6 +1,102 @@
 ﻿@{
-    ViewData["Title"] = "Privacy Policy";
+    ViewData["Title"] = "Política de Privacidade e Governança";
+    var visao = ViewBag.VisaoAtual as string ?? "Gabriel";
 }
-<h1>@ViewData["Title"]</h1>
 
-<p>Use this page to detail your site's privacy policy.</p>
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-10 col-lg-8">
+            <div class="card border-0 shadow-sm p-4 mb-4 bg-white rounded-4 text-center">
+                <div class="display-4 text-primary mb-3">
+                    <i class="bi bi-shield-lock-fill"></i>
+                </div>
+                <h1 class="fw-bold h2 text-dark">@ViewData["Title"]</h1>
+                <p class="text-muted mb-0">Termos de uso e conformidade para o gerenciamento do patrimônio familiar.</p>
+            </div>
+
+            <div class="card border-0 shadow-sm p-4 p-md-5 bg-white rounded-4">
+                <h5 class="fw-bold text-secondary mb-4 text-uppercase tracking-wider">
+                    <i class="bi bi-file-earmark-text me-1 text-primary"></i> Acordo de Confidencialidade Baseado em Código
+                </h5>
+
+                <div class="accordion border-0" id="privacyAccordion">
+
+                    <div class="accordion-item border-0 border-bottom py-2">
+                        <h2 class="accordion-header" id="headingOne">
+                            <button class="accordion-button bg-transparent fw-bold text-dark px-0 shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">
+                                1. Isolamento Estrito de Dados (Multi-tenancy)
+                            </button>
+                        </h2>
+                        <div id="collapseOne" class="accordion-collapse collapse show" data-bs-parent="#privacyAccordion">
+                            <div class="accordion-body px-0 text-muted small">
+                                O sistema garante, por meio de cláusulas <code class="text-danger">.Where(x => x.Dono)</code> no Entity Framework Core, que as finanças da categoria <strong>"Modo Eu"</strong> e <strong>"Modo Ela"</strong> permaneçam completamente separadas e protegidas contra consultas cruzadas não autorizadas na interface visual.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item border-0 border-bottom py-2">
+                        <h2 class="accordion-header" id="headingTwo">
+                            <button class="accordion-button bg-transparent fw-bold text-dark px-0 collapsed shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo">
+                                2. O Ecossistema Unificado (Modo Nós)
+                            </button>
+                        </h2>
+                        <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#privacyAccordion">
+                            <div class="accordion-body px-0 text-muted small">
+                                Ao selecionar a visão de <strong>Casal</strong>, ambas as partes concordam em consolidar receitas, despesas e a evolução patrimonial real. Esse modo possui o propósito legítimo e exclusivo de acelerar o poder de amortização da tabela PRICE, visando a quitação programada do apartamento até <strong>2029</strong>.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item border-0 border-bottom py-2">
+                        <h2 class="accordion-header" id="headingThree">
+                            <button class="accordion-button bg-transparent fw-bold text-dark px-0 collapsed shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree">
+                                3. Processamento Automatizado por Robôs
+                            </button>
+                        </h2>
+                        <div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#privacyAccordion">
+                            <div class="accordion-body px-0 text-muted small">
+                                O sistema utiliza um serviço hospedado em segundo plano (<code class="text-primary">BackgroundService</code>) que monitora o banco de dados de tempos em tempos. Ele possui permissão para consultar APIs financeiras externas (Yahoo Finance) de forma assíncrona para manter os saldos e indicadores de mercado atualizados sem intervenção humana.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item border-0 py-2">
+                        <h2 class="accordion-header" id="headingFour">
+                            <button class="accordion-button bg-transparent fw-bold text-dark px-0 collapsed shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour">
+                                4. Cláusula de Paz e Transparência
+                            </button>
+                        </h2>
+                        <div id="collapseFour" class="accordion-collapse collapse" data-bs-parent="#privacyAccordion">
+                            <div class="accordion-body px-0 text-muted small">
+                                Erros cometidos na digitação de despesas no modal do fluxo de caixa não constituem quebra de contrato. Correções de banco de dados podem ser feitas a qualquer momento via tela de edição, sem aplicação de multas ou DRs adicionais.
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <hr class="my-4 text-muted opacity-25" />
+
+                <div class="d-flex justify-content-between align-items-center bg-light p-3 rounded-3 border">
+                    <span class="text-secondary small fw-bold">Status de Conformidade:</span>
+                    <span class="badge bg-success rounded-pill px-3 py-2">
+                        <i class="bi bi-patch-check-fill me-1"></i> Ativo & Protegido
+                    </span>
+                </div>
+            </div>
+
+            <div class="text-center mt-4">
+                <a asp-controller="Home" asp-action="Index" asp-route-visao="@visao" class="btn btn-sm btn-link text-decoration-none text-secondary">
+                    <i class="bi bi-arrow-left me-1"></i> Voltar ao Painel Inicial
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .tracking-wider {
+        letter-spacing: 0.05rem;
+    }
+
+    .accordion

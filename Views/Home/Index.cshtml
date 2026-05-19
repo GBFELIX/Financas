@@ -1,8 +1,207 @@
 ﻿@{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "Painel Inicial";
+    var visao = ViewBag.VisaoAtual as string ?? "Gabriel";
+
+    // Configurações exclusivas baseadas no perfil ativo
+    string saudacao = "Olá, Gabriel! 👋";
+    string fraseMotivacional = "Gerencie seus ativos, controle seus gastos e acelere rumo aos seus objetivos.";
+    string classeGradiente = "bg-dark text-white";
+
+    if (visao == "Ela")
+    {
+        saudacao = "Olá, Amor! ❤️";
+        fraseMotivacional = "Acompanhe suas finanças individuais de forma simples e independente.";
+        classeGradiente = "bg-gradient-ela text-white";
+    }
+    else if (visao == "Casal")
+    {
+        saudacao = "Nossa Gestão Unificada! 🏢";
+        fraseMotivacional = "O esforço conjunto que está construindo o sonho do nosso apartamento.";
+        classeGradiente = "bg-gradient-casal text-white";
+    }
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-lg p-4 p-md-5 rounded-4 @classeGradiente position-relative overflow-hidden">
+                <div class="position-relative z-1">
+                    <h1 class="fw-bold display-5 mb-2">@saudacao</h1>
+                    <p class="fs-5 opacity-75 mb-0 max-width-600">@fraseMotivacional</p>
+                </div>
+                <div class="position-absolute end-0 bottom-0 opacity-10 d-none d-md-block" style="transform: translate(10%, 20%); font-size: 12rem;">
+                    <i class="bi bi-building"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm p-3 rounded-3 bg-white h-100">
+                <small class="text-muted d-block text-uppercase fw-bold mb-1" style="font-size: 0.75rem;">Visão Ativa</small>
+                <div class="d-flex align-items-center justify-content-between">
+                    <span class="fw-bold text-dark fs-5">@(visao == "Casal" ? "Nós" : (visao == "Ela" ? "Suely" : visao))</span>
+                    <i class="bi bi-eye text-primary fs-4"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm p-3 rounded-3 bg-white h-100">
+                <small class="text-muted d-block text-uppercase fw-bold mb-1" style="font-size: 0.75rem;">Mês de Referência</small>
+                <div class="d-flex align-items-center justify-content-between">
+                    <span class="fw-bold text-dark fs-5">@DateTime.Now.ToString("MMMM / yyyy").ToUpper()</span>
+                    <i class="bi bi-calendar3 text-success fs-4"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm p-3 rounded-3 bg-white h-100">
+                <small class="text-muted d-block text-uppercase fw-bold mb-1" style="font-size: 0.75rem;">Meta Principal</small>
+                <div class="d-flex align-items-center justify-content-between">
+                    <span class="fw-bold text-dark fs-5">Apartamento</span>
+                    <i class="bi bi-flag text-danger fs-4"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm p-3 rounded-3 bg-white h-100">
+                <small class="text-muted d-block text-uppercase fw-bold mb-1" style="font-size: 0.75rem;">Horizonte Alvo</small>
+                <div class="d-flex align-items-center justify-content-between">
+                    <span class="fw-bold text-dark fs-5">Início de 2026</span>
+                    <i class="bi bi-clock-history text-warning fs-4"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm p-4 rounded-4 bg-white">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h5 class="fw-bold text-dark mb-1">Planejamento Estratégico do Imóvel</h5>
+                        <p class="text-muted small mb-0">Rastreamento de saúde financeira conjunta para o aporte/financiamento.</p>
+                    </div>
+                    <span class="badge bg-light text-dark border px-3 py-2 rounded-pill font-monospace small d-none d-sm-inline">Alvo: R$ 150k - R$ 200k</span>
+                </div>
+
+                <div class="progress mb-2 rounded-pill" style="height: 12px;">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" style="width: 15%;" aria-valuenow="15" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+                <div class="d-flex justify-content-between text-muted small px-1 mb-3">
+                    <span>Fundo de Reserva / Entrada</span>
+                    <span class="fw-bold text-success">Foco em maximizar a Sobra Mensal</span>
+                </div>
+
+                <div class="row g-2 border-top pt-3 mt-1 text-center text-sm-start">
+                    <div class="col-sm-4">
+                        <small class="text-muted d-block"><i class="bi bi-shield-fill text-primary me-1"></i> Segurança:</small>
+                        <span class="small fw-semibold">Isolamento individual ativo</span>
+                    </div>
+                    <div class="col-sm-4">
+                        <small class="text-muted d-block"><i class="bi bi-arrow-down-up text-success me-1"></i> Estratégia:</small>
+                        <span class="small fw-semibold">Investir vs Amortizar na PRICE</span>
+                    </div>
+                    <div class="col-sm-4">
+                        <small class="text-muted d-block"><i class="bi bi-cpu text-info me-1"></i> Robô de Cotações:</small>
+                        <span class="small fw-semibold">Yahoo Service em Background</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <h5 class="fw-bold mb-4 text-secondary text-uppercase tracking-wider">
+        <i class="bi bi-grid-1x2-fill text-muted me-2" style="font-size: 0.95rem;"></i>Módulos do Sistema
+    </h5>
+
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <a asp-controller="Carteiras" asp-action="Index" asp-route-visao="@visao" class="text-decoration-none">
+                <div class="card h-100 border-0 shadow-sm p-4 card-atalho bg-white border-start border-primary border-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="icon-shape bg-primary-subtle text-primary rounded-3 p-3 me-3">
+                            <i class="bi bi-pie-chart-fill fs-3"></i>
+                        </div>
+                        <div>
+                            <h5 class="fw-bold text-dark mb-0">Minha Carteira</h5>
+                            <small class="text-muted">Ações, FIIs e Renda Fixa</small>
+                        </div>
+                    </div>
+                    <p class="text-muted small mb-0">Monitore os ativos alocados, acompanhe o rendimento e confira as sugestões do radar automático.</p>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-md-4">
+            <a asp-controller="Financeiros" asp-action="Index" asp-route-visao="@visao" class="text-decoration-none">
+                <div class="card h-100 border-0 shadow-sm p-4 card-atalho bg-white border-start border-success border-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="icon-shape bg-success-subtle text-success rounded-3 p-3 me-3">
+                            <i class="bi bi-cash-coin fs-3"></i>
+                        </div>
+                        <div>
+                            <h5 class="fw-bold text-dark mb-0">Fluxo de Caixa</h5>
+                            <small class="text-muted">Entradas e Despesas</small>
+                        </div>
+                    </div>
+                    <p class="text-muted small mb-0">Lance movimentações, acompanhe a liquidação de contas fixas e verifique a sobra histórica real.</p>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-md-4">
+            <a asp-controller="Prices" asp-action="Index" asp-route-visao="@visao" class="text-decoration-none">
+                <div class="card h-100 border-0 shadow-sm p-4 card-atalho bg-white border-start border-info border-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="icon-shape bg-info-subtle text-info rounded-3 p-3 me-3">
+                            <i class="bi bi-house-door-fill fs-3"></i>
+                        </div>
+                        <div>
+                            <h5 class="fw-bold text-dark mb-0">Financiamento</h5>
+                            <small class="text-muted">Simulador PRICE</small>
+                        </div>
+                    </div>
+                    <p class="text-muted small mb-0">Projete parcelas de amortização, recalcule prazos restantes e reduza a incidência de juros bancários.</p>
+                </div>
+            </a>
+        </div>
+    </div>
 </div>
+
+<style>
+    .max-width-600 {
+        max-width: 600px;
+    }
+
+    .tracking-wider {
+        letter-spacing: 0.05rem;
+    }
+
+    .bg-gradient-ela {
+        background: linear-gradient(135deg, #dc3545 0%, #f46b78 100%) !important;
+    }
+
+    .bg-gradient-casal {
+        background: linear-gradient(135deg, #198754 0%, #3cd184 100%) !important;
+    }
+
+    .card-atalho {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        border-radius: 16px;
+    }
+
+        .card-atalho:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.08) !important;
+        }
+
+    .icon-shape {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 56px;
+        height: 56px;
+    }
+</style>

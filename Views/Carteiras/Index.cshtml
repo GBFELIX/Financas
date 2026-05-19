@@ -238,6 +238,7 @@
                             <td>
                                 <form asp-action="AtualizarRendaFixa" method="post" class="d-flex gap-2">
                                     <input type="hidden" name="id" value="@rf.Id" />
+                                    <input type="hidden" name="Dono" value="@ViewBag.VisaoAtual" />
                                     <div class="input-group input-group-sm" style="width: 150px;">
                                         <span class="input-group-text">R$</span>
                                         <input type="text" name="novoMontante" class="form-control" data-val="false" value="@rf.PrecoMedio.ToString("N2")" placeholder="@rf.PrecoMedio.ToString("N2")" />
@@ -275,7 +276,7 @@
                 <h5 class="modal-title">Novo Lançamento na Carteira</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form asp-action="AdicionarAtivo" method="post">
+            <form asp-action="AdicionarAtivo" method="post" asp-route-visao="@ViewBag.VisaoAtual">
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label">Selecione o Ativo (Ações, FIIs ou Gerais)</label>
@@ -301,7 +302,7 @@
                             </optgroup>
                         </select>
                     </div>
-
+                    <input type="hidden" name="Dono" value="@ViewBag.VisaoAtual" />
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Quantidade</label>
@@ -325,6 +326,8 @@
         </div>
     </div>
 </div>   
+
+
 <div class="modal fade" id="modalNovoRF" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content text-dark">
@@ -332,7 +335,7 @@
                 <h5 class="modal-title"><i class="bi bi-piggy-bank me-2"></i>Novo Título de Renda Fixa</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form asp-action="AdicionarRendaFixa" method="post">
+            <form asp-action="AdicionarRendaFixa" method="post" asp-route-visao="@ViewBag.VisaoAtual">
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label fw-bold">Nome do Título / Instituição</label>
@@ -360,7 +363,7 @@
                         <label class="form-label fw-bold">Notas / Objetivo</label>
                         <textarea name="Notas" class="form-control" rows="2" placeholder="Ex: Reserva para o apartamento"></textarea>
                     </div>
-
+                    <input type="hidden" name="Dono" value="@ViewBag.VisaoAtual" />
                     <input type="hidden" name="TipoAtivo" value="RendaFixa" />
                     <input type="hidden" name="Quantidade" value="1" />
                 </div>

@@ -27,10 +27,36 @@ namespace Acoes_Fiis.Controllers
         // GET: Carteiras
         public async Task<IActionResult> Index(string visao)
         {
+            // 1. Define o modo padrão como "Gabriel" caso nenhum seja selecionado e joga para a ViewBag
+            if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
+            ViewBag.VisaoAtual = visao;
+
             var agora = DateTime.Now;
-            var itensBanco = await _context.Carteira.ToListAsync();
-            var financeiroData = await _context.Financeiro.ToListAsync();
-            var financiamento = await _context.Financiamentos.Include(p => p.AportesPontuais).FirstOrDefaultAsync();
+
+            // 2. Prepara as queries em modo IQueryable para aplicar os filtros de Dono antes de ir ao banco
+            var queryCarteira = _context.Carteira.AsQueryable();
+            var queryFinanceiro = _context.Financeiro.AsQueryable();
+            var queryFinanciamento = _context.Financiamentos.Include(p => p.AportesPontuais).AsQueryable();
+
+            // 3. Aplica a Regra de Negócio de Isolamento baseada no seletor do Layout
+            if (visao == "Gabriel")
+            {
+                queryCarteira = queryCarteira.Where(x => x.Dono == "Gabriel" || x.Dono == "Casal");
+                queryFinanceiro = queryFinanceiro.Where(x => x.Dono == "Gabriel" || x.Dono == "Casal");
+                queryFinanciamento = queryFinanciamento.Where(x => x.Dono == "Gabriel" || x.Dono == "Casal");
+            }
+            else if (visao == "Ela")
+            {
+                queryCarteira = queryCarteira.Where(x => x.Dono == "Ela" || x.Dono == "Casal");
+                queryFinanceiro = queryFinanceiro.Where(x => x.Dono == "Ela" || x.Dono == "Casal");
+                queryFinanciamento = queryFinanciamento.Where(x => x.Dono == "Ela" || x.Dono == "Casal");
+            }
+            // No modo "Casal" não aplicamos filtros por Dono, permitindo consolidar os montantes globais rumo a 2029
+
+            // 4. Executa a busca no banco de dados trazendo apenas o escopo do Perfil selecionado
+            var itensBanco = await queryCarteira.ToListAsync();
+            var financeiroData = await queryFinanceiro.ToListAsync();
+            var financiamento = await queryFinanciamento.FirstOrDefaultAsync();
 
             var viewModel = new CarteiraTotalViewModel();
             decimal totalRFLiquido = 0;
@@ -62,7 +88,8 @@ namespace Acoes_Fiis.Controllers
                             Data = new DateTime(agora.Year, agora.Month, 1).AddDays(-1),
                             Tipo = "Entrada",
                             Categoria = "Investimento",
-                            Pagamento = "Pix"
+                            Pagamento = "Pix",
+                            Dono = visao == "Casal" ? "Casal" : visao // Grava o dono correto se o gatilho for disparado
                         };
 
                         _context.Financeiro.Add(novoLancamento);
@@ -196,7 +223,6 @@ namespace Acoes_Fiis.Controllers
             decimal taxaMensalCaixinhaAtual = (taxaAnualCaixinhaAtual / 12) / 100;
             decimal rendimentoLiquidoCaixinha = (saldoFinanceiroAteHoje * taxaMensalCaixinhaAtual) * 0.825m;
 
-            // Inicialização e consolidação da renda mensal total
             viewModel.RendaMensalTotalConsolidada = viewModel.TotalRendaMensalEstimada + viewModel.RendaFixaMensalLiquida;
             viewModel.RendaMensalTotalConsolidada += rendimentoLiquidoCaixinha;
 
@@ -273,8 +299,10 @@ namespace Acoes_Fiis.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> RegistrarAporteExtra(int priceId, decimal valor, int mesReferencia)
+        public async Task<IActionResult> RegistrarAporteExtra(int priceId, decimal valor, int mesReferencia, string visao)
         {
+            if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
+
             var novoAporte = new AporteExtra
             {
                 PriceId = priceId,
@@ -285,13 +313,19 @@ namespace Acoes_Fiis.Controllers
             _context.Add(novoAporte);
             await _context.SaveChangesAsync();
 
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(Index), new { visao = visao });
         }
 
         [HttpPost]
-        public async Task<IActionResult> AtualizarTodos()
+        public async Task<IActionResult> AtualizarTodos(string visao)
         {
-            var listaCarteira = await _context.Carteira.ToListAsync();
+            if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
+
+            var queryCarteira = _context.Carteira.AsQueryable();
+            if (visao == "Gabriel") queryCarteira = queryCarteira.Where(x => x.Dono == "Gabriel" || x.Dono == "Casal");
+            else if (visao == "Ela") queryCarteira = queryCarteira.Where(x => x.Dono == "Ela" || x.Dono == "Casal");
+
+            var listaCarteira = await queryCarteira.ToListAsync();
             var service = new YahooService();
             int atualizados = 0;
             int pulados = 0;
@@ -319,6 +353,7 @@ namespace Acoes_Fiis.Controllers
                 }
                 catch { pulados++; }
             }
+
             var listaFiis = await _context.RecomendacaoFii.ToListAsync();
             var fiisParaAtualizar = listaFiis.Where(r => listaCarteira.Any(c => c.Ticker == r.Ticker)).ToList();
 
@@ -347,28 +382,26 @@ namespace Acoes_Fiis.Controllers
 
             TempData["Sucesso"] = $"Sucesso! {atualizados} ativos atualizados e {pulados} pulados.";
 
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(Index), new { visao = visao });
         }
-
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> AtualizarRendaFixa(int id, string novoMontante, string novaTaxa)
+        public async Task<IActionResult> AtulizarRendaFixa(int id, string novoMontante, string novaTaxa, string visao)
         {
+            if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
+
             var ativo = await _context.Carteira.FindAsync(id);
 
             if (ativo != null)
             {
-                // Cultura brasileira para entender a vírgula
                 var culturaBR = new System.Globalization.CultureInfo("pt-BR");
 
-                // Tenta converter o Montante. Se conseguir, atualiza o valor.
                 if (decimal.TryParse(novoMontante, System.Globalization.NumberStyles.Any, culturaBR, out decimal montanteDecimal))
                 {
                     ativo.PrecoMedio = montanteDecimal;
                 }
 
-                // Mesma logica
                 if (decimal.TryParse(novaTaxa, System.Globalization.NumberStyles.Any, culturaBR, out decimal taxaDecimal))
                 {
                     ativo.TaxaRentabilidade = taxaDecimal;
@@ -378,27 +411,27 @@ namespace Acoes_Fiis.Controllers
                 await _context.SaveChangesAsync();
             }
 
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(Index), new { visao = visao });
         }
+
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> AdicionarAtivo(string ticker, int quantidade, decimal precoMedio, decimal? taxaRentabilidade)
+        public async Task<IActionResult> AdicionarAtivo(string ticker, int quantidade, decimal precoMedio, decimal? taxaRentabilidade, string visao)
         {
-            //  Verifica se já temos esse ativo na carteira
-            var ativoExistente = await _context.Carteira.FirstOrDefaultAsync(x => x.Ticker == ticker);
+            if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
+
+            var ativoExistente = await _context.Carteira.FirstOrDefaultAsync(x => x.Ticker == ticker && x.Dono == visao);
 
             if (ativoExistente != null)
             {
                 int qtdAnterior = ativoExistente.Quantidade;
                 decimal pmAnterior = ativoExistente.PrecoMedio;
-
                 int quantidadeTotal = qtdAnterior + quantidade;
 
-                // CÁLCULO CORRETO: (Patrimônio Antigo + Custo da Nova Compra) / Quantidade Total
                 decimal novoPrecoMedio = ((qtdAnterior * pmAnterior) + (quantidade * precoMedio)) / quantidadeTotal;
 
                 ativoExistente.Quantidade = quantidadeTotal;
-                ativoExistente.PrecoMedio = Math.Round(novoPrecoMedio, 2); // Arredonda para 2 casas decimais
+                ativoExistente.PrecoMedio = Math.Round(novoPrecoMedio, 2);
 
                 _context.Update(ativoExistente);
             }
@@ -416,23 +449,31 @@ namespace Acoes_Fiis.Controllers
                     PrecoMedio = precoMedio,
                     TipoAtivo = tipo,
                     TaxaRentabilidade = taxaRentabilidade,
-                    DataCompra = DateTime.Now
+                    DataCompra = DateTime.Now,
+                    Dono = visao
                 };
                 _context.Add(novoItem);
             }
 
             await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(Index), new { visao = visao });
         }
 
-        // GET: Carteiras/Create
-        public IActionResult Create()
+        public IActionResult Create(string visao)
         {
+            if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
+            ViewBag.VisaoAtual = visao;
             return View();
         }
+
         [HttpPost]
-        public async Task<IActionResult> AdicionarRendaFixa(Carteira novoItem)
+        public async Task<IActionResult> AdicionarRendaFixa(Carteira novoItem, string visao)
         {
+            if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
+            if (string.IsNullOrEmpty(novoItem.Dono)) novoItem.Dono = visao;
+
+            ModelState.Remove("Dono");
+
             if (ModelState.IsValid)
             {
                 novoItem.TipoAtivo = "RendaFixa";
@@ -440,53 +481,50 @@ namespace Acoes_Fiis.Controllers
 
                 _context.Carteira.Add(novoItem);
                 await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
             }
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(Index), new { visao = novoItem.Dono });
         }
-        // POST: Carteiras/Create
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
+
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,Ticker,Quantidade,PrecoMedio,TipoAtivo,Setor,DataCompra")] Carteira carteira)
+        public async Task<IActionResult> Create([Bind("Id,Ticker,Quantidade,PrecoMedio,TipoAtivo,Setor,DataCompra,Dono")] Carteira carteira, string visao)
         {
+            if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
+            if (string.IsNullOrEmpty(carteira.Dono)) carteira.Dono = visao;
+
+            ModelState.Remove("Dono");
+
             if (ModelState.IsValid)
             {
                 _context.Add(carteira);
                 await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
+                return RedirectToAction(nameof(Index), new { visao = carteira.Dono });
             }
+            ViewBag.VisaoAtual = visao;
             return View(carteira);
         }
 
-        // GET: Carteiras/Edit/5
-        public async Task<IActionResult> Edit(int? id)
+        public async Task<IActionResult> Edit(int? id, string visao)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
+            ViewBag.VisaoAtual = visao;
+
+            if (id == null) return NotFound();
 
             var carteira = await _context.Carteira.FindAsync(id);
-            if (carteira == null)
-            {
-                return NotFound();
-            }
+            if (carteira == null) return NotFound();
+
             return PartialView("Edit", carteira);
         }
 
-        // POST: Carteiras/Edit/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,Ticker,Quantidade,PrecoMedio,TipoAtivo,Setor,DataCompra")] Carteira carteira)
+        public async Task<IActionResult> Edit(int id, [Bind("Id,Ticker,Quantidade,PrecoMedio,TipoAtivo,Setor,DataCompra,Dono")] Carteira carteira, string visao)
         {
-            if (id != carteira.Id)
-            {
-                return NotFound();
-            }
+            if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
+            if (id != carteira.Id) return NotFound();
+
+            ModelState.Remove("Dono");
 
             if (ModelState.IsValid)
             {
@@ -497,43 +535,33 @@ namespace Acoes_Fiis.Controllers
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    if (!CarteiraExists(carteira.Id))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
+                    if (!CarteiraExists(carteira.Id)) return NotFound();
+                    else throw;
                 }
-                return RedirectToAction(nameof(Index));
+                return RedirectToAction(nameof(Index), new { visao = visao });
             }
-            return View(carteira);
+            return RedirectToAction(nameof(Index), new { visao = visao });
         }
 
-        // GET: Carteiras/Delete/5
-        public async Task<IActionResult> Delete(int? id)
+        public async Task<IActionResult> Delete(int? id, string visao)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
+            ViewBag.VisaoAtual = visao;
 
-            var carteira = await _context.Carteira
-                .FirstOrDefaultAsync(m => m.Id == id);
-            if (carteira == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
+
+            var carteira = await _context.Carteira.FirstOrDefaultAsync(m => m.Id == id);
+            if (carteira == null) return NotFound();
 
             return View(carteira);
         }
 
-        // POST: Carteiras/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(int id)
+        public async Task<IActionResult> DeleteConfirmed(int id, string visao)
         {
+            if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
+
             var carteira = await _context.Carteira.FindAsync(id);
             if (carteira != null)
             {
@@ -541,21 +569,29 @@ namespace Acoes_Fiis.Controllers
             }
 
             await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(Index), new { visao = visao });
         }
 
         private bool CarteiraExists(int id)
         {
             return _context.Carteira.Any(e => e.Id == id);
         }
-        public async Task<IActionResult> BaixarExcel()
+
+        public async Task<IActionResult> BaixarExcel(string visao)
         {
-            var lancamentos = await _context.Carteira.ToListAsync();
-            var csv = "Id,Ticker,Quantidade,PrecoMedio,TipoAtivo,Setor,DataCompra\n" +
+            if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
+
+            var query = _context.Carteira.AsQueryable();
+            if (visao == "Gabriel") query = query.Where(x => x.Dono == "Gabriel" || x.Dono == "Casal");
+            else if (visao == "Ela") query = query.Where(x => x.Dono == "Ela" || x.Dono == "Casal");
+
+            var lancamentos = await query.ToListAsync();
+            var csv = "Id,Ticker,Quantidade,PrecoMedio,TipoAtivo,Setor,DataCompra,Dono\n" +
                       string.Join("\n", lancamentos.Select(x =>
-                          $"{x.Id},{x.Ticker},{x.Quantidade},{x.PrecoMedio},{x.TipoAtivo},{x.Setor},{x.DataCompra:yyyy-MM-dd}"));
+                          $"{x.Id},{x.Ticker},{x.Quantidade},{x.PrecoMedio},{x.TipoAtivo},{x.Setor},{x.DataCompra:yyyy-MM-dd},{x.Dono}"));
+
             var bytes = System.Text.Encoding.UTF8.GetBytes(csv);
-            return File(bytes, "text/csv", "carteira.csv");
+            return File(bytes, "text/csv", $"carteira_{visao.ToLower()}.csv");
         }
     }
 }

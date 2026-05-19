@@ -6,7 +6,7 @@ namespace Acoes_Fiis.Models
     public class Price
     {
         public int Id { get; set; }
-        public string Dono { get; set; } = "Gabriel";
+        public string Dono { get; set; }
         public decimal ValorImovel { get; set; }
         public decimal ValorEntrada { get; set; }
         public decimal TaxaJurosAnual { get; set; }

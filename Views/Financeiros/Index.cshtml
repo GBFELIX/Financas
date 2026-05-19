@@ -21,13 +21,16 @@
         }
 
         <div class="d-flex align-items-center gap-3">
-            <a asp-action="Index" asp-route-mes="@mesAnterior" asp-route-ano="@anoParaMesAnterior"
+            <a asp-action="Index" asp-route-mes="@mesAnterior" asp-route-ano="@anoParaMesAnterior" asp-route-visao="@ViewBag.VisaoAtual"
                class="btn btn-outline-secondary btn-sm rounded-circle d-flex align-items-center justify-content-center"
                style="width: 32px; height: 32px;" title="Mês Anterior">
                 <i class="bi bi-chevron-left"></i>
             </a>
 
             <form method="get" class="d-flex gap-2 bg-light p-2 rounded shadow-sm border">
+
+                <input type="hidden" name="visao" value="@ViewBag.VisaoAtual" />
+
                 <select name="mes" class="form-select form-select-sm border-0 bg-transparent fw-bold" style="width: 140px;" onchange="this.form.submit()">
                     @for (int i = 1; i <= 12; i++)
                     {
@@ -44,7 +47,7 @@
             </form>
 
             @* Seta para Avançar *@
-            <a asp-action="Index" asp-route-mes="@proximoMes" asp-route-ano="@anoParaProximoMes"
+            <a asp-action="Index" asp-route-mes="@proximoMes" asp-route-ano="@anoParaProximoMes" asp-route-visao="@ViewBag.VisaoAtual"
                class="btn btn-outline-secondary btn-sm rounded-circle d-flex align-items-center justify-content-center"
                style="width: 32px; height: 32px;" title="Próximo Mês">
                 <i class="bi bi-chevron-right"></i>
@@ -304,8 +307,16 @@
                 <h5 class="modal-title fw-bold"><i class="bi bi-plus-circle me-2"></i>Adicionar Lançamento</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form asp-action="Create" method="post">
+            <form asp-action="Create" method="post" asp-route-visao="@ViewBag.VisaoAtual">
                 <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label name="Dono" class="form-label">Quem é o dono deste lançamento?</label>
+                        <select name="Dono" class="form-select">
+                            <option value="Gabriel" selected="@(ViewBag.VisaoAtual == "Gabriel")">Gabriel</option>
+                            <option value="Ela" selected="@(ViewBag.VisaoAtual == "Ela")">Suely</option>
+                            <option value="Casal" selected="@(ViewBag.VisaoAtual == "Casal")">Nosso</option>
+                        </select>
+                    </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold">Tipo de Fluxo</label>
                         <select id="selectTipoFluxo" name="Tipo" class="form-select rounded-3" required>

@@ -18,6 +18,7 @@
                     <form asp-action="Edit">
                         <div asp-validation-summary="ModelOnly" class="text-danger"></div>
                         <input type="hidden" asp-for="Id" />
+                        <input type="hidden" name="Dono" value="@ViewBag.VisaoAtual" />
 
                         <div class="mb-3">
                             <label asp-for="ValorImovel" class="form-label fw-bold">Valor do Imovel</label>

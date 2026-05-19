@@ -1,6 +1,6 @@
-using System.Diagnostics;
 using Acoes_Fiis.Models;
 using Microsoft.AspNetCore.Mvc;
+using System.Diagnostics;
 
 namespace Acoes_Fiis.Controllers
 {
@@ -13,8 +13,18 @@ namespace Acoes_Fiis.Controllers
             _logger = logger;
         }
 
-        public IActionResult Index()
+        // GET: Home/Index
+        public IActionResult Index(string visao)
         {
+            // Se não houver uma visão selecionada na URL, adota "Gabriel" por padrão
+            if (string.IsNullOrEmpty(visao))
+            {
+                visao = "Gabriel";
+            }
+
+            // Injeta o estado na ViewBag para alimentar o Layout e a View Index da Home
+            ViewBag.VisaoAtual = visao;
+
             return View();
         }
 

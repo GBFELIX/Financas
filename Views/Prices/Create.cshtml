@@ -14,7 +14,7 @@
                 <div class="card-body p-4">
                     <form asp-action="Create">
                         <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-
+                        <input type="hidden" name="Dono" value="@ViewBag.VisaoAtual" />
                         <div class="row">
                             <div class="col-md-6">
                                 <h5 class="text-muted border-bottom pb-2 mb-3">Valores Base</h5>
