@@ -1,54 +1,103 @@
-﻿<div class="modal fade" id="modalSimuladorAporte" tabindex="-1" aria-hidden="true">
+﻿@model FluxoCaixaViewModel
+
+@{
+    Layout = null;
+    var visao = ViewBag.VisaoAtual as string ?? "Gabriel";
+
+    decimal mediaRealGabriel = ViewBag.MediaSobraGabriel ?? 0m;
+    decimal mediaRealSuely = ViewBag.MediaSobraSuely ?? 0m;
+
+    decimal aporteSugerido = 0m;
+    decimal historicoSugerido = 0m;
+
+    string corPrincipalHex = "#0d6efd"; 
+    string bgSubtleClasse = "bg-primary bg-opacity-10 border-primary";
+    string txtClasse = "text-primary";
+    string tituloVisao = "Histórico Individual (Gabriel)";
+
+    if (visao == "Gabriel")
+    {
+        aporteSugerido = Model.SobraEstimada; 
+        historicoSugerido = mediaRealGabriel;  
+    }
+    else if (visao == "Ela")
+    {
+        corPrincipalHex = "#dc3545"; // Suely (Vermelho)
+        bgSubtleClasse = "bg-danger bg-opacity-10 border-danger";
+        txtClasse = "text-danger";
+        tituloVisao = "Histórico Individual (Suely)";
+
+        aporteSugerido = Model.SobraEstimada; // Sobra atual da Suely no mês
+        historicoSugerido = mediaRealSuely;   // Média real dos últimos 12 meses da Suely
+    }
+    else if (visao == "Casal")
+    {
+        corPrincipalHex = "#198754"; // Casal (Verde)
+        bgSubtleClasse = "bg-success bg-opacity-10 border-success";
+        txtClasse = "text-success";
+        tituloVisao = "Visão Consolidada (Soma do Casal)";
+
+        // REGRA DE OURO: No casal, soma-se o histórico real de cada um
+        aporteSugerido = Model.SobraEstimada; // Aqui sua ViewModel já deve trazer o consolidado do mês
+        historicoSugerido = mediaRealGabriel + mediaRealSuely; // Soma matemática das duas médias reais
+    }
+}
+
+<div class="modal fade" id="modalSimuladorAporte" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered">
         <div class="modal-content border-0 rounded-4 shadow-lg">
             <div class="modal-header bg-dark text-white border-0 py-3">
-                <h5 class="modal-title fw-bold"><i class="bi bi-cpu me-2"></i>Simulador de Projeção</h5>
+                <h5 class="modal-title fw-bold">
+                    <i class="bi bi-cpu me-2"></i>Simulador de Projeção -
+                    <span class="@txtClasse">@tituloVisao</span>
+                </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
                 <div class="row">
                     <div class="col-md-4 border-end">
-                        <h6 class="fw-bold mb-3 text-uppercase small">Configurações</h6>
+                        <h6 class="fw-bold mb-3 text-uppercase small text-secondary">Configurações</h6>
 
                         @* Toggle de Origem dos Dados *@
                         <div class="btn-group w-100 mb-3" role="group">
                             <input type="radio" class="btn-check" name="modoSim" id="modoManual" checked onchange="toggleModo('manual')">
-                            <label class="btn btn-outline-primary btn-sm" for="modoManual">Manual</label>
+                            <label class="btn btn-outline-secondary btn-sm" for="modoManual">Manual</label>
 
                             <input type="radio" class="btn-check" name="modoSim" id="modoHistorico" onchange="toggleModo('historico')">
-                            <label class="btn btn-outline-primary btn-sm" for="modoHistorico">Média Real</label>
+                            <label class="btn btn-outline-secondary btn-sm" for="modoHistorico">Média Real</label>
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label small">Aporte Mensal (R$)</label>
-                            <input type="number" id="simAporte" class="form-control" value="@Model.SobraEstimada">
-                            <input type="hidden" id="valHistorico" value="@Model.MediaSobraHistorica">
-                            <small id="helpHistorico" class="text-success d-none">Usando média real: @Model.MediaSobraHistorica.ToString("C2")</small>
+                            <label class="form-label small fw-bold">Aporte Mensal (R$)</label>
+                            <input type="number" id="simAporte" class="form-control" value="@aporteSugerido.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)">
+                            <input type="hidden" id="valHistorico" value="@historicoSugerido.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)">
+                            <small id="helpHistorico" class="fw-semibold @txtClasse d-none">Média real de 12 meses: @historicoSugerido.ToString("C2")</small>
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label small">Taxa de Juros Anual (%)</label>
-                            <input type="number" id="simTaxa" class="form-control" value="11.75"> @* Selic aproximada *@
+                            <label class="form-label small fw-bold">Taxa de Juros Anual (%)</label>
+                            <input type="number" id="simTaxa" class="form-control" value="11.75">
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label small">Período (Anos)</label>
-                            @* Agora um input numérico aberto *@
-                            <input type="number" id="simAnos" class="form-control" value="5" min="1" max="50">
+                            <label class="form-label small fw-bold">Período (Anos)</label>
+                            <input type="number" id="simAnos" class="form-control" value="3" min="1" max="50">
                         </div>
 
-                        <button class="btn btn-primary w-100 fw-bold rounded-3 shadow-sm" onclick="atualizarGrafico()">
+                        <button class="btn btn-dark w-100 fw-bold rounded-3 shadow-sm py-2" onclick="atualizarGrafico()">
                             <i class="bi bi-play-fill"></i> Simular Agora
                         </button>
 
-                        <div class="mt-4 p-3 bg-primary bg-opacity-10 rounded-4 border border-primary border-opacity-25">
-                            <small class="text-muted d-block">Patrimônio Estimado:</small>
-                            <h3 class="fw-bold text-primary mb-0" id="txtPatrimonioFinal">R$ 0,00</h3>
+                        <div class="mt-4 p-3 rounded-4 border @bgSubtleClasse">
+                            <small class="text-muted d-block fw-bold text-uppercase" style="font-size: 0.7rem;">Patrimônio Estimado ao Final:</small>
+                            <h3 class="fw-bold mb-0 @txtClasse" id="txtPatrimonioFinal">R$ 0,00</h3>
                         </div>
                     </div>
 
                     <div class="col-md-8 px-4">
-                        <canvas id="chartSimulacao" style="width: 100%; height: 380px;"></canvas>
+                        <div style="height: 380px; position: relative;">
+                            <canvas id="chartSimulacao"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -59,7 +108,9 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-    let meuGrafico;
+    // Passa a cor principal do C# de forma nativa para o JavaScript
+    const corTemaAtivo = '@corPrincipalHex';
+    let meuGrafico = null;
 
     function toggleModo(modo) {
         const inputAporte = document.getElementById('simAporte');
@@ -70,16 +121,19 @@
             inputAporte.value = parseFloat(valHistorico).toFixed(2);
             inputAporte.readOnly = true;
             inputAporte.classList.add('bg-light');
-            helpH.classList.remove('d-none');
+            if (helpH) helpH.classList.remove('d-none');
         } else {
             inputAporte.readOnly = false;
             inputAporte.classList.remove('bg-light');
-            helpH.classList.add('d-none');
+            if (helpH) helpH.classList.add('d-none');
         }
         atualizarGrafico();
     }
 
     function atualizarGrafico() {
+        const canvas = document.getElementById('chartSimulacao');
+        if (!canvas) return; // Proteção para não quebrar se o canvas não sumir da árvore DOM
+
         const aporte = parseFloat(document.getElementById('simAporte').value) || 0;
         const taxaAnual = parseFloat(document.getElementById('simTaxa').value) / 100;
         const anos = parseInt(document.getElementById('simAnos').value) || 1;
@@ -93,11 +147,11 @@
         let acumulado = 0;
         let totalAportado = 0;
 
+        // CORREÇÃO: Mudado de 'int i' para 'let i' (C# vs JavaScript)
         for (let i = 1; i <= meses; i++) {
             acumulado = (acumulado + aporte) * (1 + taxaMensal);
             totalAportado += aporte;
 
-            // Plota um ponto a cada 6 meses para o gráfico não ficar pesado mas manter a curva
             if (i % 6 === 0 || i === meses) {
                 labels.push('Mês ' + i);
                 dadosPatrimonio.push(acumulado.toFixed(2));
@@ -105,10 +159,15 @@
             }
         }
 
-        document.getElementById('txtPatrimonioFinal').innerText = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(acumulado);
+        const txtPatrimonio = document.getElementById('txtPatrimonioFinal');
+        if (txtPatrimonio) {
+            txtPatrimonio.innerText = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(acumulado);
+        }
 
-        const ctx = document.getElementById('chartSimulacao').getContext('2d');
-        if (meuGrafico) meuGrafico.destroy();
+        const ctx = canvas.getContext('2d');
+        if (meuGrafico) {
+            meuGrafico.destroy();
+        }
 
         meuGrafico = new Chart(ctx, {
             type: 'line',
@@ -116,15 +175,15 @@
                 labels: labels,
                 datasets: [
                     {
-                        label: 'Patrimônio Total (Juros Compostos)',
+                        label: 'Patrimônio Projetado (Juros Compostos)',
                         data: dadosPatrimonio,
-                        borderColor: '#0d6efd',
-                        backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                        borderColor: corTemaAtivo,
+                        backgroundColor: corTemaAtivo + '1A', // 10% de opacidade no HEX
                         fill: true,
                         tension: 0.3
                     },
                     {
-                        label: 'Total Aportado (Sem Juros)',
+                        label: 'Total Guardado Individualmente',
                         data: dadosAportado,
                         borderColor: '#6c757d',
                         borderDash: [5, 5],
@@ -154,6 +213,20 @@
         });
     }
 
-    // Inicializa ao abrir o modal
-    document.getElementById('modalSimuladorAporte').addEventListener('shown.bs.modal', atualizarGrafico);
+    // SOLUÇÃO DO SUMIÇO: Aguarda o modal terminar a animação de abertura (shown.bs.modal)
+    // para só então disparar o cálculo do Chart.js com os tamanhos de tela corretos.
+    document.addEventListener("DOMContentLoaded", function () {
+        const meuModalEl = document.getElementById('modalSimuladorAporte');
+        if (meuModalEl) {
+            meuModalEl.addEventListener('shown.bs.modal', function () {
+                // Força um redimensionamento rápido antes de desenhar
+                const canvas = document.getElementById('chartSimulacao');
+                if (canvas) {
+                    canvas.style.width = '100%';
+                    canvas.style.height = '100%';
+                }
+                atualizarGrafico();
+            });
+        }
+    });
 </script>

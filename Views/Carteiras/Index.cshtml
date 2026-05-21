@@ -149,6 +149,50 @@
                     }
                     @foreach (var item in Model.Itens.Where(x => x.TipoAtivo != "RendaFixa").OrderBy(x => x.TipoAtivo == "Acao" ? 0 : x.TipoAtivo == "Fii" ? 1 : 2).ThenBy(x => x.Ticker))
                     {
+                        <div class="modal fade" id="modalVenda-@item.Id" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content border-0 shadow-lg rounded-4">
+                                    <div class="modal-header bg-danger text-white border-0 py-3">
+                                        <h5 class="modal-title fw-bold">
+                                            <i class="bi bi-cash-stack me-2"></i>Registrar Venda - @item.Ticker
+                                        </h5>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <form asp-action="VenderAtivo" asp-route-visao="@ViewBag.VisaoAtual" method="post">
+                                        <input type="hidden" name="id" value="@item.Id" />
+
+                                        <div class="modal-body p-4">
+                                            <div class="p-3 bg-light rounded-3 mb-3 border text-center">
+                                                <div class="row">
+                                                    <div class="col-6 border-end">
+                                                        <small class="text-muted d-block">Qtd. Disponível</small>
+                                                        <span class="fw-bold text-dark">@item.Quantidade</span>
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <small class="text-muted d-block">Preço Médio atual</small>
+                                                        <span class="fw-bold text-primary">@item.PrecoMedio.ToString("C2")</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <label class="form-label fw-bold small">Quantidade a Vender</label>
+                                                <input type="number" name="quantidadeVendida" class="form-control form-control-lg text-center"
+                                                       value="@item.Quantidade" min="1" max="@item.Quantidade" required />
+                                                <div class="form-text text-muted small text-center mt-1">
+                                                    O sistema utilizará a cotação atual cadastrada para apurar o lucro ou prejuízo automaticamente.
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="modal-footer border-0 bg-light rounded-bottom-4 p-3">
+                                            <button type="button" class="btn btn-secondary border-0 px-3 rounded-3" data-bs-dismiss="modal">Cancelar</button>
+                                            <button type="submit" class="btn btn-danger fw-bold px-4 rounded-3 shadow-sm">Confirmar Venda</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
                         if (ultimoTipo != item.TipoAtivo)
                         {
                             <tr class="table-secondary">
@@ -176,14 +220,33 @@
                                 </span>
                             </td>
                             <td class="text-center">
-                                <div class="btn-group">
+                                <div class="btn-group shadow-sm rounded-3" role="group" aria-label="Ações do Ativo">
                                     <button type="button"
-                                            class="btn btn-sm btn-outline-secondary"
+                                            class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1 border-end-0"
                                             data-bs-toggle="modal"
-                                            data-bs-target="#editModal-@item.Id">
-                                        Editar
+                                            data-bs-target="#editModal-@item.Id"
+                                            title="Editar Ativo">
+                                        <i class="bi bi-pencil-square"></i>
+                                        <span class="d-none d-md-inline">Editar</span>
                                     </button>
-                                    <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger">Deletar</a>
+
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#modalVenda-@item.Id"
+                                            title="Registrar Venda">
+                                        <i class="bi bi-graph-down-arrow"></i>
+                                        <span class="d-none d-md-inline">Vender</span>
+                                    </button>
+
+                                    <a asp-action="Delete"
+                                       asp-route-id="@item.Id"
+                                       asp-route-visao="@ViewBag.VisaoAtual"
+                                       class="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1"
+                                       title="Excluir Ativo">
+                                        <i class="bi bi-trash"></i>
+                                        <span class="d-none d-md-inline">Deletar</span>
+                                    </a>
                                 </div>
                             </td>
                         </tr>

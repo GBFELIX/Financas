@@ -27,18 +27,15 @@ namespace Acoes_Fiis.Controllers
         // GET: Carteiras
         public async Task<IActionResult> Index(string visao)
         {
-            // 1. Define o modo padrão como "Gabriel" caso nenhum seja selecionado e joga para a ViewBag
             if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
             ViewBag.VisaoAtual = visao;
 
             var agora = DateTime.Now;
 
-            // 2. Prepara as queries em modo IQueryable para aplicar os filtros de Dono antes de ir ao banco
             var queryCarteira = _context.Carteira.AsQueryable();
             var queryFinanceiro = _context.Financeiro.AsQueryable();
             var queryFinanciamento = _context.Financiamentos.Include(p => p.AportesPontuais).AsQueryable();
 
-            // 3. Aplica a Regra de Negócio de Isolamento baseada no seletor do Layout
             if (visao == "Gabriel")
             {
                 queryCarteira = queryCarteira.Where(x => x.Dono == "Gabriel" || x.Dono == "Casal");
@@ -51,9 +48,6 @@ namespace Acoes_Fiis.Controllers
                 queryFinanceiro = queryFinanceiro.Where(x => x.Dono == "Ela" || x.Dono == "Casal");
                 queryFinanciamento = queryFinanciamento.Where(x => x.Dono == "Ela" || x.Dono == "Casal");
             }
-            // No modo "Casal" não aplicamos filtros por Dono, permitindo consolidar os montantes globais rumo a 2029
-
-            // 4. Executa a busca no banco de dados trazendo apenas o escopo do Perfil selecionado
             var itensBanco = await queryCarteira.ToListAsync();
             var financeiroData = await queryFinanceiro.ToListAsync();
             var financiamento = await queryFinanciamento.FirstOrDefaultAsync();
@@ -296,6 +290,81 @@ namespace Acoes_Fiis.Controllers
 
             return View(viewModel);
         }
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> VenderAtivo(int id, int quantidadeVendida, string visao)
+        {
+            if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
+
+            var ativo = await _context.Carteira.FindAsync(id);
+            if (ativo == null || quantidadeVendida <= 0 || quantidadeVendida > ativo.Quantidade)
+            {
+                TempData["Erro"] = "Quantidade inválida para venda ou ativo não encontrado.";
+                return RedirectToAction(nameof(Index), new { visao = visao });
+            }
+
+            decimal precoAtual = 0;
+
+            if (ativo.TipoAtivo == "Acao")
+            {
+                var recomendacao = await _context.Recomendacao.FirstOrDefaultAsync(x => x.Ticker == ativo.Ticker);
+                precoAtual = recomendacao?.PrecoAtual ?? ativo.PrecoMedio;
+            }
+            else if (ativo.TipoAtivo == "Fii")
+            {
+                var recomendacaoFii = await _context.RecomendacaoFii.FirstOrDefaultAsync(x => x.Ticker == ativo.Ticker);
+                precoAtual = recomendacaoFii?.PrecoAtual ?? ativo.PrecoMedio;
+            }
+            else
+            {
+                precoAtual = ativo.PrecoMedio;
+            }
+
+            decimal resultadoPorCota = precoAtual - ativo.PrecoMedio;
+            decimal resultadoTotal = resultadoPorCota * quantidadeVendida;
+
+            if (Math.Abs(resultadoTotal) >= 0.01m)
+            {
+                var novoLancamento = new Financeiro
+                {
+                    Data = DateTime.Now,
+                    Categoria = "Investimento",
+                    Pagamento = "Pix",
+                    Dono = ativo.Dono,
+                    Valor = Math.Round(Math.Abs(resultadoTotal), 2)
+                };
+
+                if (resultadoTotal > 0)
+                {
+                    novoLancamento.Descricao = $"Ganho de Capital - Venda {ativo.Ticker} ({quantidadeVendida} qts)";
+                    novoLancamento.Tipo = "Entrada";
+                }
+                else
+                {
+                    novoLancamento.Descricao = $"Prejuízo de Capital - Venda {ativo.Ticker} ({quantidadeVendida} qts)";
+                    novoLancamento.Tipo = "Despesa";
+                }
+
+                _context.Financeiro.Add(novoLancamento);
+            }
+
+            // 4. Atualiza ou remove o ativo da Carteira
+            if (quantidadeVendida == ativo.Quantidade)
+            {
+                _context.Carteira.Remove(ativo);
+            }
+            else
+            {
+                ativo.Quantidade -= quantidadeVendida;
+                _context.Carteira.Update(ativo);
+            }
+
+            await _context.SaveChangesAsync();
+            TempData["Sucesso"] = $"Venda de {quantidadeVendida} cotas de {ativo.Ticker} processada com sucesso!";
+
+            return RedirectToAction(nameof(Index), new { visao = visao });
+        }
+
 
         [HttpPost]
         [ValidateAntiForgeryToken]

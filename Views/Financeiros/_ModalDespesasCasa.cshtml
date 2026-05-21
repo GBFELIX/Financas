@@ -1,5 +1,9 @@
 ﻿@model FluxoCaixaViewModel
 
+@{
+    Layout = null;
+}
+
 <div class="modal fade" id="modalDespesasCasa" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow-lg rounded-4">
@@ -32,7 +36,6 @@
                                 <td><span class="fw-bold">Financiamento Apartamento</span></td>
                                 <td class="text-end">
                                     <div class="d-flex flex-column">
-                                        @* Este ValorParcelaAtual já vem do Service com Parcela + Amortização Extra *@
                                         <span class="fw-bold">@Model.ValorParcelaAtual.ToString("C2")</span>
 
                                         @if (Model.TotalAmortizacaoMes > 0)
@@ -46,9 +49,8 @@
                                 <td class="text-center">
                                     @if (!Model.ParcelaPaga)
                                     {
-                                        <form asp-action="PagarContaCasa" method="post" class="m-0">
+                                        <form asp-action="PagarContaCasa" asp-route-visao="@ViewBag.VisaoAtual" method="post" class="m-0">
                                             <input type="hidden" name="descricao" value="Financiamento" />
-                                            @* Importante: O valor enviado para o extrato deve ser a soma *@
                                             <input type="hidden" name="valor" value="@Model.ValorParcelaAtual" />
                                             <input type="hidden" name="categoria" value="Moradia" />
                                             <button type="submit" class="btn btn-sm btn-info rounded-pill px-3 fw-bold">Pagar</button>
@@ -78,17 +80,18 @@
                                     </td>
                                     <td class="text-center">
                                         @* Formulário Único por Linha *@
-                                        <form asp-action="EditarContaFixa" method="post" id="form-@conta.Id" class="m-0">
+                                        <form asp-action="EditarContaFixa" asp-route-visao="@ViewBag.VisaoAtual" method="post" id="form-@conta.Id" class="m-0">
                                             <input type="hidden" name="Id" value="@conta.Id" />
                                             <input type="hidden" name="Categoria" value="@conta.Categoria" />
+                                            <input type="hidden" name="Dono" value="@conta.Dono" />
 
                                             <div class="d-flex gap-2 justify-content-center">
                                                 @if (!conta.PagoNoMesAtual)
                                                 {
                                                     <button type="submit" class="btn btn-sm btn-link text-success p-0 d-none btn-save"><i class="bi bi-check-lg fs-5"></i></button>
-                                                    <button type="submit" formaction="@Url.Action("PagarContaCasa")" class="btn btn-sm btn-outline-info rounded-pill px-2 fw-bold btn-pagar" style="font-size:0.65rem">PAGAR</button>
+                                                    <button type="submit" formaction="@Url.Action("PagarContaCasa", new { visao = ViewBag.VisaoAtual })" class="btn btn-sm btn-outline-info rounded-pill px-2 fw-bold btn-pagar" style="font-size:0.65rem">PAGAR</button>
                                                 }
-                                                <button type="submit" formaction="@Url.Action("ExcluirContaFixa")" class="btn btn-sm btn-link text-danger p-0" onclick="return confirm('Excluir?')">
+                                                <button type="submit" formaction="@Url.Action("ExcluirContaFixa", new { visao = ViewBag.VisaoAtual })" class="btn btn-sm btn-link text-danger p-0" onclick="return confirm('Excluir?')">
                                                     <i class="bi bi-trash"></i>
                                                 </button>
                                             </div>
@@ -101,12 +104,18 @@
                 </div>
             </div>
 
-            @* Footer: Adicionar Nova *@
+            @* Footer: Adicionar Nova Conta *@
             <div class="modal-footer border-0 p-4 bg-light rounded-bottom-4">
-                <form asp-action="AdicionarContaFixa" method="post" class="row g-2 w-100">
-                    <div class="col-6"><input type="text" name="descricao" class="form-control form-control-sm rounded-3" placeholder="Descrição" required></div>
-                    <div class="col-3"><input type="text" name="valor" class="form-control form-control-sm rounded-3" placeholder="R$" required></div>
-                    <div class="col-3"><button type="submit" class="btn btn-dark btn-sm w-100 rounded-3 fw-bold">Cadastrar</button></div>
+                <form asp-action="AdicionarContaFixa" asp-route-visao="@ViewBag.VisaoAtual" method="post" class="row g-2 w-100">
+                    <div class="col-6">
+                        <input type="text" name="descricao" class="form-control form-control-sm rounded-3" placeholder="Descrição" required>
+                    </div>
+                    <div class="col-3">
+                        <input type="text" name="valor" class="form-control form-control-sm rounded-3" placeholder="R$" required>
+                    </div>
+                    <div class="col-3">
+                        <button type="submit" class="btn btn-dark btn-sm w-100 rounded-3 fw-bold">Cadastrar</button>
+                    </div>
                 </form>
             </div>
         </div>

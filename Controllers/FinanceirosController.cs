@@ -26,7 +26,6 @@ namespace Acoes_Fiis.Controllers
         // GET: Financeiros
         public async Task<IActionResult> Index(int? mes, int? ano, string visao)
         {
-            // 1. Define o perfil padrão e joga para a ViewBag manter o estado no Layout global
             if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
             ViewBag.VisaoAtual = visao;
 
@@ -36,12 +35,10 @@ namespace Acoes_Fiis.Controllers
             DateTime dozeMesesAtras = DateTime.Now.AddMonths(-12);
             DateTime primeiroDiaMesAtual = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
 
-            // 2. Prepara as consultas em modo IQueryable para aplicar o isolamento de perfis antes de ir ao banco
             var queryFinanceiro = _context.Financeiro.AsQueryable();
             var queryContasFixas = _context.ContasFixas.AsQueryable();
             var queryCarteira = _context.Carteira.AsQueryable();
 
-            // 3. Aplica a Regra de Negócio de Isolamento (Individual vs Compartilhado)
             if (visao == "Gabriel")
             {
                 queryFinanceiro = queryFinanceiro.Where(x => x.Dono == "Gabriel" || x.Dono == "Casal");
@@ -54,9 +51,7 @@ namespace Acoes_Fiis.Controllers
                 queryContasFixas = queryContasFixas.Where(x => x.Dono == "Ela" || x.Dono == "Casal");
                 queryCarteira = queryCarteira.Where(x => x.Dono == "Ela" || x.Dono == "Casal");
             }
-            // No modo "Casal", as consultas não recebem filtros de Dono, consolidando tudo
 
-            // 4. Executa as buscas filtradas por período e escopo de perfil
             var lancamentos = await queryFinanceiro
                 .Where(x => x.Data.Month == filtroMes && x.Data.Year == filtroAno)
                 .ToListAsync() ?? new List<Financeiro>();
@@ -67,11 +62,24 @@ namespace Acoes_Fiis.Controllers
                 .Where(x => x.TipoAtivo == "RendaFixa")
                 .ToListAsync();
 
-            var historico = await queryFinanceiro
-                .Where(x => x.Data >= dozeMesesAtras && x.Data < primeiroDiaMesAtual)
-                .ToListAsync();
+            var financeiroData = await queryFinanceiro.ToListAsync();
 
-            // 5. Busca o Financiamento (Global do casal)
+            var agrupadoGabriel = financeiroData
+                .Where(f => f.Dono == "Gabriel" && f.Data >= dozeMesesAtras)
+                .GroupBy(f => new { f.Data.Year, f.Data.Month })
+                .Select(g => g.Where(x => x.Tipo == "Entrada").Sum(x => x.Valor) - g.Where(x => x.Tipo == "Despesa").Sum(x => x.Valor))
+                .ToList();
+
+            ViewBag.MediaSobraGabriel = agrupadoGabriel.Any() ? agrupadoGabriel.Average() : 0m;
+
+            var agrupadoSuely = financeiroData
+                .Where(f => f.Dono == "Ela" && f.Data >= dozeMesesAtras)
+                .GroupBy(f => new { f.Data.Year, f.Data.Month })
+                .Select(g => g.Where(x => x.Tipo == "Entrada").Sum(x => x.Valor) - g.Where(x => x.Tipo == "Despesa").Sum(x => x.Valor))
+                .ToList();
+
+            ViewBag.MediaSobraSuely = agrupadoSuely.Any() ? agrupadoSuely.Average() : 0m;
+
             var financiamento = await _context.Financiamentos
                 .Include(f => f.AportesPontuais)
                 .FirstOrDefaultAsync();
@@ -86,22 +94,28 @@ namespace Acoes_Fiis.Controllers
 
                 if (parcelaDoMes != null)
                 {
-                    valorParcelaFinal = parcelaDoMes.ValorParcela;
-                    totalAmortizadoNoMes = parcelaDoMes.Amortizacao;
+                    if (visao == "Gabriel" || visao == "Ela")
+                    {
+                        valorParcelaFinal = parcelaDoMes.ValorParcela / 2;
+                        totalAmortizadoNoMes = parcelaDoMes.Amortizacao / 2;
+                    }
+                    else
+                    {
+                        valorParcelaFinal = parcelaDoMes.ValorParcela;
+                        totalAmortizadoNoMes = parcelaDoMes.Amortizacao;
+                    }
                 }
             }
 
-            // 6. Cruzamento de Contas Pagas (Baseado estritamente nos lançamentos da visão ativa)
             foreach (var conta in contasFixas)
             {
                 conta.PagoNoMesAtual = lancamentos.Any(l =>
-                    l.Descricao.Contains(conta.Descricao) && l.Tipo == "Despesa");
+                   l.Descricao.Contains(conta.Descricao) && l.Tipo == "Despesa");
             }
 
             bool parcelaPaga = lancamentos.Any(l =>
                 (l.Descricao.Contains("Financiamento") || l.Categoria == "Moradia") && l.Tipo == "Despesa");
 
-            // 7. Cálculo do Pendente e totais do lar com base no escopo ativo
             decimal pendente = contasFixas.Where(c => !c.PagoNoMesAtual).Sum(c => c.Valor);
             if (!parcelaPaga) pendente += valorParcelaFinal;
 
@@ -109,7 +123,6 @@ namespace Acoes_Fiis.Controllers
                 .Where(l => l.Tipo == "Despesa" && (l.Categoria == "Moradia" || l.Categoria == "Serviços" || l.Categoria == "Farmácia"))
                 .Sum(l => l.Valor);
 
-            // 8. Cálculo de Rendimento Líquido de Renda Fixa Isolado
             decimal totalRendimentoliquido = 0;
             foreach (var rf in ativosRF)
             {
@@ -117,11 +130,55 @@ namespace Acoes_Fiis.Controllers
                 totalRendimentoliquido += (rf.Quantidade * rf.PrecoMedio) * taxaMensal * 0.825m;
             }
 
-            // 9. Cálculo da Média de Sobra Histórica com base no dono selecionado
+            DateTime agora = DateTime.Now;
+
+            var resumoMensal = financeiroData
+                .GroupBy(x => new { x.Data.Year, x.Data.Month })
+                .Select(g => new ResumoMesViewModel
+                {
+                    Ano = g.Key.Year,
+                    Mes = g.Key.Month,
+                    Entradas = g.Where(x => x.Tipo == "Entrada").Sum(x => x.Valor),
+                    Saidas = g.Where(x => x.Tipo == "Despesa").Sum(x => x.Valor)
+                })
+                .OrderBy(x => x.Ano)
+                .ThenBy(x => x.Mes)
+                .ToList();
+
+            decimal entradasMesCorrente = financeiroData
+                .Where(x => x.Data.Month == filtroMes && x.Data.Year == filtroAno && x.Tipo == "Entrada")
+                .Sum(x => x.Valor);
+
+            decimal saidasMesCorrente = financeiroData
+                .Where(x => x.Data.Month == filtroMes && x.Data.Year == filtroAno && x.Tipo == "Despesa")
+                .Sum(x => x.Valor);
+
+            decimal saldoFinanceiroAteHoje = financeiroData
+                .Where(x => x.Data.Date <= agora.Date)
+                .Sum(x => x.Tipo == "Entrada" ? x.Valor : -x.Valor);
+
+            decimal taxaAnualCaixinhaAtual = 10.75m;
+            decimal taxaMensalCaixinhaAtual = (taxaAnualCaixinhaAtual / 12) / 100;
+            decimal rendimentoLiquidoCaixinha = (saldoFinanceiroAteHoje * taxaMensalCaixinhaAtual) * 0.825m;
+
+            decimal totalInvestidoRendaVariavel = await queryCarteira
+                .Where(x => x.TipoAtivo == "Acao" || x.TipoAtivo == "Fii")
+                .SumAsync(x => x.Quantidade * x.PrecoMedio);
+
+            decimal totalInvestidoRendaFixa = await queryCarteira
+                .Where(x => x.TipoAtivo == "RendaFixa")
+                .SumAsync(x => x.Quantidade * x.PrecoMedio);
+
+            decimal patrimonioTotalReal = totalInvestidoRendaVariavel +
+                                          totalInvestidoRendaFixa +
+                                          saldoFinanceiroAteHoje +
+                                          rendimentoLiquidoCaixinha;
+
             decimal mediaSobraHistorica = 0;
-            if (historico.Any())
+            var dadosHistorico = financeiroData.Where(x => x.Data >= dozeMesesAtras && x.Data < primeiroDiaMesAtual).ToList();
+            if (dadosHistorico.Any())
             {
-                var mesesAgrupados = historico
+                var mesesAgrupados = dadosHistorico
                     .GroupBy(x => new { x.Data.Month, x.Data.Year })
                     .Select(g => new
                     {
@@ -133,20 +190,59 @@ namespace Acoes_Fiis.Controllers
                 mediaSobraHistorica = mesesAgrupados.Average(m => m.Sobra);
             }
 
-            // 10. Alimenta a ViewModel final
+            var listaGanhosHistoricos = new List<decimal>();
+            var listaLabelsHistoricos = new List<string>();
+            decimal mediaRendimentoFallback = totalRendimentoliquido + rendimentoLiquidoCaixinha;
+
+            for (int i = 11; i >= 0; i--)
+            {
+                var dataAlvo = agora.AddMonths(-i);
+                string sufixoMesAno = $"{dataAlvo:MM/yyyy}";
+
+                var rendimentoRealMes = financeiroData
+                    .FirstOrDefault(x => x.Tipo == "Entrada" &&
+                                         x.Categoria == "Investimento" &&
+                                         x.Descricao.Contains("Rendimento Automático Caixinhas") &&
+                                         x.Descricao.Contains(sufixoMesAno));
+
+                if (rendimentoRealMes != null)
+                {
+                    listaGanhosHistoricos.Add(rendimentoRealMes.Valor);
+                }
+                else if (i == 0)
+                {
+                    listaGanhosHistoricos.Add(Math.Round(totalRendimentoliquido + rendimentoLiquidoCaixinha, 2));
+                }
+                else
+                {
+                    listaGanhosHistoricos.Add(Math.Round(mediaRendimentoFallback, 2));
+                }
+
+                string nomeMesLabel = dataAlvo.ToString("MMM", System.Globalization.CultureInfo.CreateSpecificCulture("pt-BR")).ToUpper().Replace(".", "");
+                listaLabelsHistoricos.Add($"{nomeMesLabel}/{dataAlvo:yy}");
+            }
+
+            ViewBag.HistoricoGanhosGrafico = listaGanhosHistoricos;
+            ViewBag.HistoricoLabelsGrafico = listaLabelsHistoricos;
+
             var viewModel = new FluxoCaixaViewModel
             {
                 Lancamentos = lancamentos,
                 MesAtual = filtroMes,
                 AnoAtual = filtroAno,
-                RendimentoRendaFixaMes = totalRendimentoliquido,
                 ContasFixas = contasFixas,
                 ValorParcelaAtual = valorParcelaFinal,
                 ParcelaPaga = parcelaPaga,
                 TotalAmortizacaoMes = totalAmortizadoNoMes,
                 TotalPagoCasa = totalPagoCasa,
                 TotalPendenteCasa = pendente,
-                MediaSobraHistorica = mediaSobraHistorica
+                MediaSobraHistorica = mediaSobraHistorica,
+                ResumoMensal = resumoMensal,
+                EntradasMesCorrente = entradasMesCorrente,
+                SaidasMesCorrente = saidasMesCorrente,
+                RendimentoRendaFixaMes = totalRendimentoliquido + rendimentoLiquidoCaixinha,
+                PatrimonioTotalReal = patrimonioTotalReal,
+                TotalRendaVariavel = totalInvestidoRendaVariavel
             };
 
             return View(viewModel);
@@ -338,10 +434,25 @@ namespace Acoes_Fiis.Controllers
 
             if (id != financeiro.Id) return NotFound();
 
+            ModelState.Remove("Dono");
+
             if (ModelState.IsValid)
             {
                 try
                 {
+                    var registroOriginal = await _context.Financeiro
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(x => x.Id == id);
+
+                    if (registroOriginal != null)
+                    {
+                        financeiro.Dono = registroOriginal.Dono;
+                    }
+                    else
+                    {
+                        return NotFound();
+                    }
+
                     _context.Update(financeiro);
                     await _context.SaveChangesAsync();
                 }
@@ -350,9 +461,11 @@ namespace Acoes_Fiis.Controllers
                     if (!FinanceiroExists(financeiro.Id)) return NotFound();
                     else throw;
                 }
+
                 return RedirectToAction(nameof(Index), new { mes = financeiro.Data.Month, ano = financeiro.Data.Year, visao = visao });
             }
 
+            TempData["Erro"] = "Falha ao validar os dados da edição.";
             return RedirectToAction(nameof(Index), new { mes = financeiro.Data.Month, ano = financeiro.Data.Year, visao = visao });
         }
 

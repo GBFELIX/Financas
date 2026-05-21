@@ -1,0 +1,171 @@
+﻿@model FluxoCaixaViewModel
+
+@{
+    Layout = null;
+    var visao = ViewBag.VisaoAtual as string ?? "Gabriel";
+}
+
+<div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content border-0 rounded-4 shadow-lg">
+        <div class="modal-header bg-success text-white border-0 py-3">
+            <h5 class="modal-title fw-bold">
+                <i class="bi bi-graph-up-arrow me-2"></i>Análise Detalhada de Ganhos
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+
+        <div class="modal-body p-4">
+            <div class="row g-3 mb-4">
+                <div class="col-6">
+                    <div class="card border-0 shadow-sm p-3 text-center bg-light rounded-3 h-100">
+                        <small class="text-muted d-block fw-bold text-uppercase mb-1" style="font-size: 0.7rem;">Rendimento Conservador</small>
+                        <span class="fs-5 fw-bold text-success">@Model.RendimentoRendaFixaMes.ToString("C2")</span>
+                        <div class="text-muted mt-1" style="font-size: 0.6rem;">
+                            <i class="bi bi-wallet2 text-success"></i> Saldo Automático + RF
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-6">
+                    <div class="card border-0 shadow-sm p-3 text-center bg-light rounded-3 h-100">
+                        <small class="text-muted d-block fw-bold text-uppercase mb-1" style="font-size: 0.7rem;">Média Sobra Geral</small>
+                        <span class="fs-5 fw-bold text-primary">@Model.MediaSobraHistorica.ToString("C2")</span>
+                        <div class="text-muted mt-1" style="font-size: 0.6rem;">
+                            <i class="bi bi-calculator text-primary"></i> Histórico Recente
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <ul class="nav nav-pills nav-fill mb-4 p-1 bg-light rounded-3 border" id="ganhosTab" role="tablist">
+                <li class="nav-item">
+                    <button class="nav-link active rounded-2 fw-bold small text-uppercase py-2" id="rf-tab" data-bs-toggle="tab" data-bs-target="#tabRendaFixa" type="button">
+                        <i class="bi bi-shield-check me-1"></i> Renda Fixa (12m)
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link rounded-2 fw-bold small text-uppercase py-2" id="rv-tab" data-bs-toggle="tab" data-bs-target="#tabRendaVariavel" type="button">
+                        <i class="bi bi-lightning-charge me-1"></i> Renda Variável
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content" id="ganhosTabContent">
+                <div class="tab-pane fade show active" id="tabRendaFixa" role="tabpanel">
+                    <div style="height: 300px; position: relative;">
+                        <canvas id="chartGanhosRendaFixa"></canvas>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="tabRendaVariavel" role="tabpanel">
+                    <div class="table-responsive" style="max-height: 280px; overflow-y: auto;">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light sticky-top">
+                                <tr class="small text-uppercase text-muted" style="font-size: 0.7rem;">
+                                    <th>Data</th>
+                                    <th>Operação</th>
+                                    <th class="text-end">Resultado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @{
+                                    var vendasRV = Model.Lancamentos
+                                    .Where(x => x.Descricao.Contains("Ganho de Capital") || x.Descricao.Contains("Prejuízo de Capital"))
+                                    .OrderByDescending(x => x.Data)
+                                    .ToList();
+                                }
+
+                                @if (vendasRV.Any())
+                                {
+                                    foreach (var venda in vendasRV)
+                                    {
+                                        bool ehLucro = venda.Tipo == "Entrada";
+                                        <tr>
+                                            <td class="text-muted small">@venda.Data.ToString("dd/MM")</td>
+                                            <td class="small fw-bold text-dark">@venda.Descricao</td>
+                                            <td class="text-end fw-bold small @(ehLucro ? "text-success" : "text-danger")">
+                                                @(ehLucro ? "+" : "-") @venda.Valor.ToString("C2")
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                                else
+                                {
+                                    <tr>
+                                        <td colspan="3" class="text-center py-4 text-muted small">
+                                            Nenhuma venda de ações/FIIs registrada este mês.
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        if (typeof Chart === 'undefined') {
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+            script.onload = inicializarGraficoDetails;
+            document.head.appendChild(script);
+        } else {
+            setTimeout(inicializarGraficoDetails, 250);
+        }
+
+        function inicializarGraficoDetails() {
+            const canvas = document.getElementById('chartGanhosRendaFixa');
+            if (!canvas) return;
+
+            // Puxa as duas listas calculadas dinamicamente na Controller (Convertendo para formato JSON compatível com JS)
+            const labelsGrafico = @Html.Raw(Json.Serialize(ViewBag.HistoricoLabelsGrafico));
+            const dadosGrafico = @Html.Raw(Json.Serialize(ViewBag.HistoricoGanhosGrafico));
+
+            const ctx = canvas.getContext('2d');
+
+            if (window.meuChartDetailsRF) {
+                window.meuChartDetailsRF.destroy();
+            }
+
+            window.meuChartDetailsRF = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labelsGrafico, // Nossos meses sincronizados (Real vs Estimado)
+                    datasets: [{
+                        label: 'Rendimento Conservador (R$)',
+                        data: dadosGrafico, // Valores exatos calculados no C#
+                        backgroundColor: '#198754',
+                        borderRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => 'Rendimento: ' + new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(context.raw)
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { callback: (v) => 'R$ ' + v.toLocaleString('pt-BR') }
+                        }
+                    }
+                }
+            });
+        }
+
+        const rfTabBtn = document.getElementById('rf-tab');
+        if (rfTabBtn) {
+            rfTabBtn.addEventListener('shown.bs.tab', inicializarGraficoDetails);
+        }
+    })();
+</script>

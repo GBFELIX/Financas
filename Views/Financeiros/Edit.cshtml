@@ -2,8 +2,8 @@
 
 @{
     Layout = null;
-
 }
+
 <div class="modal fade" id="editModal-@Model.Id" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -11,7 +11,8 @@
                 <h5 class="modal-title" id="editModalLabel">Editar Lançamento Financeiro</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form asp-action="Edit" method="post">
+
+            <form asp-action="Edit" asp-route-visao="@ViewBag.VisaoAtual" method="post">
                 <div class="modal-body">
                     <div asp-validation-summary="ModelOnly" class="text-danger"></div>
                     <input type="hidden" asp-for="Id" />
@@ -25,22 +26,15 @@
 
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label asp-for="Valor" class="form-label">Valor Atual (R$)</label>
-                            @* Usamos o ID do modelo para garantir que cada modal tenha seu próprio campo identificado *@
+                            <label asp-for="Valor" class="form-label">Valor (R$)</label>
                             <input asp-for="Valor" id="inputValor-@Model.Id" class="form-control" type="text" />
                             <span asp-validation-for="Valor" class="text-danger"></span>
                         </div>
-
                         <div class="col-md-6 mb-3">
-                            <label class="form-label text-success fw-bold">+ Adicionar Valor (R$)</label>
-                            <input type="number" id="inputAcrescimo-@Model.Id" class="form-control border-success" placeholder="0,00" step="0.01" />
-                            <div class="form-text small">Digite quanto quer somar ao total.</div>
+                            <label asp-for="Data" class="form-label"></label>
+                            <input asp-for="Data" class="form-control" type="date" />
+                            <span asp-validation-for="Data" class="text-danger"></span>
                         </div>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label asp-for="Data" class="form-label"></label>
-                        <input asp-for="Data" class="form-control" type="date" />
-                        <span asp-validation-for="Data" class="text-danger"></span>
                     </div>
 
                     <div class="row">
@@ -66,25 +60,25 @@
                                 <option value="Eletrônicos">Eletrônicos</option>
                                 <option value="Farmácia">Farmácia</option>
                                 <option value="Serviços">Serviços</option>
-                                <option value="Estudos">Estudos</option>
                                 <option value="Outros">Outros</option>
                             </select>
-                            <div class="mb-3">
-                                <label asp-for="Pagamento" class="form-label">Método de Pagamento</label>
-                                <select asp-for="Pagamento" class="form-select">
-                                    <option value="Pix">Pix / Dinheiro</option>
-                                    <option value="Cartão Crédito">Cartão de Crédito</option>
-                                    <option value="Cartão Débito">Cartão de Débito</option>
-                                    <option value="Pagamento">Pagamento</option>
-                                </select>
-                            </div>
-
+                            <span asp-validation-for="Categoria" class="text-danger"></span>
                         </div>
                     </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Pagamento" class="form-label">Método de Pagamento</label>
+                        <select asp-for="Pagamento" class="form-select">
+                            <option value="Pix">Pix / Dinheiro</option>
+                            <option value="Cartão Crédito">Cartão de Crédito</option>
+                            <option value="Cartão Débito">Cartão de Débito</option>
+                        </select>
+                        <span asp-validation-for="Pagamento" class="text-danger"></span>
+                    </div>
                 </div>
+
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <!-- Adicionei a classe btn-salvar-edicao -->
                     <button type="submit" class="btn btn-primary btn-salvar-edicao">Salvar Alterações</button>
                 </div>
             </form>
@@ -96,5 +90,4 @@
     @{
         await Html.RenderPartialAsync("_ValidationScriptsPartial");
     }
-
 }

@@ -67,7 +67,21 @@ public class AtivosBackgroundService : BackgroundService
                         }
                         catch { continue; }
                     }
-
+                    var outros = await context.AtivosGerais.ToListAsync(stoppingToken);
+                    foreach (var item in outros)
+                    {
+                        if (item.DataAtualizacao > DateTime.Now.AddMinutes(-1440)) continue;
+                        try
+                        {
+                            // Garante o sufixo .SA exigido pelo Yahoo Finance para ativos brasileiros
+                            string tickerFormatado = item.Ticker.EndsWith(".SA") ? item.Ticker : item.Ticker + ".SA";
+                            var dados = await service.ObterDadosAtivo(tickerFormatado);
+                            item.PrecoAtual = dados.PrecoAtual;
+                            item.DataAtualizacao = DateTime.Now;
+                            context.Update(item);
+                        }
+                        catch { continue; }
+                    }
                     // Salva todas as alterações de ambas as tabelas de uma só vez
                     await context.SaveChangesAsync(stoppingToken);
                 }
