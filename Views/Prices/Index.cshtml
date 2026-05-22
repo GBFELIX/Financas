@@ -2,72 +2,103 @@
 
 @{
     ViewData["Title"] = "Simulações de Financiamento";
+    var visao = ViewBag.VisaoAtual as string ?? "Gabriel";
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="display-6">Minhas Simulações (Tabela Price)</h1>
-    <p>
-        <a asp-action="Create" class="btn btn-primary shadow-sm">Nova Simulação</a>
+    <h1 class="display-6 fw-bold text-dark">Minhas Simulações (Tabela Price)</h1>
+    <p class="mb-0">
+        <a asp-action="Create" asp-route-visao="@visao" class="btn btn-primary shadow-sm rounded-pill px-3">
+            <i class="bi bi-plus-circle me-1"></i> Nova Simulação
+        </a>
     </p>
 </div>
 
-<div class="card shadow-sm">
+<div class="card shadow-sm rounded-4 overflow-hidden border-0">
     <div class="card-body p-0">
-        <table class="table table-hover mb-0">
-            <thead class="table-dark">
-                <tr>
-                    <th>Imóvel</th>
-                    <th>Entrada</th>
-                    <th>Juros (Ano)</th>
-                    <th class="text-center">Prazo</th>
-                    <th class="text-center">Início do Financiamento</th>
-                    <th>Extra/Mês</th>
-                    <th>Prestação</th>
-                    <th class="text-center">Ações</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var item in Model)
-                {
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark">
                     <tr>
-                        <td class="fw-bold text-success">
-                            @item.ValorImovel.ToString("C")
-                        </td>
-                        <td>
-                            @item.ValorEntrada.ToString("C")
-                        </td>
-                        <td>
-                            @item.TaxaJurosAnual.ToString("N2")%
-                        </td>
-                        <td class="text-center">
-                            @item.PrazoMeses <span class="text-muted small">meses</span>
-                        </td>
-                        <td class="text-center">
-                            @item.DataInicio.ToString("MM/yyyy")
-                        </td>
-                        <td class="text-danger">
-                            @(item.AporteExtraMensal.HasValue ? item.AporteExtraMensal.Value.ToString("C") : "-")
-                        </td>
-                        <td>
-                            @item.ValorPrestação.ToString("C")
-                        </td>
-                        <td class="text-center">
-                            <div class="btn-group btn-group-sm" role="group">
-                                <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-outline-secondary">Editar</a>
-                                <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-info text-white">Ver Amortização</a>
-                                <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-outline-danger">Excluir</a>
-                            </div>
-                        </td>
+                        <th class="ps-3">Imóvel</th>
+                        <th>Entrada</th>
+                        <th>Juros (Ano)</th>
+                        <th class="text-center">Prazo</th>
+                        <th class="text-center">Início do Financiamento</th>
+                        <th>Extra/Mês</th>
+                        <th>Prestação</th>
+                        <th class="text-center pe-3">Ações</th>
                     </tr>
-                }
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td class="fw-bold text-success ps-3">
+                                @item.ValorImovel.ToString("C2")
+                            </td>
+                            <td>
+                                @item.ValorEntrada.ToString("C2")
+                            </td>
+                            <td>
+                                @item.TaxaJurosAnual.ToString("N2")%
+                            </td>
+                            <td class="text-center">
+                                @item.PrazoMeses <span class="text-muted small">meses</span>
+                            </td>
+                            <td class="text-center">
+                                @item.DataInicio.ToString("MM/yyyy")
+                            </td>
+                            <td class="text-danger">
+                                @(item.AporteExtraMensal.HasValue? item.AporteExtraMensal.Value.ToString("C2") : "-")
+                            </td>
+                            <td class="fw-semibold text-dark">
+                                @item.ValorPrestação
+                            </td>
+                            <td class="text-center pe-3">
+                                <div class="btn-group shadow-sm rounded-3" role="group" aria-label="Ações da Simulação">
+                                    <!-- Editar -->
+                                    <a asp-action="Edit"
+                                       asp-route-id="@item.Id"
+                                       asp-route-visao="@visao"
+                                       class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1"
+                                       title="Editar Cenário">
+                                        <i class="bi bi-pencil-square"></i>
+                                        <span class="d-none d-md-inline">Editar</span>
+                                    </a>
+
+                                    <!-- Ver Amortização -->
+                                    <a asp-action="Details"
+                                       asp-route-id="@item.Id"
+                                       asp-route-visao="@visao"
+                                       class="btn btn-sm btn-info text-white d-inline-flex align-items-center gap-1"
+                                       title="Evolução do Saldo Devedor">
+                                        <i class="bi bi-calculator"></i>
+                                        <span class="d-none d-md-inline">Amortização</span>
+                                    </a>
+
+                                    <!-- Excluir -->
+                                    <a asp-action="Delete"
+                                       asp-route-id="@item.Id"
+                                       asp-route-visao="@visao"
+                                       class="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1"
+                                       title="Excluir Permanentemente">
+                                        <i class="bi bi-trash"></i>
+                                        <span class="d-none d-md-inline">Excluir</span>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
 @if (!Model.Any())
 {
-    <div class="alert alert-info mt-3 text-center">
-        Nenhuma simulação cadastrada. Comece criando uma nova!
+    <div class="alert alert-info mt-3 text-center border-0 rounded-3 shadow-sm">
+        <i class="bi bi-info-circle me-1"></i> Nenhuma simulação cadastrada. Comece criando uma nova!
     </div>
 }

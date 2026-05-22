@@ -49,6 +49,7 @@ namespace Acoes_Fiis.Models
         public decimal SaldoDevedorAtual { get; set; }
         public decimal TaxaJurosAnual { get; set; }
         public int PrazoMesesRestantes { get; set; }
+        public DateTime DataInicio { get; set; }
         public List<ParcelaProjecao> ProjecaoFinanciamento { get; set; } = new();
 
         public decimal PatrimonioLiquido => PatrimonioTotalReal - SaldoDevedorAtual;

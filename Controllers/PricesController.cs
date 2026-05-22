@@ -82,28 +82,6 @@ namespace Acoes_Fiis.Controllers
             return View(price);
         }
 
-        // GET: Prices/Create
-        public IActionResult Create()
-        {
-            return View();
-        }
-
-        // POST: Prices/Create
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,ValorImovel,ValorEntrada,TaxaJurosAnual,PrazoMeses,AporteExtraMensal,ValorPrestação,DataInicio")] Price price)
-        {
-            if (ModelState.IsValid)
-            {
-                _context.Add(price);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
-            }
-            return View(price);
-        }
-
         [HttpPost]
         public async Task<IActionResult> RemoverAporte(int aporteId, int priceId)
         {
@@ -113,35 +91,69 @@ namespace Acoes_Fiis.Controllers
                 _context.AporteExtras.Remove(aporte);
                 await _context.SaveChangesAsync();
             }
-            return RedirectToAction(nameof(Edit), new { id = priceId });
+            return RedirectToAction(nameof(Details), new { id = priceId });
+        }
+
+        // GET: Prices/Create
+        public IActionResult Create(string visao)
+        {
+            ViewBag.VisaoAtual = string.IsNullOrEmpty(visao) ? "Gabriel" : visao;
+            return View();
+        }
+
+        // POST: Prices/Create
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create(Price price, string visao)
+        {
+            // Remove a propriedade de relacionamento da validação automática para não travar o salvamento
+            ModelState.Remove("AportesPontuais");
+
+            if (ModelState.IsValid)
+            {
+                // Se a sua model exige um Dono e o formulário não enviou, injeta o filtro ativo da tela
+                if (string.IsNullOrEmpty(price.Dono))
+                {
+                    price.Dono = visao == "Casal" ? "Casal" : visao;
+                }
+
+                _context.Add(price);
+                await _context.SaveChangesAsync();
+
+                return RedirectToAction(nameof(Index), new { visao = visao });
+            }
+
+            ViewBag.VisaoAtual = string.IsNullOrEmpty(visao) ? "Gabriel" : visao;
+            return View(price);
         }
 
         // GET: Prices/Edit/5
-        public async Task<IActionResult> Edit(int? id)
+        public async Task<IActionResult> Edit(int? id, string visao)
         {
             if (id == null) return NotFound();
 
-            // Adicione o .Include para carregar os aportes no Edit
             var price = await _context.Financiamentos
                 .Include(p => p.AportesPontuais)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
             if (price == null) return NotFound();
 
+            ViewBag.VisaoAtual = string.IsNullOrEmpty(visao) ? "Gabriel" : visao;
             return View(price);
         }
 
         // POST: Prices/Edit/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,ValorImovel,ValorEntrada,TaxaJurosAnual,PrazoMeses,AporteExtraMensal,ValorPrestação,DataInicio")] Price price)
+        public async Task<IActionResult> Edit(int id, Price price, string visao)
         {
             if (id != price.Id)
             {
                 return NotFound();
             }
+
+            // Remove a propriedade de relacionamento da validação automática na edição também
+            ModelState.Remove("AportesPontuais");
 
             if (ModelState.IsValid)
             {
@@ -149,6 +161,7 @@ namespace Acoes_Fiis.Controllers
                 {
                     _context.Update(price);
                     await _context.SaveChangesAsync();
+                    return RedirectToAction(nameof(Index), new { visao = visao });
                 }
                 catch (DbUpdateConcurrencyException)
                 {
@@ -161,8 +174,9 @@ namespace Acoes_Fiis.Controllers
                         throw;
                     }
                 }
-                return RedirectToAction(nameof(Index));
             }
+
+            ViewBag.VisaoAtual = string.IsNullOrEmpty(visao) ? "Gabriel" : visao;
             return View(price);
         }
 

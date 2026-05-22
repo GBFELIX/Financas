@@ -2,129 +2,196 @@
 
 @{
     ViewData["Title"] = "Detalhamento da Amortização";
+    var visao = ViewBag.VisaoAtual as string ?? "Gabriel";
 }
 
-<div class="container">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h1>Análise do Financiamento</h1>
-        <div>
-            <a asp-action="Edit" asp-route-id="@Model?.Id" class="btn btn-warning">Editar</a>
-            <a asp-action="Index" class="btn btn-secondary">Voltar</a>
+<div class="container pb-5">
+    <!-- Topo com gerenciamento de visão -->
+    <div class="d-flex justify-content-between align-items-center mb-4 mt-3">
+        <h1 class="display-6 fw-bold text-dark">Análise do Financiamento</h1>
+        <div class="d-flex gap-2">
+            <a asp-action="Edit" asp-route-id="@Model?.Id" asp-route-visao="@visao" class="btn btn-warning rounded-pill px-3 shadow-sm fw-bold">
+                <i class="bi bi-pencil-square me-1"></i> Editar
+            </a>
+            <a asp-action="Index" asp-route-visao="@visao" class="btn btn-outline-secondary rounded-pill px-3">
+                <i class="bi bi-arrow-left me-1"></i> Voltar
+            </a>
         </div>
     </div>
+
     @{
-        // Lógica para identificar a parcela do mês atual
         var hoje = DateTime.Now;
-        var parcelaAtual = Model.Projecao.FirstOrDefault(p => p.Data.Month == hoje.Month && p.Data.Year == hoje.Year);
+        var parcelaAtual = Model.Projecao?.FirstOrDefault(p => p.Data.Month == hoje.Month && p.Data.Year == hoje.Year);
         decimal saldoExibicao;
 
         if (parcelaAtual != null)
         {
-            // Se já começou, mostra o saldo da parcela de hoje
             saldoExibicao = parcelaAtual.SaldoDevedorRestante;
         }
         else
         {
-            // Se ainda não começou (ou já acabou), mostra o Saldo Inicial do contrato
             saldoExibicao = Model.ValorImovel - Model.ValorEntrada;
         }
+
+        var totalParcelas = Model.Projecao?.Count ?? 0;
         var parcelasPagas = parcelaAtual != null ? parcelaAtual.Numero - 1 : 0;
-        var totalParcelas = Model.Projecao.Count;
         var progresso = (totalParcelas > 0) ? (parcelasPagas * 100 / totalParcelas) : 0;
-        var saldoRestante = parcelaAtual?.SaldoDevedorRestante ?? Model.Projecao.LastOrDefault()?.SaldoDevedorRestante ?? 0;
     }
+
+    <!-- Cards de Progresso Superior -->
     <div class="row mb-4">
         <div class="col-md-12">
-            <div class="card border-0 shadow-sm bg-light">
-                <div class="card-body">
-                    <h5 class="card-title text-primary"><i class="bi bi-graph-up-arrow"></i> Progresso do Financiamento</h5>
-                    <div class="progress mb-3" style="height: 25px;">
-                        <div class="progress-bar progress-bar-striped progress-bar-animated bg-success"
+            <div class="card border-0 shadow-sm bg-light rounded-4">
+                <div class="card-body p-4">
+                    <h5 class="card-title text-primary fw-bold mb-3">
+                        <i class="bi bi-graph-up-arrow me-1"></i> Progresso do Financiamento
+                    </h5>
+                    <div class="progress mb-3 shadow-sm" style="height: 24px; border-radius: 50px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated bg-success fw-bold text-white text-center fs-6"
                              role="progressbar" style="width: @progresso%"
                              aria-valuenow="@progresso" aria-valuemin="0" aria-valuemax="100">
                             @progresso% Concluído
                         </div>
                     </div>
-                    <div class="row text-center">
-                        <div class="col-md-4">
-                            <small class="text-muted d-block">Parcelas Restantes</small>
-                            <strong class="h4">@(totalParcelas - parcelasPagas)</strong>
+                    <div class="row text-center g-3 mt-2">
+                        <div class="col-md-4 border-end">
+                            <small class="text-muted d-block text-uppercase fw-semibold" style="font-size: 0.7rem;">Parcelas Restantes</small>
+                            <strong class="fs-4 text-dark">@(totalParcelas - parcelasPagas)</strong>
                         </div>
-                        <div class="col-md-4">
-                            <small class="text-muted d-block">Saldo Devedor Atual</small>
-                            <strong class="h4 text-danger">@saldoExibicao.ToString("C")</strong>
-                            @if (parcelaAtual == null && Model.Projecao.Any() && Model.Projecao.First().Data > hoje)
+                        <div class="col-md-4 border-end">
+                            <small class="text-muted d-block text-uppercase fw-semibold" style="font-size: 0.7rem;">Saldo Devedor Atual</small>
+                            <strong class="fs-4 text-danger">@saldoExibicao.ToString("C2")</strong>
+                            @if (parcelaAtual == null && Model.Projecao != null && Model.Projecao.Any() && Model.Projecao.First().Data > hoje)
                             {
-                                <span class="badge bg-secondary d-block mt-1">Aguardando Início</span>
+                                <span class="badge bg-secondary d-inline-block mt-1">Aguardando Início</span>
                             }
                         </div>
                         <div class="col-md-4">
-                            <small class="text-muted d-block">Previsão de Quitação</small>
-                            <strong class="h4 text-dark">@Model.Projecao.LastOrDefault()?.Data.ToString("MM/yyyy")</strong>
+                            <small class="text-muted d-block text-uppercase fw-semibold" style="font-size: 0.7rem;">Previsão de Quitação</small>
+                            <strong class="fs-4 text-dark">@(Model.Projecao?.LastOrDefault()?.Data.ToString("MM/yyyy") ?? "-")</strong>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="card mb-3 border-primary">
-        <div class="card-body">
-            <h5 class="card-title">Simular Aporte Pontual (Ex: 13º ou FGTS)</h5>
+
+    <!-- Seção de Aporte Pontual -->
+    <div class="card mb-4 border-0 shadow-sm rounded-4 overflow-hidden">
+        <div class="card-header bg-dark text-white py-3">
+            <h5 class="mb-0 fw-bold"><i class="bi bi-piggy-bank me-2"></i>Simular Aporte Extra Pontual (Ex: 13º ou FGTS)</h5>
+        </div>
+        <div class="card-body p-4 bg-white">
             <form asp-action="AdicionarAporte" method="post" class="row g-3">
                 <input type="hidden" name="priceId" value="@Model.Id" />
                 <div class="col-md-4">
-                    <label class="form-label">Mês do Aporte</label>
-                    <input type="number" name="mes" class="form-control" placeholder="Ex: 12" required>
+                    <label class="form-label fw-semibold">Número do Mês Alvo</label>
+                    <input type="number" name="mes" class="form-control" min="1" max="@totalParcelas" placeholder="Ex: 12 (Mês 12 do contrato)" required>
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label">Valor do Aporte (R$)</label>
-                    <input type="number" step="0.01" name="valor" class="form-control" placeholder="Ex: 5000" required>
+                    <label class="form-label fw-semibold">Valor do Aporte (R$)</label>
+                    <div class="input-group">
+                        <span class="input-group-text">R$</span>
+                        <input type="number" step="0.01" name="valor" class="form-control input-decimal" placeholder="Ex: 5000.00" required>
+                    </div>
                 </div>
                 <div class="col-md-4 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary w-100">Injetar Valor</button>
+                    <button type="submit" class="btn btn-primary w-100 fw-bold rounded-3 py-2 shadow-sm">
+                        <i class="bi bi-plus-circle me-1"></i> Injetar Valor no Fluxo
+                    </button>
                 </div>
             </form>
         </div>
     </div>
-    <div class="row">
+
+    <div class="row g-4">
+        <!-- Coluna Esquerda: Resumo + Histórico de Aportes Injetados -->
         <div class="col-md-4">
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-dark text-white">Resumo do Contrato</div>
-                <div class="card-body">
-                    <dl class="row mb-0">
-                        <dt class="col-sm-6">Imóvel:</dt>
-                        <dd class="col-sm-6">@Model.ValorImovel.ToString("C")</dd>
+            <div class="card shadow-sm border-0 rounded-4 overflow-hidden mb-4">
+                <div class="card-header bg-secondary text-white fw-bold">Resumo do Contrato</div>
+                <div class="card-body bg-white p-3">
+                    <dl class="row mb-0 g-2" style="font-size: 0.9rem;">
+                        <dt class="col-sm-6 text-muted">Imóvel:</dt>
+                        <dd class="col-sm-6 fw-bold text-dark text-end">@Model.ValorImovel.ToString("C2")</dd>
 
-                        <dt class="col-sm-6">Entrada:</dt>
-                        <dd class="col-sm-6">@Model.ValorEntrada.ToString("C")</dd>
+                        <dt class="col-sm-6 text-muted">Entrada:</dt>
+                        <dd class="col-sm-6 fw-bold text-primary text-end">@Model.ValorEntrada.ToString("C2")</dd>
 
-                        <dt class="col-sm-6">Financiado:</dt>
-                        <dd class="col-sm-6">@((Model.ValorImovel - Model.ValorEntrada).ToString("C"))</dd>
+                        <dt class="col-sm-6 text-muted">Financiado:</dt>
+                        <dd class="col-sm-6 fw-bold text-dark text-end">@((Model.ValorImovel - Model.ValorEntrada).ToString("C2"))</dd>
 
-                        <dt class="col-sm-6">Taxa Juros:</dt>
-                        <dd class="col-sm-6">@Model.TaxaJurosAnual.ToString("N2")% ao ano</dd>
+                        <dt class="col-sm-6 text-muted">Taxa Juros:</dt>
+                        <dd class="col-sm-6 fw-semibold text-dark text-end">@Model.TaxaJurosAnual.ToString("N2")% a.a.</dd>
 
-                        <dt class="col-sm-6">Aporte Extra:</dt>
-                        <dd class="col-sm-6 text-danger fw-bold">@(Model.AporteExtraMensal.HasValue ? Model.AporteExtraMensal.Value.ToString("C") : "0")</dd>
-
+                        <dt class="col-sm-6 text-muted">Aporte Mensal:</dt>
+                        <dd class="col-sm-6 text-danger fw-bold text-end">@(Model.AporteExtraMensal.HasValue? Model.AporteExtraMensal.Value.ToString("C2") : "R$ 0,00")</dd>
                     </dl>
+                </div>
+            </div>
+
+            <!-- Nova Seção: Histórico de Aportes Extras Pontuais Cadastrados -->
+            <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
+                <div class="card-header bg-light border-bottom text-dark fw-bold d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-list-check me-1"></i>Aportes Pontuais Injetados</span>
+                    <span class="badge bg-primary rounded-pill">@(Model.AportesPontuais?.Count ?? 0)</span>
+                </div>
+                <div class="card-body p-0 bg-white" style="max-height: 250px; overflow-y: auto;">
+                    @if (Model.AportesPontuais != null && Model.AportesPontuais.Any())
+                    {
+                        <table class="table table-sm table-hover mb-0 align-middle" style="font-size: 0.85rem;">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th class="ps-3">Mês</th>
+                                    <th>Valor</th>
+                                    <th class="text-center pe-3">Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var ap in Model.AportesPontuais.OrderBy(x => x.MesReferencia))
+                                {
+                                    <tr>
+                                        <td class="ps-3 fw-bold">Mês @ap.MesReferencia</td>
+                                        <td class="text-success fw-semibold">@ap.Valor.ToString("C2")</td>
+                                        <td class="text-center pe-3">
+                                            <form asp-action="RemoverAporte" method="post" onsubmit="return confirm('Tem certeza que deseja remover este aporte extraordinário do fluxo?');">
+                                                <input type="hidden" name="aporteId" value="@ap.Id" />
+                                                <input type="hidden" name="priceId" value="@Model.Id" />
+                                                <button type="submit" class="btn btn-sm btn-link text-danger p-0 border-0" title="Remover Aporte">
+                                                    <i class="bi bi-trash-fill"></i>
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                    else
+                    {
+                        <div class="text-center text-muted p-4 small">
+                            <i class="bi bi-info-circle d-block mb-1 fs-5"></i> Nenhum aporte pontual lançado ainda.
+                        </div>
+                    }
                 </div>
             </div>
         </div>
 
+        <!-- Coluna Direita: Tabela da Evolução Mês a Mês (Price) -->
         <div class="col-md-8">
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white">Evolução do Saldo Devedor (Mês a Mês)</div>
-                <div class="card-body p-0" style="max-height: 500px; overflow-y: auto;">
-                    <table class="table table-sm table-striped table-hover mb-0">
-                        <thead class="sticky-top bg-light">
+            <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
+                <div class="card-header bg-primary text-white fw-bold py-3">
+                    <i class="bi bi-calendar3 me-1"></i> Evolução do Saldo Devedor (Mês a Mês)
+                </div>
+                <div class="card-body p-0 bg-white" style="max-height: 540px; overflow-y: auto;">
+                    <table class="table table-sm table-striped table-hover mb-0 align-middle text-center" style="font-size: 0.85rem;">
+                        <thead class="table-light sticky-top shadow-sm">
                             <tr>
-                                <th>Mês</th>
+                                <th class="text-start ps-3">Nº Parcela</th>
                                 <th>Vencimento</th>
                                 <th>Prestação + Extra</th>
-                                <th>Juros</th>
-                                <th>Amortização</th>
-                                <th>Saldo Restante</th>
+                                <th>Juros do Mês</th>
+                                <th>Amortização Real</th>
+                                <th class="text-end pe-3">Saldo Restante</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -132,37 +199,45 @@
                             {
                                 @foreach (var p in Model.Projecao)
                                 {
-                                    bool ehMesAtual = (p.Data.Month == DateTime.Now.Month && p.Data.Year == DateTime.Now.Year);
+                                    bool ehMesActual = (p.Data.Month == hoje.Month && p.Data.Year == hoje.Year);
 
-                                    <tr class="@(ehMesAtual ? "table-warning border-2 border-primary" : "")">
-                                        <td>
-                                            @p.Numero
-                                            @if (ehMesAtual)
+                                    <tr class="@(ehMesActual ? "table-warning border-start border-end border-primary fw-semibold" : "")">
+                                        <td class="text-start ps-3">
+                                            <span class="fw-bold">@p.Numero</span>
+                                            @if (ehMesActual)
                                             {
-                                                <span class="badge bg-primary ms-1">Atual</span>
+                                                <span class="badge bg-primary ms-1" style="font-size: 0.65rem;">Atual</span>
                                             }
                                         </td>
-                                        <td class="fw-bold">@p.Data.ToString("MM/yy")</td>
-                                        <td>@p.ValorParcela.ToString("C")</td>
-                                        <td>@p.Juros.ToString("C")</td>
-                                        <td>@p.Amortizacao.ToString("C")</td>
-                                        <td class="@(ehMesAtual ? "fw-bolder text-danger" : "")">@p.SaldoDevedorRestante.ToString("C")</td>
+                                        <td class="fw-bold text-secondary">@p.Data.ToString("MM/yy")</td>
+                                        <td class="text-dark">@p.ValorParcela.ToString("C2")</td>
+                                        <td class="text-muted">@p.Juros.ToString("C2")</td>
+                                        <td class="text-success">@p.Amortizacao.ToString("C2")</td>
+                                        <td class="text-end pe-3 @(ehMesActual ? "fw-bold text-danger fs-6" : "text-dark")">
+                                            @p.SaldoDevedorRestante.ToString("C2")
+                                        </td>
                                     </tr>
                                 }
                             }
                             else
                             {
                                 <tr>
-                                    <td colspan="5" class="text-center p-4">Não há projeção disponível.</td>
+                                    <td colspan="6" class="text-center p-5 text-muted">
+                                        <i class="bi bi-slash-circle d-block mb-2 fs-4"></i> Não há dados de projeção disponíveis para o contrato atual.
+                                    </td>
                                 </tr>
                             }
                         </tbody>
                     </table>
                 </div>
-                <div class="card-footer text-muted small">
-                    * Amortização inclui a parcela fixa da Price + seu aporte extra mensal.
+                <div class="card-footer text-muted small bg-light py-2">
+                    <i class="bi bi-info-circle-fill me-1"></i> A amortização exibida já computa a parcela base calculada pela Tabela Price somada às regras de aportes automáticos configurados.
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script src="~/js/site.js"></script>
+}

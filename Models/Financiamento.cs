@@ -12,7 +12,7 @@ namespace Acoes_Fiis.Models
         public decimal TaxaJurosAnual { get; set; }
         public int PrazoMeses { get; set; }
         public decimal? AporteExtraMensal { get; set; }
-        public decimal ValorPrestação { get; set; }
+        public decimal? ValorPrestação { get; set; }
 
         [Display(Name = "Data da Primeira Parcela")]
         [DataType(DataType.Date)]

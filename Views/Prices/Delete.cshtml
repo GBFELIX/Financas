@@ -1,63 +1,81 @@
 ﻿@model Acoes_Fiis.Models.Price
 
 @{
-    ViewData["Title"] = "Delete";
+    ViewData["Title"] = "Excluir Simulação Financiamento";
+    var visao = ViewBag.VisaoAtual as string ?? "Gabriel";
 }
 
-<h1>Delete</h1>
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-7">
+            <!-- Card Alerta de Exclusão -->
+            <div class="card border-0 shadow rounded-4 overflow-hidden">
+                <div class="card-header bg-danger text-white py-3 text-center">
+                    <h5 class="mb-0 fw-bold">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i> Confirmar Exclusão
+                    </h5>
+                </div>
 
-<h3>Are you sure you want to delete this?</h3>
-<div>
-    <h4>Price</h4>
-    <hr />
-    <dl class="row">
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.ValorImovel)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.ValorImovel)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.ValorEntrada)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.ValorEntrada)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.TaxaJurosAnual)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.TaxaJurosAnual)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.PrazoMeses)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.PrazoMeses)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.AporteExtraMensal)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.AporteExtraMensal)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.ValorPrestação)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.ValorPrestação)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.DataInicio)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.DataInicio)
-        </dd>
-    </dl>
-    
-    <form asp-action="Delete">
-        <input type="hidden" asp-for="Id" />
-        <input type="submit" value="Delete" class="btn btn-danger" /> |
-        <a asp-action="Index">Back to List</a>
-    </form>
+                <div class="card-body p-4 bg-white">
+                    <div class="text-center mb-4">
+                        <h4 class="text-dark fw-bold mb-2">Tem certeza que deseja deletar este cenário?</h4>
+                        <p class="text-muted small">Esta ação apagará os parâmetros calculados do sistema e não poderá ser desfeita.</p>
+                    </div>
+
+                    <!-- Lista de Parâmetros Estilizada -->
+                    <div class="p-3 bg-light rounded-3 border mb-4">
+                        <div class="row g-3">
+                            <div class="col-sm-6 border-end border-2 border-white">
+                                <small class="text-muted d-block text-uppercase fw-bold" style="font-size: 0.65rem;">Valor do Imóvel</small>
+                                <span class="fw-bold text-dark fs-5">@Model.ValorImovel.ToString("C2")</span>
+                            </div>
+                            <div class="col-sm-6 ps-md-3">
+                                <small class="text-muted d-block text-uppercase fw-bold" style="font-size: 0.65rem;">Valor de Entrada</small>
+                                <span class="fw-bold text-primary fs-5">@Model.ValorEntrada.ToString("C2")</span>
+                            </div>
+
+                            <hr class="my-1 opacity-25 text-secondary" />
+
+                            <div class="col-sm-4 border-end border-2 border-white">
+                                <small class="text-muted d-block" style="font-size: 0.7rem;">Taxa Juros Anual</small>
+                                <span class="fw-semibold text-dark">@Model.TaxaJurosAnual.ToString("N2")%</span>
+                            </div>
+                            <div class="col-sm-4 border-end border-2 border-white ps-md-3">
+                                <small class="text-muted d-block" style="font-size: 0.7rem;">Prazo do Contrato</small>
+                                <span class="fw-semibold text-dark">@Model.PrazoMeses meses</span>
+                            </div>
+                            <div class="col-sm-4 ps-md-3">
+                                <small class="text-muted d-block" style="font-size: 0.7rem;">Aporte Extra Mensal</small>
+                                <span class="fw-semibold text-success">@Model.AporteExtraMensal</span>
+                            </div>
+
+                            <hr class="my-1 opacity-25 text-secondary" />
+
+                            <div class="col-sm-6 border-end border-2 border-white">
+                                <small class="text-muted d-block" style="font-size: 0.7rem;">Valor da Prestação Base</small>
+                                <span class="fw-bold text-danger">@Model.ValorPrestação</span>
+                            </div>
+                            <div class="col-sm-6 ps-md-3">
+                                <small class="text-muted d-block" style="font-size: 0.7rem;">Data de Início</small>
+                                <span class="fw-semibold text-dark">@Model.DataInicio.ToString("dd/MM/yyyy")</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Formulário de Ações Tracionando a Visão -->
+                    <form asp-action="Delete" asp-route-visao="@visao" class="d-flex justify-content-between align-items-center mt-4">
+                        <input type="hidden" asp-for="Id" />
+
+                        <a asp-action="Index" asp-route-visao="@visao" class="btn btn-outline-secondary rounded-pill px-4">
+                            <i class="bi bi-arrow-left me-1"></i> Cancelar e Voltar
+                        </a>
+
+                        <button type="submit" class="btn btn-danger fw-bold rounded-pill px-4 shadow-sm">
+                            <i class="bi bi-trash3 me-1"></i> Excluir Permanentemente
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>

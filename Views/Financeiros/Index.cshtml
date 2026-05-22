@@ -57,6 +57,7 @@
 
     @* Cards de Resumo Estilo Dashboard *@
     <div class="row mb-4 g-3">
+        <!-- CARD 1: Entradas / Ganhos -->
         <div class="col-md-3">
             <div class="card border-0 bg-success text-white shadow-sm rounded-4 h-100"
                  data-bs-toggle="modal" data-bs-target="#modalDetalheGanhos"
@@ -77,56 +78,68 @@
         <div class="modal fade" id="modalDetalheGanhos" tabindex="-1" aria-hidden="true">
             @await Html.PartialAsync("Details", Model)
         </div>
+
+        <!-- CARD 2: Despesas -->
         <div class="col-md-3">
-            @* Adicionado cursor:pointer e os triggers do modal *@
-            <div class="card border-0 bg-danger text-white shadow-sm rounded-4"
-                 role="button"
-                 data-bs-toggle="modal"
-                 data-bs-target="#modalResumoDespesas"
-                 style="cursor: pointer;">
+            <div class="card border-0 bg-danger text-white shadow-sm rounded-4 h-100"
+                 data-bs-toggle="modal" data-bs-target="#modalResumoDespesas"
+                 style="cursor: pointer; transition: transform 0.2s;"
+                 onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
                 <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <h6 class="small text-uppercase opacity-75">Despesas</h6>
-                        <i class="bi bi-arrow-down-left-circle opacity-50"></i>
+                    <div class="d-flex justify-content-between mb-2">
+                        <h6 class="small text-uppercase opacity-75 mb-0">Despesas</h6>
+                        <i class="bi bi-arrow-down-left-circle opacity-75 fs-5"></i>
                     </div>
-                    <h3 class="mb-0 fw-bold">@Model.TotalDespesas.ToString("C2")</h3>
-                    <small class="opacity-75" style="font-size: 0.7rem;">Clique para ver mais</small>
+                    <h3 class="mb-1 fw-bold">@Model.TotalDespesas.ToString("C2")</h3>
+                    <small class="opacity-75 d-flex align-items-center gap-1" style="font-size: 0.7rem;">
+                        <i class="bi bi-info-circle"></i> Clique para ver mais
+                    </small>
                 </div>
             </div>
         </div>
+
+        <!-- CARD 3: Contas da Casa -->
         <div class="col-md-3">
-            @* O 'data-bs-target' precisa ser idêntico ao id do Modal *@
-            <div class="card border-0 bg-info text-dark shadow-sm rounded-4"
-                 role="button"
-                 data-bs-toggle="modal"
-                 data-bs-target="#modalDespesasCasa"
-                 style="cursor: pointer;">
+            <div class="card border-0 bg-info text-dark shadow-sm rounded-4 h-100"
+                 data-bs-toggle="modal" data-bs-target="#modalDespesasCasa"
+                 style="cursor: pointer; transition: transform 0.2s;"
+                 onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
                 <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <h6 class="small text-uppercase opacity-75 fw-bold">Contas da Casa</h6>
-                        <i class="bi bi-house-check-fill opacity-50"></i>
+                    <div class="d-flex justify-content-between mb-2">
+                        <h6 class="small text-uppercase opacity-75 mb-0 fw-bold">Contas da Casa</h6>
+                        <i class="bi bi-house-check-fill opacity-75 fs-5"></i>
                     </div>
-                    <h3 class="mb-0 fw-bold">@Model.TotalPagoCasa.ToString("C2")</h3>
-                    @if (Model.TotalPendenteCasa > 0)
-                    {
-                        <small class="text-danger fw-bold">Faltam @Model.TotalPendenteCasa.ToString("C2")</small>
-                    }
-                    else
-                    {
-                        <small class="text-success fw-bold"><i class="bi bi-check-all"></i> Tudo pago!</small>
-                    }
+                    <h3 class="mb-1 fw-bold">@Model.TotalPagoCasa.ToString("C2")</h3>
+
+                    <small class="d-flex align-items-center gap-1" style="font-size: 0.7rem;">
+                        @if (Model.TotalPendenteCasa > 0)
+                        {
+                            <span class="text-danger fw-bold"><i class="bi bi-exclamation-circle"></i> Faltam @Model.TotalPendenteCasa.ToString("C2")</span>
+                        }
+                        else
+                        {
+                            <span class="text-success fw-bold"><i class="bi bi-check-all"></i> Tudo pago!</span>
+                        }
+                    </small>
                 </div>
             </div>
         </div>
-        <div class="col-md-3" style="cursor: pointer;" data-bs-toggle="modal" data-bs-target="#modalSimuladorAporte">
-            <div class="card border-0 bg-primary text-white shadow-lg rounded-4 hover-shadow">
+
+        <!-- CARD 4: Para Aportar -->
+        <div class="col-md-3">
+            <div class="card border-0 bg-primary text-white shadow-sm rounded-4 h-100"
+                 data-bs-toggle="modal" data-bs-target="#modalSimuladorAporte"
+                 style="cursor: pointer; transition: transform 0.2s;"
+                 onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
                 <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <h6 class="small text-uppercase opacity-75 fw-bold">Para Aportar</h6>
-                        <i class="bi bi-graph-up-arrow opacity-50"></i>
+                    <div class="d-flex justify-content-between mb-2">
+                        <h6 class="small text-uppercase opacity-75 mb-0 fw-bold">Para Aportar</h6>
+                        <i class="bi bi-graph-up-arrow opacity-75 fs-5"></i>
                     </div>
-                    <h3 class="mb-0 fw-bold">@Model.SobraEstimada.ToString("C2")</h3>
-                    <small class="opacity-75" style="font-size: 0.7rem;">Clique para simular projeção</small>
+                    <h3 class="mb-1 fw-bold">@Model.SobraEstimada.ToString("C2")</h3>
+                    <small class="opacity-75 d-flex align-items-center gap-1" style="font-size: 0.7rem;">
+                        <i class="bi bi-info-circle"></i> Clique para simular projeção
+                    </small>
                 </div>
             </div>
         </div>

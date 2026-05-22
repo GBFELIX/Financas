@@ -1,7 +1,8 @@
 ﻿@model CarteiraTotalViewModel
 
 <div class="modal fade" id="modalDetalhesPatrimonio" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        @* Mudado para modal-lg para acomodar confortavelmente os 4 cards lado a lado *@
         <div class="modal-content border-0 shadow-lg rounded-4">
             <div class="modal-header bg-dark text-white border-0 pt-4 px-4 rounded-top-4">
                 <div class="d-flex align-items-center">
@@ -39,33 +40,35 @@
                     <label class="small text-muted text-uppercase fw-bold mb-3 d-block">Movimentações Financeiras (Histórico Acumulado)</label>
 
                     <div class="row g-2 text-center mb-3">
-                        @* Entradas JÁ recebidas *@
-                        <div class="col-4">
-                            <div class="p-2 border rounded-3 bg-success-subtle border-success-subtle text-success">
-                                <small class="d-block opacity-75 fw-bold" style="font-size: 0.6rem;">RECEBIDO</small>
-                                <span class="fw-bold" style="font-size: 0.9rem;">R$ @((Model.ResumoMensal.Sum(x => x.Entradas) - Model.EntradasFuturas).ToString("N2"))</span>
+                        @* Entradas JÁ recebidas (Corrigido para col-md-3) *@
+                        <div class="col-6 col-md-3">
+                            <div class="p-2 border rounded-3 bg-success-subtle border-success-subtle text-success h-100 d-flex flex-column justify-content-center">
+                                <small class="d-block opacity-75 fw-bold" style="font-size: 0.6rem; letter-spacing: 0.5px;">RECEBIDO</small>
+                                <span class="fw-bold" style="font-size: 0.85rem;">@((Model.ResumoMensal.Sum(x => x.Entradas) - Model.EntradasFuturas).ToString("C2"))</span>
                             </div>
                         </div>
 
-                        @* Entradas FUTURAS (O que está por vir) *@
-                        <div class="col-4">
-                            <div class="p-2 border rounded-3 bg-info-subtle border-info-subtle text-info">
-                                <small class="d-block opacity-75 fw-bold" style="font-size: 0.6rem;">A RECEBER</small>
-                                <span class="fw-bold" style="font-size: 0.9rem;">@Model.EntradasFuturas.ToString("C2")</span>
+                        @* Entradas FUTURAS (O que está por vir) (Corrigido para col-md-3) *@
+                        <div class="col-6 col-md-3">
+                            <div class="p-2 border rounded-3 bg-info-subtle border-info-subtle text-info h-100 d-flex flex-column justify-content-center">
+                                <small class="d-block opacity-75 fw-bold" style="font-size: 0.6rem; letter-spacing: 0.5px;">A RECEBER</small>
+                                <span class="fw-bold" style="font-size: 0.85rem;">@Model.EntradasFuturas.ToString("C2")</span>
                             </div>
                         </div>
 
-                        @* Saídas totais *@
-                        <div class="col-4">
-                            <div class="p-2 border rounded-3 bg-danger-subtle border-danger-subtle text-danger">
-                                <small class="d-block opacity-75 fw-bold" style="font-size: 0.6rem;">SAÍDAS</small>
-                                <span class="fw-bold" style="font-size: 0.9rem;">@((Model.ResumoMensal.Sum(x => x.Saidas) - Model.SaidasFuturas).ToString("C2"))</span>
+                        @* Saídas totais realizadas (Corrigido para col-md-3) *@
+                        <div class="col-6 col-md-3">
+                            <div class="p-2 border rounded-3 bg-danger-subtle border-danger-subtle text-danger h-100 d-flex flex-column justify-content-center">
+                                <small class="d-block opacity-75 fw-bold" style="font-size: 0.6rem; letter-spacing: 0.5px;">SAÍDAS REALIZADAS</small>
+                                <span class="fw-bold" style="font-size: 0.85rem;">@((Model.ResumoMensal.Sum(x => x.Saidas) - Model.SaidasFuturas).ToString("C2"))</span>
                             </div>
                         </div>
-                        <div class="col-4">
-                            <div class="p-2 border rounded-3 bg-danger-subtle border-danger-subtle text-danger">
-                                <small class="d-block opacity-75 fw-bold" style="font-size: 0.6rem;">SAÍDAS FUTURAS</small>
-                                <span class="fw-bold" style="font-size: 0.9rem;">@Model.SaidasFuturas.ToString("C2")</span>
+
+                        @* Saídas FUTURAS (Corrigido para col-md-3) *@
+                        <div class="col-6 col-md-3">
+                            <div class="p-2 border rounded-3 bg-danger-subtle border-danger-subtle text-danger h-100 d-flex flex-column justify-content-center">
+                                <small class="d-block opacity-75 fw-bold" style="font-size: 0.6rem; letter-spacing: 0.5px;">SAÍDAS FUTURAS</small>
+                                <span class="fw-bold" style="font-size: 0.85rem;">@Model.SaidasFuturas.ToString("C2")</span>
                             </div>
                         </div>
                     </div>
@@ -73,9 +76,11 @@
                     @* Barra de Saúde Financeira *@
                     @{
                         var totalEntradas = Model.ResumoMensal.Sum(x => x.Entradas) - Model.EntradasFuturas;
-                        //var totalEntradas = ((Model.ResumoMensal.Sum(x => x.Entradas) - Model.EntradasFuturas).ToString("N2")) - Model.EntradasFuturas;
                         var totalSaidas = Model.ResumoMensal.Sum(x => x.Saidas);
                         var percSaida = totalEntradas > 0 ? (totalSaidas / totalEntradas) * 100 : 0;
+
+                        // Garante o formato decimal correto com ponto para o estilo do Bootstrap
+                        var stringWidth = percSaida.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) + "%";
                     }
                     <div class="mb-2 d-flex justify-content-between small">
                         <span class="text-muted italic">Taxa de Consumo Global</span>
@@ -84,7 +89,7 @@
                     <div class="progress rounded-pill" style="height: 8px;">
                         <div class="progress-bar @(percSaida > 70 ? "bg-danger" : "bg-success")"
                              role="progressbar"
-                             style="width: @percSaida.ToString().Replace(",", ".")%"
+                             style="width: @stringWidth"
                              aria-valuenow="@percSaida" aria-valuemin="0" aria-valuemax="100"></div>
                     </div>
                 </div>
@@ -94,7 +99,7 @@
                     <div class="card-body p-0">
                         <div class="bg-primary p-3 text-center text-white">
                             <h6 class="small text-uppercase opacity-75 mb-1">Patrimônio Bruto Real Disponível</h6>
-                            <h2 class="fw-bold mb-0">R$ @(Model.PatrimonioTotalReal.ToString("N2"))</h2>
+                            <h2 class="fw-bold mb-0">@Model.PatrimonioTotalReal.ToString("C2")</h2>
                         </div>
                         <div class="bg-white p-3 border-top text-center">
                             <small class="text-muted fw-bold italic">

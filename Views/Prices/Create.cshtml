@@ -2,6 +2,7 @@
 
 @{
     ViewData["Title"] = "Nova Simulação de Financiamento";
+    var visao = ViewBag.VisaoAtual as string ?? "Gabriel";
 }
 
 <div class="container pb-5">
@@ -12,9 +13,12 @@
                     <h4 class="mb-0"><i class="bi bi-calculator"></i> Nova Simulação - Tabela Price</h4>
                 </div>
                 <div class="card-body p-4">
-                    <form asp-action="Create">
+                    <!-- Correção 1: Injeção da rota de visão no formulário -->
+                    <form asp-action="Create" asp-route-visao="@visao" method="post">
                         <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-                        <input type="hidden" name="Dono" value="@ViewBag.VisaoAtual" />
+
+                        <input type="hidden" name="Dono" value="@visao" />
+
                         <div class="row">
                             <div class="col-md-6">
                                 <h5 class="text-muted border-bottom pb-2 mb-3">Valores Base</h5>
@@ -23,7 +27,7 @@
                                     <label asp-for="ValorImovel" class="form-label fw-bold"></label>
                                     <div class="input-group">
                                         <span class="input-group-text">R$</span>
-                                        <input asp-for="ValorImovel" class="form-control" type="text placeholder="Ex: 250000" />
+                                        <input asp-for="ValorImovel" class="form-control input-decimal" type="text" placeholder="Ex: 250000" />
                                     </div>
                                     <span asp-validation-for="ValorImovel" class="text-danger small"></span>
                                 </div>
@@ -32,7 +36,8 @@
                                     <label asp-for="ValorEntrada" class="form-label fw-bold"></label>
                                     <div class="input-group">
                                         <span class="input-group-text">R$</span>
-                                        <input asp-for="ValorEntrada" class="form-control" type="text" placeholder="Ex: 40000" />
+                                        <!-- Correção 2: Adicionada classe input-decimal -->
+                                        <input asp-for="ValorEntrada" class="form-control input-decimal" type="text" placeholder="Ex: 40000" />
                                     </div>
                                     <span asp-validation-for="ValorEntrada" class="text-danger small"></span>
                                 </div>
@@ -51,7 +56,8 @@
                                     <div class="col-6 mb-3">
                                         <label asp-for="TaxaJurosAnual" class="form-label fw-bold"></label>
                                         <div class="input-group">
-                                            <input asp-for="TaxaJurosAnual" class="form-control" placeholder="8.5" />
+                                            <!-- Correção 3: Adicionada classe input-decimal -->
+                                            <input asp-for="TaxaJurosAnual" class="form-control input-decimal" placeholder="8.5" />
                                             <span class="input-group-text">%</span>
                                         </div>
                                         <span asp-validation-for="TaxaJurosAnual" class="text-danger small"></span>
@@ -67,7 +73,8 @@
                                     <label asp-for="AporteExtraMensal" class="form-label fw-bold"></label>
                                     <div class="input-group">
                                         <span class="input-group-text text-success">R$</span>
-                                        <input asp-for="AporteExtraMensal" class="form-control border-success" placeholder="Quanto pretende pagar a mais?" />
+                                        <!-- Correção 4: Adicionada classe input-decimal -->
+                                        <input asp-for="AporteExtraMensal" class="form-control border-success input-decimal" placeholder="Quanto pretende pagar a mais?" />
                                     </div>
                                     <span asp-validation-for="AporteExtraMensal" class="text-danger small"></span>
                                     <div class="form-text text-muted small">Esse valor será somado à amortização todo mês.</div>
@@ -75,7 +82,8 @@
 
                                 <div class="mb-3">
                                     <label asp-for="ValorPrestação" class="form-label fw-bold text-muted">Valor da Prestação Base (Opcional)</label>
-                                    <input asp-for="ValorPrestação" class="form-control bg-light" placeholder="Calculado automaticamente se vazio" />
+                                    <!-- Correção 5: Adicionada classe input-decimal -->
+                                    <input asp-for="ValorPrestação" class="form-control bg-light input-decimal" type="text" placeholder="Calculado automaticamente se vazio" />
                                     <span asp-validation-for="ValorPrestação" class="text-danger small"></span>
                                 </div>
                             </div>
@@ -83,7 +91,8 @@
 
                         <hr class="mt-4">
                         <div class="d-flex justify-content-between align-items-center">
-                            <a asp-action="Index" class="btn btn-link text-decoration-none text-secondary">
+                            <!-- Correção 6: Adicionado roteamento de visão para manter filtro ativo ao voltar -->
+                            <a asp-action="Index" asp-route-visao="@visao" class="btn btn-link text-decoration-none text-secondary">
                                 <i class="bi bi-arrow-left"></i> Voltar para a lista
                             </a>
                             <button type="submit" class="btn btn-primary btn-lg px-5 shadow-sm">
@@ -95,7 +104,7 @@
             </div>
 
             <div class="alert alert-info mt-3 small shadow-sm" role="alert">
-                <i class="bi bi-info-circle-fill"></i> <strong>Dica do Desenvolvedor:</strong> O <strong>Mês 1</strong> da simulação corresponderá ao mês seguinte à data de início selecionada.
+                <i class="bi bi-info-circle-fill"></i> <strong>Dica do Sistema:</strong> O <strong>Mês 1</strong> da simulação corresponderá ao mês seguinte à data de início selecionada.
             </div>
         </div>
     </div>
@@ -104,6 +113,7 @@
 @section Scripts {
     @{
         await Html.RenderPartialAsync("_ValidationScriptsPartial");
-        <script src="~/js/site-fix-decimal.js"></script>
     }
+    <!-- Correção 7: Chamada do script organizada fora do bloco assíncrono do partial -->
+    <script src="~/js/site.js"></script>
 }

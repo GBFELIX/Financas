@@ -67,22 +67,62 @@ public class AtivosBackgroundService : BackgroundService
                         }
                         catch { continue; }
                     }
+
                     var outros = await context.AtivosGerais.ToListAsync(stoppingToken);
+
+                    decimal cotacaoDolar = 1.00m;
+                    try
+                    {
+                        var dolarDados = await service.ObterDadosAtivo("USDBRL=X");
+                        if (dolarDados != null && dolarDados.PrecoAtual > 0)
+                        {
+                            cotacaoDolar = dolarDados.PrecoAtual;
+                        }
+                    }
+                    catch
+                    {
+                        cotacaoDolar = 5.20m;
+                    }
+
                     foreach (var item in outros)
                     {
                         if (item.DataAtualizacao > DateTime.Now.AddMinutes(-1440)) continue;
+
                         try
                         {
-                            // Garante o sufixo .SA exigido pelo Yahoo Finance para ativos brasileiros
-                            string tickerFormatado = item.Ticker.EndsWith(".SA") ? item.Ticker : item.Ticker + ".SA";
+                            string tickerFormatado = item.Ticker.Trim();
+
+                            if (item.Moeda != "USD" && !tickerFormatado.Contains("-") && !tickerFormatado.EndsWith(".SA"))
+                            {
+                                tickerFormatado += ".SA";
+                            }
+
                             var dados = await service.ObterDadosAtivo(tickerFormatado);
-                            item.PrecoAtual = dados.PrecoAtual;
-                            item.DataAtualizacao = DateTime.Now;
-                            context.Update(item);
+
+                            if (dados != null && dados.PrecoAtual > 0)
+                            {
+                                // Se o ativo for negociado em dólar (como o BTC-USD ou ações americanas), multiplica pelo câmbio do dia
+                                if (item.Moeda == "USD" || tickerFormatado.EndsWith("-USD"))
+                                {
+                                    item.PrecoAtual = Math.Round(dados.PrecoAtual * cotacaoDolar, 2);
+                                }
+                                else
+                                {
+                                    item.PrecoAtual = Math.Round(dados.PrecoAtual, 2);
+                                }
+
+                                item.DataAtualizacao = DateTime.Now;
+
+                                context.Entry(item).State = EntityState.Modified;
+                            }
                         }
-                        catch { continue; }
+                        catch
+                        {
+                            continue;
+                        }
                     }
-                    // Salva todas as alterações de ambas as tabelas de uma só vez
+
+                    // Salva em lote todas as cotações atualizadas e convertidas com segurança
                     await context.SaveChangesAsync(stoppingToken);
                 }
             }
