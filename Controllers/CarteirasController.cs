@@ -69,9 +69,19 @@ namespace Acoes_Fiis.Controllers
 
                 if (saldoFinalMesAnterior > 0)
                 {
-                    decimal taxaAnualCaixinha = 10.75m;
-                    decimal taxaMensalCaixinha = (taxaAnualCaixinha / 12) / 100;
-                    decimal rendimentoLiquido = (saldoFinalMesAnterior * taxaMensalCaixinha) * 0.825m;
+                    decimal taxaAnualCaixinha = 12.00m;
+
+                    // 1. EQUIVALÊNCIA EM JUROS COMPOSTOS REAIS (Fórmula exata de mercado)
+                    double taxaAnualDouble = (double)(taxaAnualCaixinha / 100m);
+                    double taxaMensalDouble = Math.Pow(1 + taxaAnualDouble, 1.0 / 12.0) - 1;
+                    decimal taxaMensalCaixinha = (decimal)taxaMensalDouble;
+
+                    // 2. CALIBRAGEM DO IR REGRESSIVO
+                    // Alterado de 0.825m (17.5% de IR) para 0.800m (20% de IR) ou o que melhor refletir o tempo do seu dinheiro
+                    decimal fatorImpostoRetido = 0.800m;
+
+                    // 3. CÁLCULO DO RENDIMENTO LÍQUIDO APROXIMADO
+                    decimal rendimentoLiquido = (saldoFinalMesAnterior * taxaMensalCaixinha) * fatorImpostoRetido;
 
                     if (rendimentoLiquido > 0.01m)
                     {
@@ -79,11 +89,11 @@ namespace Acoes_Fiis.Controllers
                         {
                             Descricao = descricaoRendimentoNode,
                             Valor = Math.Round(rendimentoLiquido, 2),
-                            Data = new DateTime(agora.Year, agora.Month, 1).AddDays(-1),
+                            Data = new DateTime(agora.Year, agora.Month, 1).AddDays(-1), // Fixa no último dia do mês trabalhado
                             Tipo = "Entrada",
                             Categoria = "Investimento",
                             Pagamento = "Pix",
-                            Dono = visao == "Casal" ? "Casal" : visao // Grava o dono correto se o gatilho for disparado
+                            Dono = visao == "Casal" ? "Casal" : visao
                         };
 
                         _context.Financeiro.Add(novoLancamento);
@@ -282,6 +292,12 @@ namespace Acoes_Fiis.Controllers
                 viewModel.SaldoDevedorAtual = parcelaAtual?.SaldoDevedorRestante ?? financiamento.SaldoDevedorInicial;
                 viewModel.PrazoMesesRestantes = simulacaoCompleta.Count(p => p.SaldoDevedorRestante > 0);
             }
+            // contra -cheques
+            viewModel.HistoricoFolhas = await _context.FolhasPagamento
+            .Where(f => f.Visao == visao)
+            .OrderByDescending(f => f.Ano)
+            .ThenByDescending(f => f.Mes)
+            .ToListAsync();
 
             // --- AUTO-COMPLETE LISTS ---
             viewModel.ListaTickersAcoes = await _context.Recomendacao.Select(x => x.Ticker).ToListAsync();
@@ -364,7 +380,63 @@ namespace Acoes_Fiis.Controllers
 
             return RedirectToAction(nameof(Index), new { visao = visao });
         }
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RegistrarFolhaPagamento(int ano, int mes, decimal salarioBruto, decimal descontos, IFormFile? pdfFile, string visao)
+        {
+            if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
 
+            // 1. Processamento e Upload Seguro do PDF
+            string? caminhoSalvo = null;
+            if (pdfFile != null && pdfFile.Length > 0)
+            {
+                // Verifica se é realmente um arquivo PDF
+                if (!pdfFile.ContentType.Equals("application/pdf", StringComparison.OrdinalIgnoreCase))
+                {
+                    ModelState.AddModelError("", "Apenas arquivos no formato PDF são permitidos.");
+                    return RedirectToAction("Index", new { visao = visao }); // Ou retorne para a view com erro
+                }
+
+                // Define a pasta de destino dentro da estrutura do projeto (wwwroot/uploads/contracheques)
+                string pastaDestino = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "contracheques");
+                if (!Directory.Exists(pastaDestino))
+                {
+                    Directory.CreateDirectory(pastaDestino);
+                }
+
+                // Cria um nome de arquivo único para evitar substituições acidentais
+                string nomeArquivo = $"{visao.ToLower()}_{ano}_{mes}_{Guid.NewGuid().ToString().Substring(0, 8)}.pdf";
+                string caminhoCompleto = Path.Combine(pastaDestino, nomeArquivo);
+
+                // Salva o arquivo fisicamente no servidor
+                using (var stream = new FileStream(caminhoCompleto, FileMode.Create))
+                {
+                    await pdfFile.CopyToAsync(stream);
+                }
+
+                // Caminho relativo que será guardado no banco e usado nas tags <a> do HTML
+                caminhoSalvo = $"/uploads/contracheques/{nomeArquivo}";
+            }
+
+            // 2. Criação do Registro para Persistência
+            var novaFolha = new FolhaPagamento
+            {
+                Ano = ano,
+                Mes = mes,
+                SalarioBruto = salarioBruto,
+                Descontos = descontos,
+                PathPdf = caminhoSalvo,
+                Visao = visao,
+                DataRegistro = DateTime.Now
+            };
+
+            // 3. Salva no Contexto do Entity Framework
+            _context.FolhasPagamento.Add(novaFolha);
+            await _context.SaveChangesAsync();
+
+            // Redireciona de volta para o painel mantendo o foco do usuário na visão correta
+            return RedirectToAction("Index", new { visao = visao });
+        }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -661,6 +733,36 @@ namespace Acoes_Fiis.Controllers
 
             var bytes = System.Text.Encoding.UTF8.GetBytes(csv);
             return File(bytes, "text/csv", $"carteira_{visao.ToLower()}.csv");
+        }
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ExcluirFolhaPagamento(int id, string visao)
+        {
+            if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
+
+            // Busca o registro no banco de dados
+            var folha = await _context.FolhasPagamento.FindAsync(id);
+
+            if (folha != null)
+            {
+                // 1. Se houver um PDF salvo, apaga o arquivo físico do servidor
+                if (!string.IsNullOrEmpty(folha.PathPdf))
+                {
+                    string caminhoArquivoFisico = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", folha.PathPdf.TrimStart('/'));
+
+                    if (System.IO.File.Exists(caminhoArquivoFisico))
+                    {
+                        System.IO.File.Delete(caminhoArquivoFisico);
+                    }
+                }
+
+                // 2. Remove o registro do banco de dados
+                _context.FolhasPagamento.Remove(folha);
+                await _context.SaveChangesAsync();
+            }
+
+            // Redireciona de volta para a Index mantendo o perfil selecionado
+            return RedirectToAction("Index", new { visao = visao });
         }
     }
 }

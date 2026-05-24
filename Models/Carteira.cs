@@ -62,6 +62,8 @@ namespace Acoes_Fiis.Models
         public List<string> ListaTickersAcoes { get; set; } = new();
         public List<string> ListaTickersFiis { get; set; } = new();
         public List<string> ListaTickersGerais { get; set; } = new();
+
+        public List<FolhaPagamento> HistoricoFolhas { get; set; } = new List<FolhaPagamento>();
     }
 
     public class CarteiraItemViewModel
@@ -123,5 +125,20 @@ namespace Acoes_Fiis.Models
         public decimal IndicadorDesconto { get; set; } // P/VP ou P/L
         public string Mensagem { get; set; } = string.Empty;
         public decimal PotencialAporte { get; set; }
+    }
+    public class FolhaPagamento
+    {
+        public int Id { get; set; }
+        public int Ano { get; set; }
+        public int Mes { get; set; }
+        public decimal SalarioBruto { get; set; }
+        public decimal Descontos { get; set; }
+
+        // Armazena o caminho do arquivo (ex: /uploads/contracheques/gabriel_2026_05.pdf)
+        public string? PathPdf { get; set; }
+
+        // Identifica se o registro pertence ao Gabriel ou à Suely
+        public string Visao { get; set; } = "Gabriel";
+        public DateTime DataRegistro { get; set; } = DateTime.Now;
     }
 }

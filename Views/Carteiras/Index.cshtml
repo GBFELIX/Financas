@@ -12,13 +12,12 @@
         </button>
     </div>
     <div class="row g-2 mb-4">
-        @* Botão 1: Atualizar *@
+        @* Botão 1: Simulador de Dividendos (Nova Ferramenta) *@
         <div class="col-md-4">
-            <form asp-action="AtualizarTodos" method="post">
-                <button type="submit" class="btn btn-outline-success w-100 shadow-sm rounded-3">
-                    <i class="bi bi-arrow-clockwise me-2"></i> Atualizar Ativos
-                </button>
-            </form>
+            <button type="button" class="btn btn-outline-success w-100 shadow-sm rounded-3"
+                    data-bs-toggle="modal" data-bs-target="#modalSimuladorDividendos">
+                <i class="bi bi-calculator me-2"></i> Simulador de Dividendos
+            </button>
         </div>
 
         @* Botão 2: Resumo Mensal *@
@@ -38,15 +37,15 @@
     <div class="row g-3 mb-4">
         @* Botão 4: Painel de Amortização *@
         <div class="col-md-4">
-            <button type="button" class="btn btn-outline-danger w-100 shadow-sm rounded-3 fw-bold" data-bs-toggle="modal" data-bs-target="#modalAmortizacao">
-                <i class="bi bi-bank me-2"></i> Simulador de Amortização
+            <button type="button" class="btn btn-outline-danger w-100 shadow-sm rounded-3 fw-bold" data-bs-toggle="modal" data-bs-target="#modalContraCheques">
+                <i class="bi bi-bank me-2"></i> Contra-Cheques
             </button>
         </div>
 
         @* Botão 5: Evolução do Saldo Devedor *@
         <div class="col-md-4">
             <button type="button" class="btn btn-outline-dark w-100 shadow-sm rounded-3 fw-bold" data-bs-toggle="modal" data-bs-target="#modalEvolucaoDivida">
-                <i class="bi bi-graph-down-arrow me-2"></i> Evolução da Dívida
+                <i class="bi bi-graph-down-arrow me-2"></i> Evolução da Dívida / Amortização
             </button>
         </div>
 
@@ -269,9 +268,10 @@
     @await Html.PartialAsync("ModalFinanceiro", Model)
     @await Html.PartialAsync("_ModalDetalhesPatrimonio", Model)
     @await Html.PartialAsync("_ModalRadarAporte", Model)
-    @await Html.PartialAsync("_ModalAmortizacao", Model)
+    @await Html.PartialAsync("_ModalContraCheque", Model)
     @await Html.PartialAsync("_ModalEvolucaoDivida", Model)
     @await Html.PartialAsync("_ModalEscudo", Model)
+    @await Html.PartialAsync("_ModalSimulacao", Model)
 
     <div class="card shadow-sm border-0">
         <div class="card-header bg-light d-flex justify-content-between align-items-center">

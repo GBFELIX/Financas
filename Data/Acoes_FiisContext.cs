@@ -49,5 +49,6 @@ namespace Acoes_Fiis.Data
         //}
         public DbSet<Acoes_Fiis.Models.Price> Financiamentos { get; set; } = default!;
         public DbSet<Acoes_Fiis.Models.AporteExtra> AporteExtras { get; set; } = default!;
+        public DbSet<Acoes_Fiis.Models.FolhaPagamento> FolhasPagamento { get; set; } = default!;
     }
 }

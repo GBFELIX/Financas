@@ -1,5 +1,27 @@
 ﻿@model CarteiraTotalViewModel
 
+@{
+    var visaoAtual = ViewBag.VisaoAtual as string ?? "Gabriel";
+    var hoje = DateTime.Now;
+
+    // Recupera a data de início real do contrato vinda da sua ViewModel
+    DateTime dataInicioContrato = Model.DataInicio != DateTime.MinValue
+                                  ? Model.DataInicio
+                                  : new DateTime(2026, 01, 01);
+
+    // Calculadora exata de meses seguidos para achar a parcela alvo correta do mês atual
+    int diferencaMeses = ((hoje.Year - dataInicioContrato.Year) * 12) + hoje.Month - dataInicioContrato.Month;
+    int numeroParcelaAlvo = diferencaMeses + 1;
+
+    if (numeroParcelaAlvo < 1)
+    {
+        numeroParcelaAlvo = 1;
+    }
+
+    // Ajuste seguro da largura da barra de progresso para evitar conflitos CSS regionais
+    var stringWidth = Model.PercentualQuitacao.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) + "%";
+}
+
 <div class="modal fade" id="modalEvolucaoDivida" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow-lg rounded-4">
@@ -9,28 +31,29 @@
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
+
             <div class="modal-body p-4">
 
                 @* Indicadores de Topo *@
                 <div class="row g-3 mb-4 text-center">
                     <div class="col-md-4">
                         <div class="p-3 border rounded-4 bg-light">
-                            <small class="text-muted d-block fw-bold">DÍVIDA LÍQUIDA</small>
-                            <h4 class="fw-bold text-danger">@Model.PatrimonioLiquido.ToString("C2")</h4>
+                            <small class="text-muted d-block fw-bold" style="font-size: 0.65rem; letter-spacing: 0.5px;">DÍVIDA LÍQUIDA</small>
+                            <h4 class="fw-bold text-danger mb-1">@Model.PatrimonioLiquido.ToString("C2")</h4>
                             <span class="badge bg-danger-subtle text-danger">O que falta quitar</span>
                         </div>
                     </div>
                     <div class="col-md-4">
                         <div class="p-3 border rounded-4 bg-light">
-                            <small class="text-muted d-block fw-bold">PROPORÇÃO</small>
-                            <h4 class="fw-bold text-dark">@Model.PercentualQuitacao.ToString("N1")%</h4>
+                            <small class="text-muted d-block fw-bold" style="font-size: 0.65rem; letter-spacing: 0.5px;">PROPORÇÃO</small>
+                            <h4 class="fw-bold text-dark mb-1">@Model.PercentualQuitacao.ToString("N1")%</h4>
                             <span class="badge bg-primary-subtle text-primary">Investido / Dívida</span>
                         </div>
                     </div>
                     <div class="col-md-4">
                         <div class="p-3 border rounded-4 bg-light">
-                            <small class="text-muted d-block fw-bold">PRAZO</small>
-                            <h4 class="fw-bold text-dark">@Model.PrazoMesesRestantes</h4>
+                            <small class="text-muted d-block fw-bold" style="font-size: 0.65rem; letter-spacing: 0.5px;">PRAZO</small>
+                            <h4 class="fw-bold text-dark mb-1">@Model.PrazoMesesRestantes</h4>
                             <span class="badge bg-info-subtle text-info">Meses restantes</span>
                         </div>
                     </div>
@@ -38,45 +61,99 @@
 
                 @* Barra de Progresso de Quitação Total *@
                 <label class="small text-muted text-uppercase fw-bold mb-2">Progresso para Quitação das Chaves</label>
-                <div class="progress rounded-pill mb-4" style="height: 25px;">
-                    <div class="progress-bar bg-success progress-bar-striped progress-bar-animated"
+                <div class="progress rounded-pill mb-4" style="height: 22px;">
+                    <div class="progress-bar bg-success progress-bar-striped progress-bar-animated fw-bold"
                          role="progressbar"
-                         style="width: @Model.PercentualQuitacao.ToString().Replace(",", ".")%"
+                         style="width: @stringWidth"
                          aria-valuenow="@Model.PercentualQuitacao" aria-valuemin="0" aria-valuemax="100">
                         @Model.PercentualQuitacao.ToString("N1")%
                     </div>
                 </div>
 
+                <hr class="my-4 opacity-25">
+
+                @* NOVO: Form Injetor do Acelerador de Amortização Extra integrado *@
+                <div class="card border-0 bg-danger-subtle text-danger rounded-4 p-4 mb-4 shadow-sm">
+                    <form asp-action="RegistrarAporteExtra" asp-controller="Carteiras" method="post">
+
+                        <!-- Inputs invisíveis dinâmicos e mapeados para a Controller -->
+                        <input type="hidden" name="priceId" value="2" />
+                        <input type="hidden" name="mesReferencia" value="@numeroParcelaAlvo" />
+                        <input type="hidden" name="visao" value="@visaoAtual" />
+
+                        <div class="row align-items-center g-3">
+                            <div class="col-md-7">
+                                <h6 class="fw-bold mb-1 text-dark text-uppercase" style="font-size: 0.8rem; letter-spacing: 0.5px;">
+                                    <i class="bi bi-lightning-charge-fill text-danger me-1"></i>Acelerador de Quitação
+                                </h6>
+                                <p class="small text-muted mb-0">
+                                    Injetar sobra de caixa (<strong class="text-dark">@Model.SobraDisponivelParaAmortizar.ToString("C2")</strong>) direto na amortização da parcela atual de <strong>@hoje.ToString("MM/yyyy")</strong> (Mês @numeroParcelaAlvo).
+                                </p>
+                            </div>
+                            <div class="col-md-5">
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white border-end-0 text-success fw-bold">R$</span>
+                                    <input type="text" name="valor"
+                                           class="form-control border-start-0 fw-bold text-success text-center input-decimal"
+                                           value="@Model.SobraDisponivelParaAmortizar.ToString("N2")" required />
+                                    <button type="submit" class="btn btn-danger fw-bold text-uppercase px-3" style="font-size: 0.75rem;">
+                                        Amortizar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
                 @* Tabela de Projeção Próximos 6 Meses *@
                 <label class="small text-muted text-uppercase fw-bold mb-3 d-block">Projeção de Amortização (Próximas 6 Parcelas)</label>
-                <div class="table-responsive">
-                    <table class="table table-sm table-hover align-middle border rounded-4">
+                <div class="table-responsive rounded-4 border">
+                    <table class="table table-sm table-hover align-middle mb-0">
                         <thead class="table-light">
-                            <tr class="small text-muted">
-                                <th>Nº</th>
+                            <tr class="small text-muted" style="font-size: 0.7rem; letter-spacing: 0.5px;">
+                                <th class="ps-3">Nº</th>
                                 <th>DATA</th>
-                                <th>PARCELA</th>
-                                <th>AMORTIZAÇÃO</th>
-                                <th class="text-end">SALDO DEVEDOR</th>
+                                <th>PARCELA BASE + FIXA</th>
+                                <th>AMORTIZAÇÃO REAL</th>
+                                <th class="text-end pe-3">SALDO DEVEDOR</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var p in Model.ProjecaoFinanciamento.Take(6))
+                            @if (Model.ProjecaoFinanciamento != null && Model.ProjecaoFinanciamento.Any())
+                            {
+                                @foreach (var p in Model.ProjecaoFinanciamento.Take(6))
+                                {
+                                    // CORREÇÃO CIRÚRGICA: Compara o mês e o ano real da linha com o mês e o ano de hoje
+                                    bool ehMesAtual = p.Data.Month == hoje.Month && p.Data.Year == hoje.Year;
+
+                                    <tr class="@(ehMesAtual ? "table-warning fw-semibold border-warning-subtle" : "")">
+                                        <td class="fw-bold ps-3">
+                                            #@p.Numero
+                                            @if (ehMesAtual)
+                                            {
+                                                <span class="badge bg-primary ms-1 small" style="font-size: 0.55rem;">Atual</span>
+                                            }
+                                        </td>
+                                        <td>@p.Data.ToString("MM/yyyy")</td>
+                                        <td class="text-muted">@p.ValorParcela.ToString("C2")</td>
+                                        <td class="text-success fw-bold">@p.Amortizacao.ToString("C2")</td>
+                                        <td class="text-end fw-bold pe-3">@p.SaldoDevedorRestante.ToString("C2")</td>
+                                    </tr>
+                                }
+                            }
+                            else
                             {
                                 <tr>
-                                    <td class="fw-bold">#@p.Numero</td>
-                                    <td>@p.Data.ToString("MM/yyyy")</td>
-                                    <td class="text-muted">@p.ValorParcela.ToString("C2")</td>
-                                    <td class="text-success fw-bold">@p.Amortizacao.ToString("C2")</td>
-                                    <td class="text-end fw-bold">@p.SaldoDevedorRestante.ToString("C2")</td>
+                                    <td colspan="5" class="text-center py-3 text-muted small">Nenhuma projeção disponível no momento.</td>
                                 </tr>
                             }
                         </tbody>
                     </table>
                 </div>
             </div>
-            <div class="modal-footer border-0">
-                <button type="button" class="btn btn-secondary w-100 rounded-pill fw-bold" data-bs-dismiss="modal">Fechar Evolução</button>
+
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-dark w-100 rounded-pill fw-bold" data-bs-dismiss="modal">Fechar Painel Comparativo</button>
             </div>
         </div>
     </div>
