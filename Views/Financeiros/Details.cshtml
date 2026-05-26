@@ -3,40 +3,49 @@
 @{
     Layout = null;
     var visao = ViewBag.VisaoAtual as string ?? "Gabriel";
+
+    // Puxa as listas enviadas pela Controller para o gráfico de Renda Variável
+    // Certifique-se de alimentar essas duas novas ViewBags no método da Controller se quiser isolar os meses
+    var labelsGraficoRV = ViewBag.HistoricoLabelsGraficoRV as List<string> ?? ViewBag.HistoricoLabelsGrafico as List<string>;
+    var dadosGraficoRV = ViewBag.HistoricoGanhosGraficoRV as List<decimal> ?? new List<decimal>();
+    decimal totalDividendos12Meses = dadosGraficoRV.Sum();
 }
 
 <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content border-0 rounded-4 shadow-lg">
         <div class="modal-header bg-success text-white border-0 py-3">
             <h5 class="modal-title fw-bold">
-                <i class="bi bi-graph-up-arrow me-2"></i>Análise Detalhada de Ganhos
+                <i class="bi bi-graph-up-arrow me-2"></i>Análise de Ganhos Acumulados (12m)
             </h5>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
 
         <div class="modal-body p-4">
+            <!-- CARDS DO TOPO ATUALIZADOS -->
             <div class="row g-3 mb-4">
                 <div class="col-6">
                     <div class="card border-0 shadow-sm p-3 text-center bg-light rounded-3 h-100">
-                        <small class="text-muted d-block fw-bold text-uppercase mb-1" style="font-size: 0.7rem;">Rendimento Conservador</small>
+                        <small class="text-muted d-block fw-bold text-uppercase mb-1" style="font-size: 0.7rem;">Rendimento Renda Fixa</small>
                         <span class="fs-5 fw-bold text-success">@Model.RendimentoRendaFixaMes.ToString("C2")</span>
                         <div class="text-muted mt-1" style="font-size: 0.6rem;">
-                            <i class="bi bi-wallet2 text-success"></i> Saldo Automático + RF
+                            <i class="bi bi-wallet2 text-success"></i> Caixinhas + Renda Fixa
                         </div>
                     </div>
                 </div>
 
                 <div class="col-6">
                     <div class="card border-0 shadow-sm p-3 text-center bg-light rounded-3 h-100">
-                        <small class="text-muted d-block fw-bold text-uppercase mb-1" style="font-size: 0.7rem;">Média Sobra Geral</small>
-                        <span class="fs-5 fw-bold text-primary">@Model.MediaSobraHistorica.ToString("C2")</span>
+                        <small class="text-muted d-block fw-bold text-uppercase mb-1" style="font-size: 0.7rem;">Total Ganho em Dividendos (12m)</small>
+                        <!-- Exibe o somatório acumulado de toda a Renda Variável recebida no ano -->
+                        <span class="fs-5 fw-bold text-info">@totalDividendos12Meses.ToString("C2")</span>
                         <div class="text-muted mt-1" style="font-size: 0.6rem;">
-                            <i class="bi bi-calculator text-primary"></i> Histórico Recente
+                            <i class="bi bi-lightning-charge text-info"></i> Proventos Acumulados Bolsa
                         </div>
                     </div>
                 </div>
             </div>
 
+            <!-- ABAS DE NAVEGAÇÃO -->
             <ul class="nav nav-pills nav-fill mb-4 p-1 bg-light rounded-3 border" id="ganhosTab" role="tablist">
                 <li class="nav-item">
                     <button class="nav-link active rounded-2 fw-bold small text-uppercase py-2" id="rf-tab" data-bs-toggle="tab" data-bs-target="#tabRendaFixa" type="button">
@@ -45,60 +54,23 @@
                 </li>
                 <li class="nav-item">
                     <button class="nav-link rounded-2 fw-bold small text-uppercase py-2" id="rv-tab" data-bs-toggle="tab" data-bs-target="#tabRendaVariavel" type="button">
-                        <i class="bi bi-lightning-charge me-1"></i> Renda Variável
+                        <i class="bi bi-lightning-charge me-1"></i> Renda Variável (12m)
                     </button>
                 </li>
             </ul>
 
             <div class="tab-content" id="ganhosTabContent">
+                <!-- CANVA GRÁFICO 1: RENDA FIXA -->
                 <div class="tab-pane fade show active" id="tabRendaFixa" role="tabpanel">
                     <div style="height: 300px; position: relative;">
                         <canvas id="chartGanhosRendaFixa"></canvas>
                     </div>
                 </div>
 
+                <!-- CANVA GRÁFICO 2: RENDA VARIÁVEL (ULTIMOS 12 MESES) -->
                 <div class="tab-pane fade" id="tabRendaVariavel" role="tabpanel">
-                    <div class="table-responsive" style="max-height: 280px; overflow-y: auto;">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead class="table-light sticky-top">
-                                <tr class="small text-uppercase text-muted" style="font-size: 0.7rem;">
-                                    <th>Data</th>
-                                    <th>Operação</th>
-                                    <th class="text-end">Resultado</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @{
-                                    var vendasRV = Model.Lancamentos
-                                    .Where(x => x.Descricao.Contains("Ganho de Capital") || x.Descricao.Contains("Prejuízo de Capital"))
-                                    .OrderByDescending(x => x.Data)
-                                    .ToList();
-                                }
-
-                                @if (vendasRV.Any())
-                                {
-                                    foreach (var venda in vendasRV)
-                                    {
-                                        bool ehLucro = venda.Tipo == "Entrada";
-                                        <tr>
-                                            <td class="text-muted small">@venda.Data.ToString("dd/MM")</td>
-                                            <td class="small fw-bold text-dark">@venda.Descricao</td>
-                                            <td class="text-end fw-bold small @(ehLucro ? "text-success" : "text-danger")">
-                                                @(ehLucro ? "+" : "-") @venda.Valor.ToString("C2")
-                                            </td>
-                                        </tr>
-                                    }
-                                }
-                                else
-                                {
-                                    <tr>
-                                        <td colspan="3" class="text-center py-4 text-muted small">
-                                            Nenhuma venda de ações/FIIs registrada este mês.
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
+                    <div style="height: 300px; position: relative;">
+                        <canvas id="chartGanhosRendaVariavel"></canvas>
                     </div>
                 </div>
             </div>
@@ -106,66 +78,133 @@
     </div>
 </div>
 
-<script>
-    (function () {
-        if (typeof Chart === 'undefined') {
-            const script = document.createElement('script');
-            script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
-            script.onload = inicializarGraficoDetails;
-            document.head.appendChild(script);
-        } else {
-            setTimeout(inicializarGraficoDetails, 250);
-        }
+<!-- SCRIPT DE RENDERIZAÇÃO DOS DOIS GRÁFICOS DINÂMICOS -->
+<<script>
+     (function () {
+         // Verifica e garante o carregamento seguro do Chart.js via CDN se ele não existir globalmente
+         if (typeof Chart === 'undefined') {
+             const script = document.createElement('script');
+             script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+             script.onload = inicializarEstruturaAbas;
+             document.head.appendChild(script);
+         } else {
+             // Pequeno delay seguro para o Bootstrap renderizar o esqueleto do modal na árvore DOM
+             setTimeout(inicializarEstruturaAbas, 250);
+         }
 
-        function inicializarGraficoDetails() {
-            const canvas = document.getElementById('chartGanhosRendaFixa');
-            if (!canvas) return;
+         function inicializarEstruturaAbas() {
+             // Renderiza o gráfico da primeira aba ativa imediatamente
+             inicializarGraficoRF();
 
-            // Puxa as duas listas calculadas dinamicamente na Controller (Convertendo para formato JSON compatível com JS)
-            const labelsGrafico = @Html.Raw(Json.Serialize(ViewBag.HistoricoLabelsGrafico));
-            const dadosGrafico = @Html.Raw(Json.Serialize(ViewBag.HistoricoGanhosGrafico));
+             // Configura os escutadores nativos de abas do Bootstrap para redesenhar sem bugar o tamanho do canvas
+             const rfTabBtn = document.getElementById('rf-tab');
+             if (rfTabBtn) {
+                 rfTabBtn.addEventListener('shown.bs.tab', inicializarGraficoRF);
+             }
 
-            const ctx = canvas.getContext('2d');
+             const rvTabBtn = document.getElementById('rv-tab');
+             if (rvTabBtn) {
+                 rvTabBtn.addEventListener('shown.bs.tab', inicializarGraficoRV);
+             }
+         }
 
-            if (window.meuChartDetailsRF) {
-                window.meuChartDetailsRF.destroy();
-            }
+         // =========================================================================
+         // GRÁFICO 1: HISTÓRICO DE RENDA FIXA (CAIXINHAS)
+         // =========================================================================
+         function inicializarGraficoRF() {
+             const canvasRF = document.getElementById('chartGanhosRendaFixa');
+             if (!canvasRF) return;
 
-            window.meuChartDetailsRF = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labelsGrafico, // Nossos meses sincronizados (Real vs Estimado)
-                    datasets: [{
-                        label: 'Rendimento Conservador (R$)',
-                        data: dadosGrafico, // Valores exatos calculados no C#
-                        backgroundColor: '#198754',
-                        borderRadius: 5
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                label: (context) => 'Rendimento: ' + new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(context.raw)
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: { callback: (v) => 'R$ ' + v.toLocaleString('pt-BR') }
-                        }
-                    }
-                }
-            });
-        }
+             // Puxa as listas tratadas na Controller com a segurança do Html.Raw para injeção JSON
+             const labelsRF = @Html.Raw(Json.Serialize(ViewBag.HistoricoLabelsGrafico));
+             const dadosRF = @Html.Raw(Json.Serialize(ViewBag.HistoricoGanhosGrafico));
 
-        const rfTabBtn = document.getElementById('rf-tab');
-        if (rfTabBtn) {
-            rfTabBtn.addEventListener('shown.bs.tab', inicializarGraficoDetails);
-        }
-    })();
+             const ctxRF = canvasRF.getContext('2d');
+
+             // Destrói a instância anterior para evitar sobreposição de memória e flickering visual
+             if (window.meuChartDetailsRF) {
+                 window.meuChartDetailsRF.destroy();
+             }
+
+             window.meuChartDetailsRF = new Chart(ctxRF, {
+                 type: 'bar',
+                 data: {
+                     labels: labelsRF,
+                     datasets: [{
+                         label: 'Rendimento Conservador (R$)',
+                         data: dadosRF,
+                         backgroundColor: '#198754', // Verde padrão Renda Fixa
+                         borderRadius: 5
+                     }]
+                 },
+                 options: {
+                     responsive: true,
+                     maintainAspectRatio: false,
+                     plugins: {
+                         legend: { display: false },
+                         tooltip: {
+                             callbacks: {
+                                 label: (context) => 'Rendimento: ' + new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(context.raw)
+                             }
+                         }
+                     },
+                     scales: {
+                         y: {
+                             beginAtZero: true,
+                             ticks: { callback: (v) => 'R$ ' + v.toLocaleString('pt-BR') }
+                         }
+                     }
+                 }
+             });
+         }
+
+         // =========================================================================
+         // GRÁFICO 2: HISTÓRICO DE RENDA VARIÁVEL (DIVIDENDOS)
+         // =========================================================================
+         function inicializarGraficoRV() {
+             const canvasRV = document.getElementById('chartGanhosRendaVariavel');
+             if (!canvasRV) return;
+
+             // Busca os dados da Renda Variável sincronizados
+             const labelsRV = @Html.Raw(Json.Serialize(ViewBag.HistoricoLabelsGraficoRV));
+             const dadosRV = @Html.Raw(Json.Serialize(ViewBag.HistoricoGanhosGraficoRV));
+
+             const ctxRV = canvasRV.getContext('2d');
+
+             if (window.meuChartDetailsRV) {
+                 window.meuChartDetailsRV.destroy();
+             }
+
+             window.meuChartDetailsRV = new Chart(ctxRV, {
+                 type: 'bar',
+                 data: {
+                     labels: labelsRV,
+                     datasets: [{
+                         label: 'Proventos Bolsa (R$)',
+                         data: dadosRV,
+                         backgroundColor: '#0dcaf0', // Azul/Ciano padrão Renda Variável
+                         borderRadius: 5
+                     }]
+                 },
+                 options: {
+                     responsive: true,
+                     maintainAspectRatio: false,
+                     plugins: {
+                         legend: { display: false },
+                         tooltip: {
+                             callbacks: {
+                                 label: (context) => 'Dividendos: ' + new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(context.raw)
+                             }
+                         }
+                     },
+                     scales: {
+                         y: {
+                             beginAtZero: true,
+                             ticks: { callback: (v) => 'R$ ' + v.toLocaleString('pt-BR') }
+                         }
+                     }
+                 }
+             });
+         }
+     })();
 </script>

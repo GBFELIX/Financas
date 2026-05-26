@@ -48,6 +48,7 @@ namespace Acoes_Fiis.Controllers
                 queryFinanceiro = queryFinanceiro.Where(x => x.Dono == "Ela" || x.Dono == "Casal");
                 queryFinanciamento = queryFinanciamento.Where(x => x.Dono == "Ela" || x.Dono == "Casal");
             }
+
             var itensBanco = await queryCarteira.ToListAsync();
             var financeiroData = await queryFinanceiro.ToListAsync();
             var financiamento = await queryFinanciamento.FirstOrDefaultAsync();
@@ -55,55 +56,10 @@ namespace Acoes_Fiis.Controllers
             var viewModel = new CarteiraTotalViewModel();
             decimal totalRFLiquido = 0;
 
-            // --- GATILHO: FECHAMENTO DE RENDIMENTO DO MÊS ANTERIOR ---
-            DateTime mesAnterior = agora.AddMonths(-1);
-            string descricaoRendimentoNode = $"Rendimento Automático Caixinhas - {mesAnterior:MM/yyyy}";
-            bool jaLancado = financeiroData.Any(x => x.Descricao == descricaoRendimentoNode);
+            // VARIÁVEL PARA SOMAR OS PROVENTOS DA SUA MODEL
+            decimal totalProventosVariaveis = 0;
 
-            if (!jaLancado)
-            {
-                DateTime ultimoSegundoMesAnterior = new DateTime(agora.Year, agora.Month, 1).AddSeconds(-1);
-                decimal saldoFinalMesAnterior = financeiroData
-                    .Where(x => x.Data.Date <= ultimoSegundoMesAnterior.Date)
-                    .Sum(x => x.Tipo == "Entrada" ? x.Valor : -x.Valor);
-
-                if (saldoFinalMesAnterior > 0)
-                {
-                    decimal taxaAnualCaixinha = 12.00m;
-
-                    // 1. EQUIVALÊNCIA EM JUROS COMPOSTOS REAIS (Fórmula exata de mercado)
-                    double taxaAnualDouble = (double)(taxaAnualCaixinha / 100m);
-                    double taxaMensalDouble = Math.Pow(1 + taxaAnualDouble, 1.0 / 12.0) - 1;
-                    decimal taxaMensalCaixinha = (decimal)taxaMensalDouble;
-
-                    // 2. CALIBRAGEM DO IR REGRESSIVO
-                    // Alterado de 0.825m (17.5% de IR) para 0.800m (20% de IR) ou o que melhor refletir o tempo do seu dinheiro
-                    decimal fatorImpostoRetido = 0.800m;
-
-                    // 3. CÁLCULO DO RENDIMENTO LÍQUIDO APROXIMADO
-                    decimal rendimentoLiquido = (saldoFinalMesAnterior * taxaMensalCaixinha) * fatorImpostoRetido;
-
-                    if (rendimentoLiquido > 0.01m)
-                    {
-                        var novoLancamento = new Financeiro
-                        {
-                            Descricao = descricaoRendimentoNode,
-                            Valor = Math.Round(rendimentoLiquido, 2),
-                            Data = new DateTime(agora.Year, agora.Month, 1).AddDays(-1), // Fixa no último dia do mês trabalhado
-                            Tipo = "Entrada",
-                            Categoria = "Investimento",
-                            Pagamento = "Pix",
-                            Dono = visao == "Casal" ? "Casal" : visao
-                        };
-
-                        _context.Financeiro.Add(novoLancamento);
-                        await _context.SaveChangesAsync();
-                        financeiroData.Add(novoLancamento);
-                    }
-                }
-            }
-
-            // --- PROCESSAMENTO DOS ITENS DA CARTEIRA ATIVA ---
+            // --- 1. PROCESSAMENTO DOS ITENS DA CARTEIRA ATIVA ---
             foreach (var item in itensBanco)
             {
                 var viewItem = new CarteiraItemViewModel
@@ -132,6 +88,10 @@ namespace Acoes_Fiis.Controllers
                     if (acao != null)
                     {
                         viewItem.PrecoAtual = acao.PrecoAtual;
+
+                        // Se sua tabela de recomendações de ações tiver dividendo, você pode mapear aqui:
+                        // viewItem.UltimoRendimento = acao.UltimoDividendo;
+
                         decimal pl = acao.LPA > 0 ? acao.PrecoAtual / acao.LPA : 0;
                         decimal pvp = acao.VPA > 0 ? acao.PrecoAtual / acao.VPA : 0;
 
@@ -164,6 +124,7 @@ namespace Acoes_Fiis.Controllers
                     {
                         viewItem.UltimoRendimento = fii.UltimoRendimento;
                         viewItem.PrecoAtual = fii.PrecoAtual;
+
                         viewItem.Recomendacao = fii.PVP switch
                         {
                             < 0.95m => "Forte Compra",
@@ -193,10 +154,14 @@ namespace Acoes_Fiis.Controllers
                     }
                 }
 
+                // ADICIONA O ITEM NA MODEL
                 viewModel.Itens.Add(viewItem);
+
+                // AGORA CAPTURAMOS A PROPRIEDADE DINÂMICA DA SUA MODEL DE FORMA SEGURA
+                totalProventosVariaveis += viewItem.ProventoMensalEstimado;
             }
 
-            // --- FLUXO FINANCEIRO E COMPOSIÇÃO DE SALDOS ---
+            // --- 2. FLUXO FINANCEIRO E COMPOSIÇÃO DE SALDOS ---
             viewModel.ResumoMensal = financeiroData
                 .GroupBy(x => new { x.Data.Year, x.Data.Month })
                 .Select(g => new ResumoMesViewModel
@@ -222,7 +187,7 @@ namespace Acoes_Fiis.Controllers
                 .Where(x => x.Data.Date <= agora.Date)
                 .Sum(x => x.Tipo == "Entrada" ? x.Valor : -x.Valor);
 
-            // --- CÁLCULO DE RENDIMENTO CAIXINHA (MÊS CORRENTE) ---
+            // --- 3. CÁLCULO DE RENDIMENTO CAIXINHA (MÊS CORRENTE) ---
             decimal taxaAnualCaixinhaAtual = 10.75m;
             decimal taxaMensalCaixinhaAtual = (taxaAnualCaixinhaAtual / 12) / 100;
             decimal rendimentoLiquidoCaixinha = (saldoFinanceiroAteHoje * taxaMensalCaixinhaAtual) * 0.825m;
@@ -230,10 +195,84 @@ namespace Acoes_Fiis.Controllers
             viewModel.RendaMensalTotalConsolidada = viewModel.TotalRendaMensalEstimada + viewModel.RendaFixaMensalLiquida;
             viewModel.RendaMensalTotalConsolidada += rendimentoLiquidoCaixinha;
 
+            // =========================================================================
+            // AUTOMÇÕES E LANÇAMENTOS AUTOMÁTICOS NO BANCO DE DADOS
+            // =========================================================================
+            DateTime mesAnterior = agora.AddMonths(-1);
+
+            // --- AUTOMAÇÃO A: CAIXINHAS / RENDA FIXA ---
+            string descricaoRendimentoNode = $"Rendimento Automático Caixinhas - {mesAnterior:MM/yyyy}";
+            bool jaLancado = financeiroData.Any(x => x.Descricao == descricaoRendimentoNode);
+
+            if (!jaLancado)
+            {
+                DateTime ultimoSegundoMesAnterior = new DateTime(agora.Year, agora.Month, 1).AddSeconds(-1);
+                decimal saldoFinalMesAnterior = financeiroData
+                    .Where(x => x.Data.Date <= ultimoSegundoMesAnterior.Date)
+                    .Sum(x => x.Tipo == "Entrada" ? x.Valor : -x.Valor);
+
+                if (saldoFinalMesAnterior > 0)
+                {
+                    decimal taxaAnualCaixinha = 14.50m;
+                    double taxaAnualDouble = (double)(taxaAnualCaixinha / 100m);
+                    double taxaMensalDouble = Math.Pow(1 + taxaAnualDouble, 1.0 / 12.0) - 1;
+                    decimal taxaMensalCaixinha = (decimal)taxaMensalDouble;
+                    decimal fatorImpostoRetido = 0.800m;
+
+                    decimal rendimentoLiquido = (saldoFinalMesAnterior * taxaMensalCaixinha) * fatorImpostoRetido;
+
+                    if (rendimentoLiquido > 0.01m)
+                    {
+                        var novoLancamento = new Financeiro
+                        {
+                            Descricao = descricaoRendimentoNode,
+                            Valor = Math.Round(rendimentoLiquido, 2),
+                            Data = new DateTime(agora.Year, agora.Month, 1).AddDays(-1),
+                            Tipo = "Entrada",
+                            Categoria = "Investimento",
+                            Pagamento = "Pix",
+                            Dono = visao == "Casal" ? "Casal" : visao
+                        };
+
+                        _context.Financeiro.Add(novoLancamento);
+                        financeiroData.Add(novoLancamento);
+                    }
+                }
+            }
+
+            // --- AUTOMAÇÃO B: DIVIDENDOS / RENDA VARIÁVEL (SOMA DINÂMICA DA MODEL) ---
+            string descricaoRendimentoVariavel = $"Rendimento Automático Renda Variável - {mesAnterior:MM/yyyy}";
+            bool jaLancadoVariavel = financeiroData.Any(x => x.Descricao == descricaoRendimentoVariavel);
+
+            if (!jaLancadoVariavel)
+            {
+                // Usa a soma exata obtida a partir da propriedade calculada da sua model
+                if (totalProventosVariaveis > 0.01m)
+                {
+                    var novoLancamentoVariavel = new Financeiro
+                    {
+                        Descricao = descricaoRendimentoVariavel,
+                        Valor = Math.Round(totalProventosVariaveis, 2),
+                        Data = new DateTime(agora.Year, agora.Month, 1).AddDays(-1),
+                        Tipo = "Entrada",
+                        Categoria = "Investimento",
+                        Pagamento = "Pix",
+                        Dono = visao == "Casal" ? "Casal" : visao
+                    };
+
+                    _context.Financeiro.Add(novoLancamentoVariavel);
+                    financeiroData.Add(novoLancamentoVariavel);
+                }
+            }
+
+            // Comita todas as alterações geradas de forma atômica no banco de dados
+            await _context.SaveChangesAsync();
+
+            // --- CONTINUAÇÃO DOS CÁLCULOS TOTAIS DO PAINEL ---
             viewModel.PatrimonioTotalReal = viewModel.TotalPatrimonio +
-                                            viewModel.TotalInvestidoRendaFixa +
-                                            saldoFinanceiroAteHoje +
-                                            rendimentoLiquidoCaixinha;
+                                           viewModel.TotalInvestidoRendaFixa +
+                                           saldoFinanceiroAteHoje +
+                                           rendimentoLiquidoCaixinha;
 
             viewModel.EntradasFuturas = financeiroData
                 .Where(x => x.Data.Date > agora.Date && x.Tipo == "Entrada")
@@ -292,12 +331,13 @@ namespace Acoes_Fiis.Controllers
                 viewModel.SaldoDevedorAtual = parcelaAtual?.SaldoDevedorRestante ?? financiamento.SaldoDevedorInicial;
                 viewModel.PrazoMesesRestantes = simulacaoCompleta.Count(p => p.SaldoDevedorRestante > 0);
             }
-            // contra -cheques
+
+            // Contra-cheques
             viewModel.HistoricoFolhas = await _context.FolhasPagamento
-            .Where(f => f.Visao == visao)
-            .OrderByDescending(f => f.Ano)
-            .ThenByDescending(f => f.Mes)
-            .ToListAsync();
+                .Where(f => f.Visao == visao)
+                .OrderByDescending(f => f.Ano)
+                .ThenByDescending(f => f.Mes)
+                .ToListAsync();
 
             // --- AUTO-COMPLETE LISTS ---
             viewModel.ListaTickersAcoes = await _context.Recomendacao.Select(x => x.Ticker).ToListAsync();
@@ -305,80 +345,6 @@ namespace Acoes_Fiis.Controllers
             viewModel.ListaTickersGerais = await _context.AtivosGerais.Select(x => x.Ticker).ToListAsync();
 
             return View(viewModel);
-        }
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> VenderAtivo(int id, int quantidadeVendida, string visao)
-        {
-            if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
-
-            var ativo = await _context.Carteira.FindAsync(id);
-            if (ativo == null || quantidadeVendida <= 0 || quantidadeVendida > ativo.Quantidade)
-            {
-                TempData["Erro"] = "Quantidade inválida para venda ou ativo não encontrado.";
-                return RedirectToAction(nameof(Index), new { visao = visao });
-            }
-
-            decimal precoAtual = 0;
-
-            if (ativo.TipoAtivo == "Acao")
-            {
-                var recomendacao = await _context.Recomendacao.FirstOrDefaultAsync(x => x.Ticker == ativo.Ticker);
-                precoAtual = recomendacao?.PrecoAtual ?? ativo.PrecoMedio;
-            }
-            else if (ativo.TipoAtivo == "Fii")
-            {
-                var recomendacaoFii = await _context.RecomendacaoFii.FirstOrDefaultAsync(x => x.Ticker == ativo.Ticker);
-                precoAtual = recomendacaoFii?.PrecoAtual ?? ativo.PrecoMedio;
-            }
-            else
-            {
-                precoAtual = ativo.PrecoMedio;
-            }
-
-            decimal resultadoPorCota = precoAtual - ativo.PrecoMedio;
-            decimal resultadoTotal = resultadoPorCota * quantidadeVendida;
-
-            if (Math.Abs(resultadoTotal) >= 0.01m)
-            {
-                var novoLancamento = new Financeiro
-                {
-                    Data = DateTime.Now,
-                    Categoria = "Investimento",
-                    Pagamento = "Pix",
-                    Dono = ativo.Dono,
-                    Valor = Math.Round(Math.Abs(resultadoTotal), 2)
-                };
-
-                if (resultadoTotal > 0)
-                {
-                    novoLancamento.Descricao = $"Ganho de Capital - Venda {ativo.Ticker} ({quantidadeVendida} qts)";
-                    novoLancamento.Tipo = "Entrada";
-                }
-                else
-                {
-                    novoLancamento.Descricao = $"Prejuízo de Capital - Venda {ativo.Ticker} ({quantidadeVendida} qts)";
-                    novoLancamento.Tipo = "Despesa";
-                }
-
-                _context.Financeiro.Add(novoLancamento);
-            }
-
-            // 4. Atualiza ou remove o ativo da Carteira
-            if (quantidadeVendida == ativo.Quantidade)
-            {
-                _context.Carteira.Remove(ativo);
-            }
-            else
-            {
-                ativo.Quantidade -= quantidadeVendida;
-                _context.Carteira.Update(ativo);
-            }
-
-            await _context.SaveChangesAsync();
-            TempData["Sucesso"] = $"Venda de {quantidadeVendida} cotas de {ativo.Ticker} processada com sucesso!";
-
-            return RedirectToAction(nameof(Index), new { visao = visao });
         }
         [HttpPost]
         [ValidateAntiForgeryToken]

@@ -4,6 +4,12 @@
     var visaoAtual = ViewBag.VisaoAtual as string ?? "Gabriel";
     var hoje = DateTime.Now;
     var anoAtual = hoje.Year;
+
+    // Cálculos iniciais para o carregamento do primeiro "Page Load" (Ano Corrente)
+    decimal acumuladoBrutoAnual = Model.HistoricoFolhas?.Sum(x => x.SalarioBruto) ?? 0;
+    decimal acumuladoDescontosAnual = Model.HistoricoFolhas?.Sum(x => x.Descontos) ?? 0;
+    decimal limiteObrigatoriedadeIr = 35584.00m;
+    bool precisaDeclararPorRenda = acumuladoBrutoAnual > limiteObrigatoriedadeIr;
 }
 
 <div class="modal fade" id="modalContraCheques" tabindex="-1" aria-hidden="true">
@@ -17,37 +23,34 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
 
-            <!-- Seletores de Filtro Superior -->
             <div class="bg-light p-3 border-bottom d-flex justify-content-between align-items-center gap-3">
                 <div class="d-flex align-items-center gap-2">
                     <label class="small fw-bold text-muted text-uppercase mb-0">Exercício:</label>
-                    <select name="anoFiltro" class="form-select form-select-sm rounded-3 fw-bold border-secondary-subtle" style="width: 110px;">
+                    <select id="anoFiltro" class="form-select form-select-sm rounded-3 fw-bold border-secondary-subtle" style="width: 110px;">
                         @for (int i = anoAtual - 2; i <= anoAtual + 1; i++)
                         {
-                            <!option value="@i" @(i == anoAtual ? "selected" : "")>Ano @i</!option>
+                            <option value="@i" selected="@(i == anoAtual)">Ano @i</option>
                         }
                     </select>
                 </div>
                 <span class="badge bg-secondary-subtle text-secondary px-3 py-2 rounded-3 fw-bold">Perfil: @visaoAtual</span>
             </div>
 
-            <!-- Abas de Navegação Interna -->
             <ul class="nav nav-tabs px-4 pt-3 bg-light border-0" id="folhaTabs" role="tablist">
                 <li class="nav-item" role="presentation">
                     <button class="nav-link active border-0 fw-bold small text-uppercase pb-2 text-dark" id="registro-tab" data-bs-toggle="tab" data-bs-target="#registro-pane" type="button" role="tab"><i class="bi bi-plus-circle me-1"></i> Lançar Mês</button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link border-0 fw-bold small text-uppercase pb-2 text-dark" id="historico-tab" data-bs-toggle="tab" data-bs-target="#historico-pane" type="button" role="tab"><i class="bi bi-clock-history me-1"></i> Histórico & PDFs</button>
+                    <button class="nav-link border-0 fw-bold small text-uppercase pb-2 text-dark" id="historico-tab" data-bs-toggle="tab" data-bs-target="#historico-pane" type="button" role="tab"><i class="bi bi-clock-history me-1"></i> Histórico & IRPF</button>
                 </li>
             </ul>
 
             <div class="modal-body tab-content p-4">
 
-                <!-- ABA 1: LANÇAMENTO DE SALÁRIO (FORMULÁRIO ISOLADO AQUI) -->
                 <div class="tab-pane fade show active" id="registro-pane" role="tabpanel" aria-labelledby="registro-tab" tabindex="0">
                     <form asp-action="RegistrarFolhaPagamento" asp-controller="Carteiras" method="post" enctype="multipart/form-data">
                         <input type="hidden" name="visao" value="@visaoAtual" />
-                        <input type="hidden" name="ano" value="@anoAtual" /> @* Passa o ano selecionado no fluxo *@
+                        <input type="hidden" name="ano" id="anoCadastroHidden" value="@anoAtual" />
 
                         <div class="row g-3">
                             <div class="col-md-6">
@@ -55,7 +58,7 @@
                                 <select name="mes" class="form-select rounded-3 border-secondary-subtle" required>
                                     @for (int m = 1; m <= 12; m++)
                                     {
-                                        <!option value="@m" @(m == hoje.Month ? "selected" : "")>@System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(m).ToUpper()</!option>
+                                        <option value="@m" selected="@(m == hoje.Month)">@System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(m).ToUpper()</option>
                                     }
                                 </select>
                             </div>
@@ -72,7 +75,7 @@
                                 <label class="form-label small text-muted text-uppercase fw-bold">Salário Bruto (R$)</label>
                                 <div class="input-group">
                                     <span class="input-group-text bg-white border-secondary-subtle text-success fw-bold">R$</span>
-                                    <input type="text" name="salarioBruto" class="form-control border-secondary-subtle fw-bold text-success" placeholder="0,00" required />
+                                    <input type="text" name="salarioBruto" class="form-control border-secondary-subtle fw-bold text-success input-decimal" placeholder="0,00" required />
                                 </div>
                             </div>
 
@@ -80,7 +83,7 @@
                                 <label class="form-label small text-muted text-uppercase fw-bold">Descontos em Folha (R$)</label>
                                 <div class="input-group">
                                     <span class="input-group-text bg-white border-secondary-subtle text-danger fw-bold">R$</span>
-                                    <input type="text" name="descontos" class="form-control border-secondary-subtle fw-bold text-danger" placeholder="0,00" required />
+                                    <input type="text" name="descontos" class="form-control border-secondary-subtle fw-bold text-danger input-decimal" placeholder="0,00" required />
                                 </div>
                             </div>
 
@@ -93,8 +96,52 @@
                     </form>
                 </div>
 
-                <!-- ABA 2: HISTÓRICO ACUMULADO E DOWNLOADS -->
                 <div class="tab-pane fade" id="historico-pane" role="tabpanel" aria-labelledby="historico-tab" tabindex="0">
+
+                    <div id="alertaIrpfContainer" class="alert @(precisaDeclararPorRenda ? "alert-warning" : "alert-info") border-0 rounded-4 mb-4 shadow-sm">
+                        <div class="d-flex align-items-start">
+                            <i id="alertaIrpfIcone" class="bi @(precisaDeclararPorRenda ? "bi-exclamation-triangle-fill text-warning" : "bi-shield-check-fill text-info") fs-3 me-3 mt-1"></i>
+                            <div class="w-100">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <h6 class="fw-bold text-uppercase mb-0" style="font-size: 0.8rem; letter-spacing: 0.5px;">Termômetro do Imposto de Renda</h6>
+                                    <span id="alertaIrpfBadge" class="badge @(precisaDeclararPorRenda ? "bg-danger" : "bg-success") text-white rounded-pill px-2 py-1 fw-bold" style="font-size: 0.65rem;">
+                                        @(precisaDeclararPorRenda ? "DECLARAÇÃO OBRIGATÓRIA" : "ISENTO POR FAIXA ATUAL")
+                                    </span>
+                                </div>
+                                <p class="small text-dark mb-2">
+                                    Seu faturamento bruto tributável registrado é de <strong id="textoAcumuladoBruto">@acumuladoBrutoAnual.ToString("C2")</strong>.
+                                    O teto limite para isenção anual da Receita Federal é de <strong>R$35.584,00</strong>.
+                                </p>
+                                <div class="bg-white bg-opacity-50 rounded-3 p-2" style="font-size: 0.75rem;">
+                                    <i class="bi bi-info-circle-fill text-secondary me-1"></i>
+                                    <strong>Como declarar no programa do IRPF:</strong> Insira os valores acumulados abaixo na ficha de <em>"Rendimentos Recebidos de Pessoa Jurídica"</em>.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-3 text-center">
+                        <div class="col-md-4">
+                            <div class="p-2 border rounded-3 bg-light">
+                                <small class="d-block opacity-75 fw-bold text-muted text-uppercase" style="font-size: 0.55rem; letter-spacing: 0.5px;">Rendimentos Tributáveis</small>
+                                <span id="cardBruto" class="fw-bold text-success" style="font-size: 1rem;">@acumuladoBrutoAnual.ToString("C2")</span>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="p-2 border rounded-3 bg-light">
+                                <small class="d-block opacity-75 fw-bold text-muted text-uppercase" style="font-size: 0.55rem; letter-spacing: 0.5px;">Retido em Folha</small>
+                                <span id="cardDescontos" class="fw-bold text-danger" style="font-size: 1rem;">@acumuladoDescontosAnual.ToString("C2")</span>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="p-2 border rounded-3 bg-light">
+                                <small class="d-block opacity-75 fw-bold text-muted text-uppercase" style="font-size: 0.55rem; letter-spacing: 0.5px;">Rendimento Líquido</small>
+                                <span id="cardLiquido" class="fw-bold text-dark" style="font-size: 1rem;">@((acumuladoBrutoAnual - acumuladoDescontosAnual).ToString("C2"))</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <label class="small text-muted text-uppercase fw-bold mb-2 mt-3 d-block" style="font-size: 0.65rem;">Lançamentos Individuais por Competência</label>
                     <div class="table-responsive rounded-3 border">
                         <table class="table table-sm table-hover align-middle mb-0" style="font-size: 0.85rem;">
                             <thead class="table-light">
@@ -107,7 +154,7 @@
                                     <th class="text-end pe-3">AÇÃO</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody id="corpoTabelaFolha">
                                 @if (Model.HistoricoFolhas != null && Model.HistoricoFolhas.Any())
                                 {
                                     @foreach (var folha in Model.HistoricoFolhas.OrderByDescending(f => f.Ano).ThenByDescending(f => f.Mes))
@@ -147,7 +194,7 @@
                                 }
                                 else
                                 {
-                                    <tr>
+                                    <tr class="linha-vazia">
                                         <td colspan="6" class="text-center py-4 text-muted">
                                             <i class="bi bi-folder-x d-block fs-3 mb-2 text-secondary"></i>
                                             Nenhum contra-cheque registrado para este exercício.
@@ -167,3 +214,114 @@
         </div>
     </div>
 </div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const seletorAno = document.getElementById("anoFiltro");
+        const inputAnoCadastro = document.getElementById("anoCadastroHidden");
+        const corpoTabela = document.getElementById("corpoTabelaFolha");
+
+        // Elementos dos Cards e Alertas do IR
+        const textoAcumuladoBruto = document.getElementById("textoAcumuladoBruto");
+        const cardBruto = document.getElementById("cardBruto");
+        const cardDescontos = document.getElementById("cardDescontos");
+        const cardLiquido = document.getElementById("cardLiquido");
+        const alertaIrpfContainer = document.getElementById("alertaIrpfContainer");
+        const alertaIrpfIcone = document.getElementById("alertaIrpfIcone");
+        const alertaIrpfBadge = document.getElementById("alertaIrpfBadge");
+
+        const mesesNomes = ["JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
+
+        if (seletorAno && corpoTabela) {
+            seletorAno.addEventListener("change", function () {
+                const anoSelecionado = seletorAno.value;
+                const visaoAtiva = "@visaoAtual";
+
+                if (inputAnoCadastro) inputAnoCadastro.value = anoSelecionado;
+
+                // Faz a chamada assíncrona trazendo JSON bruto da Controller
+                fetch(`/Carteiras/ObterHistoricoPorAnoJson?ano=${anoSelecionado}&visao=${visaoAtiva}`)
+                    .then(response => {
+                        if (!response.ok) throw new Error("Erro de resposta.");
+                        return response.json();
+                    })
+                    .then(dados => {
+                        // 1. RECALCULA TETO E CARDS VISUAIS DO IR NO CLIENT-SIDE
+                        let totalBruto = 0;
+                        let totalDescontos = 0;
+
+                        dados.forEach(item => {
+                            totalBruto += item.salarioBruto;
+                            totalDescontos += item.descontos;
+                        });
+
+                        let totalLiquido = totalBruto - totalDescontos;
+                        let limiteIr = 30639.90;
+                        let precisaDeclarar = totalBruto > limiteIr;
+
+                        // Atualiza os indicadores de texto
+                        cardBruto.innerText = totalBruto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                        textoAcumuladoBruto.innerText = cardBruto.innerText;
+                        cardDescontos.innerText = totalDescontos.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                        cardLiquido.innerText = totalLiquido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+                        // Ajusta as cores do Termômetro do IR baseado no resultado do ano
+                        if (precisaDeclarar) {
+                            alertaIrpfContainer.className = "alert alert-warning border-0 rounded-4 mb-4 shadow-sm";
+                            alertaIrpfIcone.className = "bi bi-exclamation-triangle-fill text-warning fs-3 me-3 mt-1";
+                            alertaIrpfBadge.className = "badge bg-danger text-white rounded-pill px-2 py-1 fw-bold";
+                            alertaIrpfBadge.innerText = "DECLARAÇÃO OBRIGATÓRIA";
+                        } else {
+                            alertaIrpfContainer.className = "alert alert-info border-0 rounded-4 mb-4 shadow-sm";
+                            alertaIrpfIcone.className = "bi bi-shield-check-fill text-info fs-3 me-3 mt-1";
+                            alertaIrpfBadge.className = "badge bg-success text-white rounded-pill px-2 py-1 fw-bold";
+                            alertaIrpfBadge.innerText = "ISENTO POR FAIXA ATUAL";
+                        }
+
+                        // 2. RECONSTRÓI AS LINHAS DA TABELA DINAMICAMENTE
+                        corpoTabela.innerHTML = "";
+
+                        if (dados.length === 0) {
+                            corpoTabela.innerHTML = `
+                                <tr class="linha-vazia">
+                                    <td colspan="6" class="text-center py-4 text-muted">
+                                        <i class="bi bi-folder-x d-block fs-3 mb-2 text-secondary"></i>
+                                        Nenhum contra-cheque registrado para este exercício.
+                                    </td>
+                                </tr>`;
+                            return;
+                        }
+
+                        dados.forEach(folha => {
+                            let nomeMes = mesesNomes[folha.mes - 1];
+                            let liquidoRow = folha.salarioBruto - folha.descontos;
+
+                            let btnPdf = folha.pathPdf
+                                ? `<a href="${folha.pathPdf}" target="_blank" class="btn btn-sm btn-outline-danger border-0 px-2 py-1 rounded-3"><i class="bi bi-file-earmark-pdf-fill fs-5"></i></a>`
+                                : `<span class="text-muted small italic" style="font-size: 0.75rem;">Sem anexo</span>`;
+
+                            let rowHtml = `
+                                <tr>
+                                    <td class="fw-bold ps-3">${nomeMes} / ${folha.ano}</td>
+                                    <td class="text-success fw-semibold">${folha.salarioBruto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                                    <td class="text-danger">${folha.descontos.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                                    <td class="text-dark fw-bold">${liquidoRow.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                                    <td class="text-center">${btnPdf}</td>
+                                    <td class="text-end pe-3">
+                                        <form action="/Carteiras/ExcluirFolhaPagamento" method="post" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir?');">
+                                            <input type="hidden" name="id" value="${folha.id}" />
+                                            <input type="hidden" name="visao" value="${visaoAtiva}" />
+                                            <button type="submit" class="btn btn-sm btn-outline-danger border-0 px-2 py-1 rounded-3">
+                                                <i class="bi bi-trash3-fill"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>`;
+                            corpoTabela.insertAdjacentHTML("beforeend", rowHtml);
+                        });
+                    })
+                    .catch(error => console.error("Erro no filtro client-side:", error));
+            });
+        }
+    });
+</script>

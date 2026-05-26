@@ -192,7 +192,13 @@ namespace Acoes_Fiis.Controllers
 
             var listaGanhosHistoricos = new List<decimal>();
             var listaLabelsHistoricos = new List<string>();
+
+            var HistoricoLabelsGraficoRV = new List<string>();
+            var HistoricoGanhosGraficoRV = new List<decimal>();
+
             decimal mediaRendimentoFallback = totalRendimentoliquido + rendimentoLiquidoCaixinha;
+
+            decimal proventoVariavelAtualEstimado = 0;
 
             for (int i = 11; i >= 0; i--)
             {
@@ -218,12 +224,41 @@ namespace Acoes_Fiis.Controllers
                     listaGanhosHistoricos.Add(Math.Round(mediaRendimentoFallback, 2));
                 }
 
+                var proventosDoMesRV = financeiroData
+                .Where(x => x.Tipo == "Entrada" &&
+                 x.Categoria == "Investimento" &&
+                 x.Descricao != null &&
+                 x.Descricao.ToUpper().Contains("RENDIMENTO AUTOMÁTICO RENDA VARIÁVEL") &&
+                 x.Descricao.Contains(sufixoMesAno))
+                .ToList();
+
+                if (proventosDoMesRV.Any())
+                {
+                    decimal somaProventosMes = proventosDoMesRV.Sum(x => x.Valor);
+                    HistoricoGanhosGraficoRV.Add(somaProventosMes);
+                }
+                else if (i == 0)
+                {
+                    HistoricoGanhosGraficoRV.Add(Math.Round(proventoVariavelAtualEstimado, 2));
+                }
+                else
+                {
+                    HistoricoGanhosGraficoRV.Add(0.00m);
+                }
+
                 string nomeMesLabel = dataAlvo.ToString("MMM", System.Globalization.CultureInfo.CreateSpecificCulture("pt-BR")).ToUpper().Replace(".", "");
-                listaLabelsHistoricos.Add($"{nomeMesLabel}/{dataAlvo:yy}");
+                string labelFinal = $"{nomeMesLabel}/{dataAlvo:yy}";
+
+                listaLabelsHistoricos.Add(labelFinal);
+                HistoricoLabelsGraficoRV.Add(labelFinal);
             }
 
+            // Vincula os pacotes de dados nas ViewBags que o Modal consome no Front-end
             ViewBag.HistoricoGanhosGrafico = listaGanhosHistoricos;
             ViewBag.HistoricoLabelsGrafico = listaLabelsHistoricos;
+
+            ViewBag.HistoricoLabelsGraficoRV = HistoricoLabelsGraficoRV;
+            ViewBag.HistoricoGanhosGraficoRV = HistoricoGanhosGraficoRV;
 
             var viewModel = new FluxoCaixaViewModel
             {
