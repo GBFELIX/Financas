@@ -148,6 +148,65 @@
                     }
                     @foreach (var item in Model.Itens.Where(x => x.TipoAtivo != "RendaFixa").OrderBy(x => x.TipoAtivo == "Acao" ? 0 : x.TipoAtivo == "Fii" ? 1 : 2).ThenBy(x => x.Ticker))
                     {
+                        <div class="modal fade" id="modalCompra-@item.Id" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content border-0 shadow-lg rounded-4">
+                                    <div class="modal-header bg-success text-white border-0 py-3">
+                                        <h5 class="modal-title fw-bold">
+                                            <i class="bi bi-graph-up-arrow me-2"></i>Registrar Compra - @item.Ticker
+                                        </h5>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <form asp-action="ComprarAtivo" asp-controller="Carteiras" asp-route-visao="@ViewBag.VisaoAtual" method="post">
+                                        <input type="hidden" name="id" value="@item.Id" />
+
+                                        <div class="modal-body p-4">
+                                            <div class="p-3 bg-light rounded-3 mb-3 border text-center" style="font-size: 0.85rem;">
+                                                <div class="row">
+                                                    <div class="col-4 border-end">
+                                                        <small class="text-muted d-block">Qtd. Atual</small>
+                                                        <span class="fw-bold text-dark" id="qtdAtual-@item.Id">@item.Quantidade</span>
+                                                    </div>
+                                                    <div class="col-4 border-end">
+                                                        <small class="text-muted d-block">PM Atual</small>
+                                                        <span class="fw-bold text-secondary">@item.PrecoMedio.ToString("C2")</span>
+                                                    </div>
+                                                    <div class="col-4">
+                                                        <small class="text-muted d-block">Cotação Atual</small>
+                                                        <span class="fw-bold text-success" id="precoAtual-@item.Id">@item.PrecoAtual.ToString("N2")</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <label class="form-label fw-bold small text-muted text-uppercase">Quantidade a Comprar</label>
+                                                <input type="number" name="quantidadeComprada" id="inputQtdCompra-@item.Id"
+                                                       class="form-control form-control-lg text-center fw-bold text-success"
+                                                       value="1" min="1" required oninput="calcularNovoPrecoMedio('@item.Id', @item.Quantidade, @item.PrecoMedio.ToString("F2", System.Globalization.CultureInfo.InvariantCulture), @item.PrecoAtual.ToString("F2", System.Globalization.CultureInfo.InvariantCulture))" />
+                                            </div>
+
+                                            <div class="p-3 border border-success-subtle bg-success bg-opacity-10 rounded-4 text-center">
+                                                <div class="row">
+                                                    <div class="col-6 border-end border-success-subtle">
+                                                        <small class="text-muted small d-block text-uppercase" style="font-size:0.65rem;">Novo Custo do Aporte</small>
+                                                        <span class="fw-bold text-dark" id="txtNovoAporte-@item.Id">R$ @item.PrecoAtual.ToString("N2")</span>
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <small class="text-muted small d-block text-uppercase" style="font-size:0.65rem;">Novo Preço Médio Estimado</small>
+                                                        <span class="fw-bold text-success" id="txtNovoPM-@item.Id">R$ 0,00</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="modal-footer border-0 bg-light rounded-bottom-4 p-3">
+                                            <button type="button" class="btn btn-secondary border-0 px-3 rounded-3" data-bs-dismiss="modal">Cancelar</button>
+                                            <button type="submit" class="btn btn-success fw-bold px-4 rounded-3 shadow-sm">Confirmar Compra</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
                         <div class="modal fade" id="modalVenda-@item.Id" tabindex="-1" aria-hidden="true">
                             <div class="modal-dialog modal-dialog-centered">
                                 <div class="modal-content border-0 shadow-lg rounded-4">
@@ -220,13 +279,10 @@
                             </td>
                             <td class="text-center">
                                 <div class="btn-group shadow-sm rounded-3" role="group" aria-label="Ações do Ativo">
-                                    <button type="button"
-                                            class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1 border-end-0"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#editModal-@item.Id"
-                                            title="Editar Ativo">
-                                        <i class="bi bi-pencil-square"></i>
-                                        <span class="d-none d-md-inline">Editar</span>
+                                    <button type="button" class="btn btn-sm btn-outline-success d-inline-flex align-items-center gap-1"
+                                            data-bs-toggle="modal" data-bs-target="#modalCompra-@item.Id" title="Registrar Compra">
+                                        <i class="bi bi-graph-up-arrow"></i>
+                                        <span class="d-none d-md-inline">Comprar</span>
                                     </button>
 
                                     <button type="button"
@@ -237,14 +293,20 @@
                                         <i class="bi bi-graph-down-arrow"></i>
                                         <span class="d-none d-md-inline">Vender</span>
                                     </button>
-
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1 border-end-0"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#editModal-@item.Id"
+                                            title="Editar Ativo">
+                                        <i class="bi bi-pencil-square"></i>
+                                        <span class="d-none d-md-inline"></span>
+                                    </button>
                                     <a asp-action="Delete"
                                        asp-route-id="@item.Id"
                                        asp-route-visao="@ViewBag.VisaoAtual"
                                        class="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1"
                                        title="Excluir Ativo">
                                         <i class="bi bi-trash"></i>
-                                        <span class="d-none d-md-inline">Deletar</span>
                                     </a>
                                 </div>
                             </td>
@@ -438,3 +500,35 @@
         </div>
     </div>
 </div>
+
+<script>
+    function calcularNovoPrecoMedio(id, qtdAtual, pmAtual, precoAtual) {
+        const inputQtd = document.getElementById(`inputQtdCompra-${id}`);
+        const txtAporte = document.getElementById(`txtNovoAporte-${id}`);
+        const txtNovoPM = document.getElementById(`txtNovoPM-${id}`);
+
+        if (!inputQtd) return;
+
+        const qtdComprada = parseFloat(inputQtd.value) || 0;
+
+        // 1. Calcula o capital exigido para o novo lote
+        const custoAporte = qtdComprada * precoAtual;
+        txtAporte.innerText = custoAporte.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+        // 2. Aplica a fórmula ponderada de mercado para re-precificação:
+        // PM_Novo = ((Qtd_Atual * PM_Atual) + (Qtd_Nova * Preco_Atual)) / (Qtd_Atual + Qtd_Nova)
+        const custoTotalAcumulado = (qtdAtual * pmAtual) + custoAporte;
+        const totalAcoesNovas = qtdAtual + qtdComprada;
+
+        const novoPrecoMedioEstimado = totalAcoesNovas > 0 ? (custoTotalAcumulado / totalAcoesNovas) : 0;
+        txtNovoPM.innerText = novoPrecoMedioEstimado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    // Gatilho inicial para computar o cálculo no "Page Load" de cada abertura de modal
+    document.addEventListener("DOMContentLoaded", function() {
+        @foreach (var item in Model.Itens.Where(x => x.TipoAtivo != "RendaFixa"))
+        {
+                <text>calcularNovoPrecoMedio('@item.Id', @item.Quantidade, @item.PrecoMedio.ToString("F2", System.Globalization.CultureInfo.InvariantCulture), @item.PrecoAtual.ToString("F2", System.Globalization.CultureInfo.InvariantCulture));</text>
+        }
+    });
+</script>

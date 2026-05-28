@@ -10,6 +10,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
+
 namespace Acoes_Fiis.Controllers
 {
     public class FinanceirosController : Controller
@@ -35,231 +36,46 @@ namespace Acoes_Fiis.Controllers
             DateTime dozeMesesAtras = DateTime.Now.AddMonths(-12);
             DateTime primeiroDiaMesAtual = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
 
-            var queryFinanceiro = _context.Financeiro.AsQueryable();
-            var queryContasFixas = _context.ContasFixas.AsQueryable();
-            var queryCarteira = _context.Carteira.AsQueryable();
+            // 1. Inicialização de Queries e Filtro de Visão (Dono)
+            var (queryFinanceiro, queryContasFixas, queryCarteira) = InicializarQueriesFiltradas(visao);
 
-            if (visao == "Gabriel")
-            {
-                queryFinanceiro = queryFinanceiro.Where(x => x.Dono == "Gabriel" || x.Dono == "Casal");
-                queryContasFixas = queryContasFixas.Where(x => x.Dono == "Gabriel" || x.Dono == "Casal");
-                queryCarteira = queryCarteira.Where(x => x.Dono == "Gabriel" || x.Dono == "Casal");
-            }
-            else if (visao == "Ela")
-            {
-                queryFinanceiro = queryFinanceiro.Where(x => x.Dono == "Ela" || x.Dono == "Casal");
-                queryContasFixas = queryContasFixas.Where(x => x.Dono == "Ela" || x.Dono == "Casal");
-                queryCarteira = queryCarteira.Where(x => x.Dono == "Ela" || x.Dono == "Casal");
-            }
-
-            var lancamentos = await queryFinanceiro
-                .Where(x => x.Data.Month == filtroMes && x.Data.Year == filtroAno)
-                .ToListAsync() ?? new List<Financeiro>();
-
+            // 2. Carregamento Assíncrono de Dados Base
+            var lancamentos = await queryFinanceiro.Where(x => x.Data.Month == filtroMes && x.Data.Year == filtroAno).ToListAsync() ?? new List<Financeiro>();
             var contasFixas = await queryContasFixas.ToListAsync();
-
-            var ativosRF = await queryCarteira
-                .Where(x => x.TipoAtivo == "RendaFixa")
-                .ToListAsync();
-
+            var ativosRF = await queryCarteira.Where(x => x.TipoAtivo == "RendaFixa").ToListAsync();
             var financeiroData = await queryFinanceiro.ToListAsync();
 
-            var agrupadoGabriel = financeiroData
-                .Where(f => f.Dono == "Gabriel" && f.Data >= dozeMesesAtras)
-                .GroupBy(f => new { f.Data.Year, f.Data.Month })
-                .Select(g => g.Where(x => x.Tipo == "Entrada").Sum(x => x.Valor) - g.Where(x => x.Tipo == "Despesa").Sum(x => x.Valor))
-                .ToList();
+            // 3. Processamento das Médias de Sobra de Perfil (ViewBags)
+            ProcessarMediasSobraUsuarios(financeiroData, dozeMesesAtras);
 
-            ViewBag.MediaSobraGabriel = agrupadoGabriel.Any() ? agrupadoGabriel.Average() : 0m;
+            // 4. Processamento do Financiamento Imobiliário
+            var (valorParcelaFinal, totalAmortizadoNoMes) = await ProcessarParcelaFinanciamento(filtroMes, filtroAno, visao);
 
-            var agrupadoSuely = financeiroData
-                .Where(f => f.Dono == "Ela" && f.Data >= dozeMesesAtras)
-                .GroupBy(f => new { f.Data.Year, f.Data.Month })
-                .Select(g => g.Where(x => x.Tipo == "Entrada").Sum(x => x.Valor) - g.Where(x => x.Tipo == "Despesa").Sum(x => x.Valor))
-                .ToList();
+            // 5. Mapeamento de Status de Pagamento das Contas Fixas e Cálculo do Pendente
+            bool parcelaPaga = lancamentos.Any(l => (l.Descricao.Contains("Financiamento") || l.Categoria == "Moradia") && l.Tipo == "Despesa");
+            decimal pendente = ProcessarStatusContasFixas(contasFixas, lancamentos, valorParcelaFinal, parcelaPaga);
 
-            ViewBag.MediaSobraSuely = agrupadoSuely.Any() ? agrupadoSuely.Average() : 0m;
+            // 6. Consolidação de Balanços e Cálculos de Rendimento
+            decimal totalRendimentoliquido = CalcularRendimentoAtivosRF(ativosRF);
+            decimal totalPagoCasa = lancamentos.Where(l => l.Tipo == "Despesa" && (l.Categoria == "Moradia" || l.Categoria == "Serviços" || l.Categoria == "Farmácia")).Sum(l => l.Valor);
 
-            var financiamento = await _context.Financiamentos
-                .Include(f => f.AportesPontuais)
-                .FirstOrDefaultAsync();
+            var resumoMensal = GerarResumoMensal(financeiroData);
+            decimal entradasMesCorrente = financeiroData.Where(x => x.Data.Month == filtroMes && x.Data.Year == filtroAno && x.Tipo == "Entrada").Sum(x => x.Valor);
+            decimal saidasMesCorrente = financeiroData.Where(x => x.Data.Month == filtroMes && x.Data.Year == filtroAno && x.Tipo == "Despesa").Sum(x => x.Valor);
 
-            decimal valorParcelaFinal = 0;
-            decimal totalAmortizadoNoMes = 0;
+            // 7. Cálculos de Patrimônio Líquido Real
+            decimal saldoFinanceiroAteHoje = financeiroData.Where(x => x.Data.Date <= DateTime.Now.Date).Sum(x => x.Tipo == "Entrada" ? x.Valor : -x.Valor);
+            decimal rendimentoLiquidoCaixinha = (saldoFinanceiroAteHoje * (10.75m / 12 / 100)) * 0.825m;
 
-            if (financiamento != null)
-            {
-                var projecao = _service.GerarSimulacao(financiamento);
-                var parcelaDoMes = projecao.FirstOrDefault(p => p.Data.Month == filtroMes && p.Data.Year == filtroAno);
+            decimal totalInvestidoRendaVariavel = await queryCarteira.Where(x => x.TipoAtivo == "Acao" || x.TipoAtivo == "Fii").SumAsync(x => x.Quantidade * x.PrecoMedio);
+            decimal totalInvestidoRendaFixa = await queryCarteira.Where(x => x.TipoAtivo == "RendaFixa").SumAsync(x => x.Quantidade * x.PrecoMedio);
+            decimal patrimonioTotalReal = totalInvestidoRendaVariavel + totalInvestidoRendaFixa + saldoFinanceiroAteHoje + rendimentoLiquidoCaixinha;
 
-                if (parcelaDoMes != null)
-                {
-                    if (visao == "Gabriel" || visao == "Ela")
-                    {
-                        valorParcelaFinal = parcelaDoMes.ValorParcela / 2;
-                        totalAmortizadoNoMes = parcelaDoMes.Amortizacao / 2;
-                    }
-                    else
-                    {
-                        valorParcelaFinal = parcelaDoMes.ValorParcela;
-                        totalAmortizadoNoMes = parcelaDoMes.Amortizacao;
-                    }
-                }
-            }
+            // 8. Histórico Geral e Construção dos Gráficos de 12 Meses
+            decimal mediaSobraHistorica = CalcularMediaSobraHistorica(financeiroData, dozeMesesAtras, primeiroDiaMesAtual);
+            GerarDadosGraficos12Meses(financeiroData, totalRendimentoliquido, rendimentoLiquidoCaixinha);
 
-            foreach (var conta in contasFixas)
-            {
-                conta.PagoNoMesAtual = lancamentos.Any(l =>
-                   l.Descricao.Contains(conta.Descricao) && l.Tipo == "Despesa");
-            }
-
-            bool parcelaPaga = lancamentos.Any(l =>
-                (l.Descricao.Contains("Financiamento") || l.Categoria == "Moradia") && l.Tipo == "Despesa");
-
-            decimal pendente = contasFixas.Where(c => !c.PagoNoMesAtual).Sum(c => c.Valor);
-            if (!parcelaPaga) pendente += valorParcelaFinal;
-
-            decimal totalPagoCasa = lancamentos
-                .Where(l => l.Tipo == "Despesa" && (l.Categoria == "Moradia" || l.Categoria == "Serviços" || l.Categoria == "Farmácia"))
-                .Sum(l => l.Valor);
-
-            decimal totalRendimentoliquido = 0;
-            foreach (var rf in ativosRF)
-            {
-                decimal taxaMensal = (rf.TaxaRentabilidade ?? 0) / 12 / 100;
-                totalRendimentoliquido += (rf.Quantidade * rf.PrecoMedio) * taxaMensal * 0.825m;
-            }
-
-            DateTime agora = DateTime.Now;
-
-            var resumoMensal = financeiroData
-                .GroupBy(x => new { x.Data.Year, x.Data.Month })
-                .Select(g => new ResumoMesViewModel
-                {
-                    Ano = g.Key.Year,
-                    Mes = g.Key.Month,
-                    Entradas = g.Where(x => x.Tipo == "Entrada").Sum(x => x.Valor),
-                    Saidas = g.Where(x => x.Tipo == "Despesa").Sum(x => x.Valor)
-                })
-                .OrderBy(x => x.Ano)
-                .ThenBy(x => x.Mes)
-                .ToList();
-
-            decimal entradasMesCorrente = financeiroData
-                .Where(x => x.Data.Month == filtroMes && x.Data.Year == filtroAno && x.Tipo == "Entrada")
-                .Sum(x => x.Valor);
-
-            decimal saidasMesCorrente = financeiroData
-                .Where(x => x.Data.Month == filtroMes && x.Data.Year == filtroAno && x.Tipo == "Despesa")
-                .Sum(x => x.Valor);
-
-            decimal saldoFinanceiroAteHoje = financeiroData
-                .Where(x => x.Data.Date <= agora.Date)
-                .Sum(x => x.Tipo == "Entrada" ? x.Valor : -x.Valor);
-
-            decimal taxaAnualCaixinhaAtual = 10.75m;
-            decimal taxaMensalCaixinhaAtual = (taxaAnualCaixinhaAtual / 12) / 100;
-            decimal rendimentoLiquidoCaixinha = (saldoFinanceiroAteHoje * taxaMensalCaixinhaAtual) * 0.825m;
-
-            decimal totalInvestidoRendaVariavel = await queryCarteira
-                .Where(x => x.TipoAtivo == "Acao" || x.TipoAtivo == "Fii")
-                .SumAsync(x => x.Quantidade * x.PrecoMedio);
-
-            decimal totalInvestidoRendaFixa = await queryCarteira
-                .Where(x => x.TipoAtivo == "RendaFixa")
-                .SumAsync(x => x.Quantidade * x.PrecoMedio);
-
-            decimal patrimonioTotalReal = totalInvestidoRendaVariavel +
-                                          totalInvestidoRendaFixa +
-                                          saldoFinanceiroAteHoje +
-                                          rendimentoLiquidoCaixinha;
-
-            decimal mediaSobraHistorica = 0;
-            var dadosHistorico = financeiroData.Where(x => x.Data >= dozeMesesAtras && x.Data < primeiroDiaMesAtual).ToList();
-            if (dadosHistorico.Any())
-            {
-                var mesesAgrupados = dadosHistorico
-                    .GroupBy(x => new { x.Data.Month, x.Data.Year })
-                    .Select(g => new
-                    {
-                        Sobra = g.Where(x => x.Tipo == "Entrada").Sum(x => x.Valor) -
-                                g.Where(x => x.Tipo == "Despesa").Sum(x => x.Valor)
-                    })
-                    .ToList();
-
-                mediaSobraHistorica = mesesAgrupados.Average(m => m.Sobra);
-            }
-
-            var listaGanhosHistoricos = new List<decimal>();
-            var listaLabelsHistoricos = new List<string>();
-
-            var HistoricoLabelsGraficoRV = new List<string>();
-            var HistoricoGanhosGraficoRV = new List<decimal>();
-
-            decimal mediaRendimentoFallback = totalRendimentoliquido + rendimentoLiquidoCaixinha;
-
-            decimal proventoVariavelAtualEstimado = 0;
-
-            for (int i = 11; i >= 0; i--)
-            {
-                var dataAlvo = agora.AddMonths(-i);
-                string sufixoMesAno = $"{dataAlvo:MM/yyyy}";
-
-                var rendimentoRealMes = financeiroData
-                    .FirstOrDefault(x => x.Tipo == "Entrada" &&
-                                         x.Categoria == "Investimento" &&
-                                         x.Descricao.Contains("Rendimento Automático Caixinhas") &&
-                                         x.Descricao.Contains(sufixoMesAno));
-
-                if (rendimentoRealMes != null)
-                {
-                    listaGanhosHistoricos.Add(rendimentoRealMes.Valor);
-                }
-                else if (i == 0)
-                {
-                    listaGanhosHistoricos.Add(Math.Round(totalRendimentoliquido + rendimentoLiquidoCaixinha, 2));
-                }
-                else
-                {
-                    listaGanhosHistoricos.Add(Math.Round(mediaRendimentoFallback, 2));
-                }
-
-                var proventosDoMesRV = financeiroData
-                .Where(x => x.Tipo == "Entrada" &&
-                 x.Categoria == "Investimento" &&
-                 x.Descricao != null &&
-                 x.Descricao.ToUpper().Contains("RENDIMENTO AUTOMÁTICO RENDA VARIÁVEL") &&
-                 x.Descricao.Contains(sufixoMesAno))
-                .ToList();
-
-                if (proventosDoMesRV.Any())
-                {
-                    decimal somaProventosMes = proventosDoMesRV.Sum(x => x.Valor);
-                    HistoricoGanhosGraficoRV.Add(somaProventosMes);
-                }
-                else if (i == 0)
-                {
-                    HistoricoGanhosGraficoRV.Add(Math.Round(proventoVariavelAtualEstimado, 2));
-                }
-                else
-                {
-                    HistoricoGanhosGraficoRV.Add(0.00m);
-                }
-
-                string nomeMesLabel = dataAlvo.ToString("MMM", System.Globalization.CultureInfo.CreateSpecificCulture("pt-BR")).ToUpper().Replace(".", "");
-                string labelFinal = $"{nomeMesLabel}/{dataAlvo:yy}";
-
-                listaLabelsHistoricos.Add(labelFinal);
-                HistoricoLabelsGraficoRV.Add(labelFinal);
-            }
-
-            // Vincula os pacotes de dados nas ViewBags que o Modal consome no Front-end
-            ViewBag.HistoricoGanhosGrafico = listaGanhosHistoricos;
-            ViewBag.HistoricoLabelsGrafico = listaLabelsHistoricos;
-
-            ViewBag.HistoricoLabelsGraficoRV = HistoricoLabelsGraficoRV;
-            ViewBag.HistoricoGanhosGraficoRV = HistoricoGanhosGraficoRV;
-
+            // 9. Montagem Final da ViewModel
             var viewModel = new FluxoCaixaViewModel
             {
                 Lancamentos = lancamentos,
@@ -282,6 +98,147 @@ namespace Acoes_Fiis.Controllers
 
             return View(viewModel);
         }
+
+        private (IQueryable<Financeiro>, IQueryable<ContaFixa>, IQueryable<Carteira>) InicializarQueriesFiltradas(string visao)
+        {
+            var queryFinanceiro = _context.Financeiro.AsQueryable();
+            var queryContasFixas = _context.ContasFixas.AsQueryable();
+            var queryCarteira = _context.Carteira.AsQueryable();
+
+            if (visao == "Gabriel" || visao == "Ela")
+            {
+                string donoAlvo = visao == "Gabriel" ? "Gabriel" : "Ela";
+                queryFinanceiro = queryFinanceiro.Where(x => x.Dono == donoAlvo || x.Dono == "Casal");
+                queryContasFixas = queryContasFixas.Where(x => x.Dono == donoAlvo || x.Dono == "Casal");
+                queryCarteira = queryCarteira.Where(x => x.Dono == donoAlvo || x.Dono == "Casal");
+            }
+
+            return (queryFinanceiro, queryContasFixas, queryCarteira);
+        }
+
+        private void ProcessarMediasSobraUsuarios(List<Financeiro> financeiroData, DateTime dozeMesesAtras)
+        {
+            var agrupadoGabriel = financeiroData
+                .Where(f => f.Dono == "Gabriel" && f.Data >= dozeMesesAtras)
+                .GroupBy(f => new { f.Data.Year, f.Data.Month })
+                .Select(g => g.Where(x => x.Tipo == "Entrada").Sum(x => x.Valor) - g.Where(x => x.Tipo == "Despesa").Sum(x => x.Valor)).ToList();
+
+            ViewBag.MediaSobraGabriel = agrupadoGabriel.Any() ? agrupadoGabriel.Average() : 0m;
+
+            var agrupadoSuely = financeiroData
+                .Where(f => f.Dono == "Ela" && f.Data >= dozeMesesAtras)
+                .GroupBy(f => new { f.Data.Year, f.Data.Month })
+                .Select(g => g.Where(x => x.Tipo == "Entrada").Sum(x => x.Valor) - g.Where(x => x.Tipo == "Despesa").Sum(x => x.Valor)).ToList();
+
+            ViewBag.MediaSobraSuely = agrupadoSuely.Any() ? agrupadoSuely.Average() : 0m;
+        }
+
+        private async Task<(decimal valorParcela, decimal amortizacao)> ProcessarParcelaFinanciamento(int filtroMes, int filtroAno, string visao)
+        {
+            var financiamento = await _context.Financiamentos.Include(f => f.AportesPontuais).FirstOrDefaultAsync();
+            if (financiamento == null) return (0, 0);
+
+            var projecao = _service.GerarSimulacao(financiamento);
+            var parcelaDoMes = projecao.FirstOrDefault(p => p.Data.Month == filtroMes && p.Data.Year == filtroAno);
+            if (parcelaDoMes == null) return (0, 0);
+
+            bool dividirPorDois = visao == "Gabriel" || visao == "Ela";
+            decimal parcela = dividirPorDois ? parcelaDoMes.ValorParcela / 2 : parcelaDoMes.ValorParcela;
+            decimal amortizacao = dividirPorDois ? parcelaDoMes.Amortizacao / 2 : parcelaDoMes.Amortizacao;
+
+            return (parcela, amortizacao);
+        }
+
+        private decimal ProcessarStatusContasFixas(List<ContaFixa> contasFixas, List<Financeiro> lancamentos, decimal valorParcelaFinal, bool parcelaPaga)
+        {
+            foreach (var conta in contasFixas)
+            {
+                conta.PagoNoMesAtual = lancamentos.Any(l => l.Descricao.Contains(conta.Descricao) && l.Tipo == "Despesa");
+            }
+
+            decimal pendente = contasFixas.Where(c => !c.PagoNoMesAtual).Sum(c => c.Valor);
+            if (!parcelaPaga) pendente += valorParcelaFinal;
+
+            return pendente;
+        }
+
+        private decimal CalcularRendimentoAtivosRF(List<Carteira> ativosRF)
+        {
+            decimal total = 0;
+            foreach (var rf in ativosRF)
+            {
+                decimal taxaMensal = (rf.TaxaRentabilidade ?? 0) / 12 / 100;
+                total += (rf.Quantidade * rf.PrecoMedio) * taxaMensal * 0.825m;
+            }
+            return total;
+        }
+
+        private List<ResumoMesViewModel> GerarResumoMensal(List<Financeiro> financeiroData)
+        {
+            return financeiroData
+                .GroupBy(x => new { x.Data.Year, x.Data.Month })
+                .Select(g => new ResumoMesViewModel
+                {
+                    Ano = g.Key.Year,
+                    Mes = g.Key.Month,
+                    Entradas = g.Where(x => x.Tipo == "Entrada").Sum(x => x.Valor),
+                    Saidas = g.Where(x => x.Tipo == "Despesa").Sum(x => x.Valor)
+                })
+                .OrderBy(x => x.Ano).ThenBy(x => x.Mes).ToList();
+        }
+
+        private decimal CalcularMediaSobraHistorica(List<Financeiro> financeiroData, DateTime dozeMesesAtras, DateTime primeiroDiaMesAtual)
+        {
+            var dadosHistorico = financeiroData.Where(x => x.Data >= dozeMesesAtras && x.Data < primeiroDiaMesAtual).ToList();
+            if (!dadosHistorico.Any()) return 0m;
+
+            var mesesAgrupados = dadosHistorico
+                .GroupBy(x => new { x.Data.Month, x.Data.Year })
+                .Select(g => new { Sobra = g.Where(x => x.Tipo == "Entrada").Sum(x => x.Valor) - g.Where(x => x.Tipo == "Despesa").Sum(x => x.Valor) })
+                .ToList();
+
+            return mesesAgrupados.Average(m => m.Sobra);
+        }
+
+        private void GerarDadosGraficos12Meses(List<Financeiro> financeiroData, decimal totalRendimentoliquido, decimal rendimentoLiquidoCaixinha)
+        {
+            var listaGanhosHistoricos = new List<decimal>();
+            var listaLabelsHistoricos = new List<string>();
+            var HistoricoLabelsGraficoRV = new List<string>();
+            var HistoricoGanhosGraficoRV = new List<decimal>();
+
+            decimal mediaRendimentoFallback = totalRendimentoliquido + rendimentoLiquidoCaixinha;
+            DateTime agora = DateTime.Now;
+
+            for (int i = 11; i >= 0; i--)
+            {
+                var dataAlvo = agora.AddMonths(-i);
+                string sufixoMesAno = $"{dataAlvo:MM/yyyy}";
+
+                // Gráfico RF
+                var rendimentoRealMes = financeiroData.FirstOrDefault(x => x.Tipo == "Entrada" && x.Categoria == "Investimento" && x.Descricao != null && x.Descricao.ToUpper().Contains("RENDIMENTO AUTOMÁTICO CAIXINHAS") && x.Descricao.Contains(sufixoMesAno));
+                if (rendimentoRealMes != null) listaGanhosHistoricos.Add(rendimentoRealMes.Valor);
+                else if (i == 0) listaGanhosHistoricos.Add(Math.Round(totalRendimentoliquido + rendimentoLiquidoCaixinha, 2));
+                else listaGanhosHistoricos.Add(Math.Round(mediaRendimentoFallback, 2));
+
+                // Gráfico RV
+                var proventosDoMesRV = financeiroData.Where(x => x.Tipo == "Entrada" && x.Categoria == "Investimento" && x.Descricao != null && x.Descricao.ToUpper().Contains("RENDIMENTO AUTOMÁTICO RENDA VARIÁVEL") && x.Descricao.Contains(sufixoMesAno)).ToList();
+                if (proventosDoMesRV.Any()) HistoricoGanhosGraficoRV.Add(proventosDoMesRV.Sum(x => x.Valor));
+                else HistoricoGanhosGraficoRV.Add(i == 0 ? 0.00m : 0.00m); // Ajuste caso queira injetar projeções futuras
+
+                string nomeMesLabel = dataAlvo.ToString("MMM", System.Globalization.CultureInfo.CreateSpecificCulture("pt-BR")).ToUpper().Replace(".", "");
+                string labelFinal = $"{nomeMesLabel}/{dataAlvo:yy}";
+
+                listaLabelsHistoricos.Add(labelFinal);
+                HistoricoLabelsGraficoRV.Add(labelFinal);
+            }
+
+            ViewBag.HistoricoGanhosGrafico = listaGanhosHistoricos;
+            ViewBag.HistoricoLabelsGrafico = listaLabelsHistoricos;
+            ViewBag.HistoricoLabelsGraficoRV = HistoricoLabelsGraficoRV;
+            ViewBag.HistoricoGanhosGraficoRV = HistoricoGanhosGraficoRV;
+        }
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> AdicionarContaFixa(string descricao, decimal valor, string categoria, string visao)

@@ -203,23 +203,70 @@
                         </tr>
                         @foreach (var item in entradas)
                         {
-                            <tr class="bg-success-subtle">
-                                <td class="text-muted small ps-3">@item.Data.ToString("dd MMM")</td>
+                            var diasParaVencer = (item.Data.Date - hoje).Days;
+
+                            // Estilos padrão do seu exemplo
+                            var classeCorData = "text-muted";
+                            var classeCorLinha = ""; // Nova variável para controlar o fundo da linha inteira
+
+                            if (diasParaVencer <= 0)
+                            {
+                                classeCorData = "text-success fw-bold";     // Mudado para Verde para destacar o Recebido
+                                classeCorLinha = "bg-success-subtle bg-opacity-50"; // Pinta a linha inteira de Verde Suave
+                            }
+                            else if (diasParaVencer == 1)
+                            {
+                                classeCorData = "text-danger fw-bold";      // Vermelho para AMANHÃ no texto
+                                classeCorLinha = "";                        // Mantém a linha limpa para destacar o texto vermelho
+                            }
+
+                            <tr class="@classeCorLinha align-middle">
+                                <td class="ps-3 @classeCorData">
+                                    <i class="bi bi-clock me-1"></i>@item.Data.ToString("dd MMM")
+                                </td>
                                 <td>
                                     <div class="d-flex align-items-center">
-                                        <div class="rounded-circle bg-white shadow-sm p-2 me-3 d-flex align-items-center justify-content-center" style="width: 35px; height: 35px;">
-                                            <i class="bi bi-cash-stack text-success"></i>
-                                        </div>
-                                        <span class="fw-bold text-dark">@item.Descricao</span>
+                                        <div class="rounded-circle bg-light p-2 me-3 d-flex align-items-center justify-content-center shadow-sm" style="width: 38px; height: 38px;">
+                                            <i class="bi @(item.Categoria == "Salário" ? "bi-cash-stack text-purple" :
+                                                                                      item.Categoria == "Alimentação" ? "bi-egg-fried text-purple" :
+                                                                                      item.Categoria == "Transporte" ? "bi-car-front text-purple" :
+                                                                                      item.Categoria == "Lazer" ? "bi-controller text-purple" :
+                                                                                      item.Categoria == "Investimento" ? "bi-graph-up-arrow text-purple" :
+                                                                                      item.Categoria == "Roupas/Shopping" ? "bi-bag-check text-purple" :
+                                                                                      item.Categoria == "Estudos" ? "bi-book text-purple" :
+                                                                                      item.Categoria == "Eletrônicos" ? "bi-cpu text-purple" :
+                                                                                      item.Categoria == "Farmácia" ? "bi-capsule text-purple" :
+                                                                                      item.Categoria == "Serviços" ? "bi-tools text-purple" : "bi-tag text-purple")"></i>
+                                </div>
+                                <span class="fw-bold @classeCorData">@item.Descricao</span>
+                            </div>
+                        </td>
+                        <td>
+                            @{
+                                        var badgeClass = item.Categoria switch
+                                        {
+                                            "Salário" => "bg-success-subtle text-dark",
+                                            "Moradia" => "bg-info-subtle text-dark",
+                                            "Alimentação" => "bg-warning-subtle text-dark",
+                                            "Transporte" => "bg-primary-subtle text-dark",
+                                            "Investimento" => "bg-success-subtle text-dark",
+                                            "Farmácia" => "bg-danger-subtle text-dark",
+                                            _ => "bg-light text-dark"
+                                        };
+                                    }
+                                    <span class="badge rounded-pill border @badgeClass fw-normal" style="font-size: 0.7rem;">@item.Categoria.ToUpper()</span>
+                                </td>
+                                <td>
+                                    <div class="pay-method border small p-1 rounded bg-white d-inline-block">
+                                        <i class="bi @(item.Pagamento.Contains("Crédito") ? "bi-credit-card text-primary" : "bi-qr-code text-info") me-1"></i>
+                                        @item.Pagamento
                                     </div>
                                 </td>
-                                <td><span class="badge bg-success text-white">@item.Categoria.ToUpper()</span></td>
-                                <td><small class="text-muted"><i class="bi bi-wallet2 me-1"></i>@item.Pagamento</small></td>
-                                <td class="text-end fw-bold text-success">@item.Valor.ToString("C2")</td>
+                                <td class="text-end fw-bold text-dark">@item.Valor.ToString("C2")</td>
                                 <td class="text-center">
                                     <div class="d-flex gap-2 justify-content-center">
-                                        <button type="button" class="btn btn-sm btn-link text-primary p-0" data-bs-toggle="modal" data-bs-target="#editModal-@item.Id"><i class="bi bi-pencil"></i></button>
-                                        <button type="button" class="btn btn-sm btn-link text-danger p-0" data-bs-toggle="modal" data-bs-target="#deleteModal-@item.Id"><i class="bi bi-trash"></i></button>
+                                        <button type="button" class="btn btn-sm btn-link text-primary p-0" data-bs-toggle="modal" data-bs-target="#editModal-@item.Id"><i class="bi bi-pencil-fill"></i></button>
+                                        <button type="button" class="btn btn-sm btn-link text-danger p-0" data-bs-toggle="modal" data-bs-target="#deleteModal-@item.Id"><i class="bi bi-trash-fill"></i></button>
                                     </div>
                                 </td>
                             </tr>
@@ -264,17 +311,18 @@
                                     <div class="d-flex align-items-center">
                                         <div class="rounded-circle bg-light p-2 me-3 d-flex align-items-center justify-content-center shadow-sm" style="width: 38px; height: 38px;">
                                             <i class="bi @(item.Categoria == "Salário" ? "bi-cash-stack text-purple" :
-                                                                                                                                                                                       item.Categoria == "Moradia" ? "bi-house text-purple" :
-                                                                                                                                                                                       item.Categoria == "Alimentação" ? "bi-egg-fried text-purple" :
-                                                                                                                                                                                       item.Categoria == "Transporte" ? "bi-car-front text-purple" :
-                                                                                                                                                                                       item.Categoria == "Lazer" ? "bi-controller text-purple" :
-                                                                                                                                                                                       item.Categoria == "Investimento" ? "bi-graph-up-arrow text-purple" :
-                                                                                                                                                                                       item.Categoria == "Roupas/Shopping" ? "bi-bag-check text-purple" :
-                                                                                                                                                                                       item.Categoria == "Estudos" ? "bi-book text-purple" :
-                                                                                                                                                                                       item.Categoria == "Eletrônicos" ? "bi-cpu text-purple" :
-                                                                                                                                                                                       item.Categoria == "Farmácia" ? "bi-capsule text-purple" :
-                                                                                                                                                                                       item.Categoria == "Serviços" ? "bi-tools text-purple" :
-                                                                                                                                                                                       item.Categoria == "Estudos" ? "bi-book text-purple" : "bi-tag text-purple")"></i>
+                                                                                   item.Categoria == "Alimentação" ? "bi-egg-fried text-purple" :
+                                                                                   item.Categoria == "Transporte" ? "bi-car-front text-purple" :
+                                                                                   item.Categoria == "Lazer" ? "bi-controller text-purple" :
+                                                                                   item.Categoria == "Investimento" ? "bi-graph-up-arrow text-purple" :
+                                                                                   item.Categoria == "Roupas/Shopping" ? "bi-bag-check text-purple" :
+                                                                                   item.Categoria == "Estudos" ? "bi-book text-purple" :
+                                                                                   item.Categoria == "Eletrônicos" ? "bi-cpu text-purple" :
+                                                                                   item.Categoria == "Farmácia" ? "bi-capsule text-purple" :
+                                                                                   item.Categoria == "Serviços" ? "bi-tools text-purple" :
+                                                                                   item.Categoria == "Estudos" ? "bi-book text-purple" : "bi-tag text-purple")"></i>
+                                    
+                                                                                                                                                                                       
                                 </div>
                                 <span class="fw-bold @classeCorData">@item.Descricao</span>
                             </div>

@@ -32,34 +32,61 @@ namespace Acoes_Fiis.Controllers
 
             var agora = DateTime.Now;
 
-            var queryCarteira = _context.Carteira.AsQueryable();
-            var queryFinanceiro = _context.Financeiro.AsQueryable();
-            var queryFinanciamento = _context.Financiamentos.Include(p => p.AportesPontuais).AsQueryable();
+            // 1. Inicialização de Queries e Filtro de Visão (Dono)
+            var (queryCarteira, queryFinanceiro, queryFinanciamento) = InicializarQueriesCarteira(visao);
 
-            if (visao == "Gabriel")
-            {
-                queryCarteira = queryCarteira.Where(x => x.Dono == "Gabriel" || x.Dono == "Casal");
-                queryFinanceiro = queryFinanceiro.Where(x => x.Dono == "Gabriel" || x.Dono == "Casal");
-                queryFinanciamento = queryFinanciamento.Where(x => x.Dono == "Gabriel" || x.Dono == "Casal");
-            }
-            else if (visao == "Ela")
-            {
-                queryCarteira = queryCarteira.Where(x => x.Dono == "Ela" || x.Dono == "Casal");
-                queryFinanceiro = queryFinanceiro.Where(x => x.Dono == "Ela" || x.Dono == "Casal");
-                queryFinanciamento = queryFinanciamento.Where(x => x.Dono == "Ela" || x.Dono == "Casal");
-            }
-
+            // 2. Carregamento Assíncrono de Dados Base
             var itensBanco = await queryCarteira.ToListAsync();
             var financeiroData = await queryFinanceiro.ToListAsync();
             var financiamento = await queryFinanciamento.FirstOrDefaultAsync();
 
             var viewModel = new CarteiraTotalViewModel();
-            decimal totalRFLiquido = 0;
 
-            // VARIÁVEL PARA SOMAR OS PROVENTOS DA SUA MODEL
+            // 3. Processamento dos Ativos e Cálculo das Projeções de Proventos
+            var (totalRFLiquido, totalProventosVariaveis) = await ProcessarItensCarteiraAtiva(itensBanco, viewModel);
+
+            // 4. Fluxo Financeiro, Saldos e Rendimento Corrente das Caixinhas
+            decimal saldoFinanceiroAteHoje = ProcessarFluxoFinanceiroSaldos(financeiroData, agora, viewModel);
+            decimal rendimentoLiquidoCaixinha = CalcularRendimentoCaixinhaCorrente(saldoFinanceiroAteHoje, viewModel);
+
+            // 5. Execução de Automações e Gravação de Fechamentos no Banco
+            await ProcessarAutomacoesFechamento(financeiroData, saldoFinanceiroAteHoje, totalProventosVariaveis, agora, visao);
+
+            // 6. Consolidação de Balanços Futuros e Consolidação Patrimonial
+            ProcessarLancamentosFuturos(financeiroData, agora, viewModel);
+            viewModel.PatrimonioTotalReal = viewModel.TotalPatrimonio + viewModel.TotalInvestidoRendaFixa + saldoFinanceiroAteHoje + rendimentoLiquidoCaixinha;
+
+            // 7. Radar de Aportes (Sugestões de Ações e FIIs Baratos)
+            await ProcessarRadarAportes(viewModel);
+
+            // 8. Processamento do Financiamento Imobiliário e Dados Auxiliares
+            ProcessarFinanciamentoImobiliario(financiamento, agora, viewModel);
+            await CarregarDadosAuxiliares(viewModel, visao);
+
+            return View(viewModel);
+        }
+        private (IQueryable<Carteira>, IQueryable<Financeiro>, IQueryable<Price>) InicializarQueriesCarteira(string visao)
+        {
+            var queryCarteira = _context.Carteira.AsQueryable();
+            var queryFinanceiro = _context.Financeiro.AsQueryable();
+            var queryFinanciamento = _context.Financiamentos.Include(p => p.AportesPontuais).AsQueryable();
+
+            if (visao == "Gabriel" || visao == "Ela")
+            {
+                string donoAlvo = visao == "Gabriel" ? "Gabriel" : "Ela";
+                queryCarteira = queryCarteira.Where(x => x.Dono == donoAlvo || x.Dono == "Casal");
+                queryFinanceiro = queryFinanceiro.Where(x => x.Dono == donoAlvo || x.Dono == "Casal");
+                queryFinanciamento = queryFinanciamento.Where(x => x.Dono == donoAlvo || x.Dono == "Casal");
+            }
+
+            return (queryCarteira, queryFinanceiro, queryFinanciamento);
+        }
+
+        private async Task<(decimal totalRFLiquido, decimal totalProventosVariaveis)> ProcessarItensCarteiraAtiva(List<Carteira> itensBanco, CarteiraTotalViewModel viewModel)
+        {
+            decimal totalRFLiquido = 0;
             decimal totalProventosVariaveis = 0;
 
-            // --- 1. PROCESSAMENTO DOS ITENS DA CARTEIRA ATIVA ---
             foreach (var item in itensBanco)
             {
                 var viewItem = new CarteiraItemViewModel
@@ -88,33 +115,13 @@ namespace Acoes_Fiis.Controllers
                     if (acao != null)
                     {
                         viewItem.PrecoAtual = acao.PrecoAtual;
-
-                        // Se sua tabela de recomendações de ações tiver dividendo, você pode mapear aqui:
-                        // viewItem.UltimoRendimento = acao.UltimoDividendo;
-
                         decimal pl = acao.LPA > 0 ? acao.PrecoAtual / acao.LPA : 0;
                         decimal pvp = acao.VPA > 0 ? acao.PrecoAtual / acao.VPA : 0;
 
-                        if (pl > 0 && pl < 10 && acao.Roe > 12)
-                        {
-                            viewItem.Recomendacao = "Forte Compra (Barata + ROE Alto)";
-                            viewItem.CorBadge = "success";
-                        }
-                        else if (pvp < 1.5m && pl < 15)
-                        {
-                            viewItem.Recomendacao = "Compra (Preço Justo)";
-                            viewItem.CorBadge = "primary";
-                        }
-                        else if (pl > 20 || pvp > 3.0m)
-                        {
-                            viewItem.Recomendacao = "Venda / Caro";
-                            viewItem.CorBadge = "danger";
-                        }
-                        else
-                        {
-                            viewItem.Recomendacao = "Neutro / Manter";
-                            viewItem.CorBadge = "secondary";
-                        }
+                        if (pl > 0 && pl < 10 && acao.Roe > 12) { viewItem.Recomendacao = "Forte Compra (Barata + ROE Alto)"; viewItem.CorBadge = "success"; }
+                        else if (pvp < 1.5m && pl < 15) { viewItem.Recomendacao = "Compra (Preço Justo)"; viewItem.CorBadge = "primary"; }
+                        else if (pl > 20 || pvp > 3.0m) { viewItem.Recomendacao = "Venda / Caro"; viewItem.CorBadge = "danger"; }
+                        else { viewItem.Recomendacao = "Neutro / Manter"; viewItem.CorBadge = "secondary"; }
                     }
                 }
                 else if (item.TipoAtivo == "Fii")
@@ -154,14 +161,15 @@ namespace Acoes_Fiis.Controllers
                     }
                 }
 
-                // ADICIONA O ITEM NA MODEL
                 viewModel.Itens.Add(viewItem);
-
-                // AGORA CAPTURAMOS A PROPRIEDADE DINÂMICA DA SUA MODEL DE FORMA SEGURA
                 totalProventosVariaveis += viewItem.ProventoMensalEstimado;
             }
 
-            // --- 2. FLUXO FINANCEIRO E COMPOSIÇÃO DE SALDOS ---
+            return (totalRFLiquido, totalProventosVariaveis);
+        }
+
+        private decimal ProcessarFluxoFinanceiroSaldos(List<Financeiro> financeiroData, DateTime agora, CarteiraTotalViewModel viewModel)
+        {
             viewModel.ResumoMensal = financeiroData
                 .GroupBy(x => new { x.Data.Year, x.Data.Month })
                 .Select(g => new ResumoMesViewModel
@@ -171,55 +179,40 @@ namespace Acoes_Fiis.Controllers
                     Entradas = g.Where(x => x.Tipo == "Entrada").Sum(x => x.Valor),
                     Saidas = g.Where(x => x.Tipo == "Despesa").Sum(x => x.Valor)
                 })
-                .OrderBy(x => x.Ano)
-                .ThenBy(x => x.Mes)
-                .ToList();
+                .OrderBy(x => x.Ano).ThenBy(x => x.Mes).ToList();
 
-            viewModel.EntradasMesCorrente = financeiroData
-                .Where(x => x.Data.Month == agora.Month && x.Data.Year == agora.Year && x.Tipo == "Entrada")
-                .Sum(x => x.Valor);
+            viewModel.EntradasMesCorrente = financeiroData.Where(x => x.Data.Month == agora.Month && x.Data.Year == agora.Year && x.Tipo == "Entrada").Sum(x => x.Valor);
+            viewModel.SaidasMesCorrente = financeiroData.Where(x => x.Data.Month == agora.Month && x.Data.Year == agora.Year && x.Tipo == "Despesa").Sum(x => x.Valor);
 
-            viewModel.SaidasMesCorrente = financeiroData
-                .Where(x => x.Data.Month == agora.Month && x.Data.Year == agora.Year && x.Tipo == "Despesa")
-                .Sum(x => x.Valor);
+            return financeiroData.Where(x => x.Data.Date <= agora.Date).Sum(x => x.Tipo == "Entrada" ? x.Valor : -x.Valor);
+        }
 
-            decimal saldoFinanceiroAteHoje = financeiroData
-                .Where(x => x.Data.Date <= agora.Date)
-                .Sum(x => x.Tipo == "Entrada" ? x.Valor : -x.Valor);
-
-            // --- 3. CÁLCULO DE RENDIMENTO CAIXINHA (MÊS CORRENTE) ---
+        private decimal CalcularRendimentoCaixinhaCorrente(decimal saldoFinanceiroAteHoje, CarteiraTotalViewModel viewModel)
+        {
             decimal taxaAnualCaixinhaAtual = 10.75m;
             decimal taxaMensalCaixinhaAtual = (taxaAnualCaixinhaAtual / 12) / 100;
             decimal rendimentoLiquidoCaixinha = (saldoFinanceiroAteHoje * taxaMensalCaixinhaAtual) * 0.825m;
 
-            viewModel.RendaMensalTotalConsolidada = viewModel.TotalRendaMensalEstimada + viewModel.RendaFixaMensalLiquida;
-            viewModel.RendaMensalTotalConsolidada += rendimentoLiquidoCaixinha;
+            viewModel.RendaMensalTotalConsolidada = viewModel.TotalRendaMensalEstimada + viewModel.RendaFixaMensalLiquida + rendimentoLiquidoCaixinha;
+            return rendimentoLiquidoCaixinha;
+        }
 
-            // =========================================================================
-            // AUTOMÇÕES E LANÇAMENTOS AUTOMÁTICOS NO BANCO DE DADOS
-            // =========================================================================
+        private async Task ProcessarAutomacoesFechamento(List<Financeiro> financeiroData, decimal saldoFinanceiroAteHoje, decimal totalProventosVariaveis, DateTime agora, string visao)
+        {
             DateTime mesAnterior = agora.AddMonths(-1);
+            bool mudouBanco = false;
 
             // --- AUTOMAÇÃO A: CAIXINHAS / RENDA FIXA ---
             string descricaoRendimentoNode = $"Rendimento Automático Caixinhas - {mesAnterior:MM/yyyy}";
-            bool jaLancado = financeiroData.Any(x => x.Descricao == descricaoRendimentoNode);
-
-            if (!jaLancado)
+            if (!financeiroData.Any(x => x.Descricao == descricaoRendimentoNode))
             {
                 DateTime ultimoSegundoMesAnterior = new DateTime(agora.Year, agora.Month, 1).AddSeconds(-1);
-                decimal saldoFinalMesAnterior = financeiroData
-                    .Where(x => x.Data.Date <= ultimoSegundoMesAnterior.Date)
-                    .Sum(x => x.Tipo == "Entrada" ? x.Valor : -x.Valor);
+                decimal saldoFinalMesAnterior = financeiroData.Where(x => x.Data.Date <= ultimoSegundoMesAnterior.Date).Sum(x => x.Tipo == "Entrada" ? x.Valor : -x.Valor);
 
                 if (saldoFinalMesAnterior > 0)
                 {
-                    decimal taxaAnualCaixinha = 14.50m;
-                    double taxaAnualDouble = (double)(taxaAnualCaixinha / 100m);
-                    double taxaMensalDouble = Math.Pow(1 + taxaAnualDouble, 1.0 / 12.0) - 1;
-                    decimal taxaMensalCaixinha = (decimal)taxaMensalDouble;
-                    decimal fatorImpostoRetido = 0.800m;
-
-                    decimal rendimentoLiquido = (saldoFinalMesAnterior * taxaMensalCaixinha) * fatorImpostoRetido;
+                    decimal taxaMensalCaixinha = (decimal)(Math.Pow(1 + (14.50 / 100.0), 1.0 / 12.0) - 1);
+                    decimal rendimentoLiquido = (saldoFinalMesAnterior * taxaMensalCaixinha) * 0.800m;
 
                     if (rendimentoLiquido > 0.01m)
                     {
@@ -233,63 +226,50 @@ namespace Acoes_Fiis.Controllers
                             Pagamento = "Pix",
                             Dono = visao == "Casal" ? "Casal" : visao
                         };
-
                         _context.Financeiro.Add(novoLancamento);
                         financeiroData.Add(novoLancamento);
+                        mudouBanco = true;
                     }
                 }
             }
 
-            // --- AUTOMAÇÃO B: DIVIDENDOS / RENDA VARIÁVEL (SOMA DINÂMICA DA MODEL) ---
+            // --- AUTOMAÇÃO B: DIVIDENDOS / RENDA VARIÁVEL ---
             string descricaoRendimentoVariavel = $"Rendimento Automático Renda Variável - {mesAnterior:MM/yyyy}";
-            bool jaLancadoVariavel = financeiroData.Any(x => x.Descricao == descricaoRendimentoVariavel);
-
-            if (!jaLancadoVariavel)
+            if (!financeiroData.Any(x => x.Descricao == descricaoRendimentoVariavel) && totalProventosVariaveis > 0.01m)
             {
-                // Usa a soma exata obtida a partir da propriedade calculada da sua model
-                if (totalProventosVariaveis > 0.01m)
+                var novoLancamentoVariavel = new Financeiro
                 {
-                    var novoLancamentoVariavel = new Financeiro
-                    {
-                        Descricao = descricaoRendimentoVariavel,
-                        Valor = Math.Round(totalProventosVariaveis, 2),
-                        Data = new DateTime(agora.Year, agora.Month, 1).AddDays(-1),
-                        Tipo = "Entrada",
-                        Categoria = "Investimento",
-                        Pagamento = "Pix",
-                        Dono = visao == "Casal" ? "Casal" : visao
-                    };
-
-                    _context.Financeiro.Add(novoLancamentoVariavel);
-                    financeiroData.Add(novoLancamentoVariavel);
-                }
+                    Descricao = descricaoRendimentoVariavel,
+                    Valor = Math.Round(totalProventosVariaveis, 2),
+                    Data = new DateTime(agora.Year, agora.Month, 1).AddDays(-1),
+                    Tipo = "Entrada",
+                    Categoria = "Investimento",
+                    Pagamento = "Pix",
+                    Dono = visao == "Casal" ? "Casal" : visao
+                };
+                _context.Financeiro.Add(novoLancamentoVariavel);
+                financeiroData.Add(novoLancamentoVariavel);
+                mudouBanco = true;
             }
 
-            // Comita todas as alterações geradas de forma atômica no banco de dados
-            await _context.SaveChangesAsync();
+            if (mudouBanco)
+            {
+                await _context.SaveChangesAsync();
+            }
+        }
 
-            // --- CONTINUAÇÃO DOS CÁLCULOS TOTAIS DO PAINEL ---
-            viewModel.PatrimonioTotalReal = viewModel.TotalPatrimonio +
-                                           viewModel.TotalInvestidoRendaFixa +
-                                           saldoFinanceiroAteHoje +
-                                           rendimentoLiquidoCaixinha;
+        private void ProcessarLancamentosFuturos(List<Financeiro> financeiroData, DateTime agora, CarteiraTotalViewModel viewModel)
+        {
+            viewModel.EntradasFuturas = financeiroData.Where(x => x.Data.Date > agora.Date && x.Tipo == "Entrada").Sum(x => x.Valor);
+            viewModel.SaidasFuturas = financeiroData.Where(x => x.Data.Date > agora.Date && x.Tipo == "Despesa").Sum(x => x.Valor);
+        }
 
-            viewModel.EntradasFuturas = financeiroData
-                .Where(x => x.Data.Date > agora.Date && x.Tipo == "Entrada")
-                .Sum(x => x.Valor);
-
-            viewModel.SaidasFuturas = financeiroData
-                .Where(x => x.Data.Date > agora.Date && x.Tipo == "Despesa")
-                .Sum(x => x.Valor);
-
-            var sobraDisponivel = viewModel.PatrimonioTotalReal - (itensBanco.Sum(x => x.Quantidade * x.PrecoMedio));
-
-            // --- RADAR DE APORTES E SUGESTÕES ---
+        private async Task ProcessarRadarAportes(CarteiraTotalViewModel viewModel)
+        {
             var recomendacoesAcoes = await _context.Recomendacao.ToListAsync();
             var acoesBaratas = recomendacoesAcoes
                 .Where(x => x.LPA > 0 && (x.PrecoAtual / x.LPA) < 10 && x.Roe > 12)
-                .OrderBy(x => x.PrecoAtual / x.LPA)
-                .Take(5)
+                .OrderBy(x => x.PrecoAtual / x.LPA).Take(5)
                 .Select(x => new RadarAporteViewModel
                 {
                     Ticker = x.Ticker,
@@ -302,8 +282,7 @@ namespace Acoes_Fiis.Controllers
             var recomendacoesFiis = await _context.RecomendacaoFii.ToListAsync();
             var fiisDescontados = recomendacoesFiis
                 .Where(x => x.PVP < 0.98m)
-                .OrderBy(x => x.PVP)
-                .Take(5)
+                .OrderBy(x => x.PVP).Take(5)
                 .Select(x => new RadarAporteViewModel
                 {
                     Ticker = x.Ticker,
@@ -316,36 +295,146 @@ namespace Acoes_Fiis.Controllers
             viewModel.SugestoesAporte.Clear();
             viewModel.SugestoesAporte.AddRange(acoesBaratas);
             viewModel.SugestoesAporte.AddRange(fiisDescontados);
+        }
 
-            // --- SIMULAÇÃO DO FINANCIAMENTO IMOBILIÁRIO ---
-            if (financiamento != null)
-            {
-                var simulacaoCompleta = _service.GerarSimulacao(financiamento);
+        private void ProcessarFinanciamentoImobiliario(Price financiamento, DateTime agora, CarteiraTotalViewModel viewModel)
+        {
+            if (financiamento == null) return;
 
-                viewModel.ValorImovel = financiamento.ValorImovel;
-                viewModel.ValorEntrada = financiamento.ValorEntrada;
-                viewModel.TaxaJurosAnual = financiamento.TaxaJurosAnual;
-                viewModel.ProjecaoFinanciamento = simulacaoCompleta;
+            var simulacaoCompleta = _service.GerarSimulacao(financiamento);
+            viewModel.ValorImovel = financiamento.ValorImovel;
+            viewModel.ValorEntrada = financiamento.ValorEntrada;
+            viewModel.TaxaJurosAnual = financiamento.TaxaJurosAnual;
+            viewModel.ProjecaoFinanciamento = simulacaoCompleta;
 
-                var parcelaAtual = simulacaoCompleta.FirstOrDefault(p => p.Data.Month == agora.Month && p.Data.Year == agora.Year);
-                viewModel.SaldoDevedorAtual = parcelaAtual?.SaldoDevedorRestante ?? financiamento.SaldoDevedorInicial;
-                viewModel.PrazoMesesRestantes = simulacaoCompleta.Count(p => p.SaldoDevedorRestante > 0);
-            }
+            var parcelaAtual = simulacaoCompleta.FirstOrDefault(p => p.Data.Month == agora.Month && p.Data.Year == agora.Year);
+            viewModel.SaldoDevedorAtual = parcelaAtual?.SaldoDevedorRestante ?? financiamento.SaldoDevedorInicial;
+            viewModel.PrazoMesesRestantes = simulacaoCompleta.Count(p => p.SaldoDevedorRestante > 0);
+        }
 
-            // Contra-cheques
+        private async Task CarregarDadosAuxiliares(CarteiraTotalViewModel viewModel, string visao)
+        {
             viewModel.HistoricoFolhas = await _context.FolhasPagamento
                 .Where(f => f.Visao == visao)
-                .OrderByDescending(f => f.Ano)
-                .ThenByDescending(f => f.Mes)
-                .ToListAsync();
+                .OrderByDescending(f => f.Ano).ThenByDescending(f => f.Mes).ToListAsync();
 
-            // --- AUTO-COMPLETE LISTS ---
             viewModel.ListaTickersAcoes = await _context.Recomendacao.Select(x => x.Ticker).ToListAsync();
             viewModel.ListaTickersFiis = await _context.RecomendacaoFii.Select(x => x.Ticker).ToListAsync();
             viewModel.ListaTickersGerais = await _context.AtivosGerais.Select(x => x.Ticker).ToListAsync();
-
-            return View(viewModel);
         }
+        [HttpPost]
+        public async Task<IActionResult> ComprarAtivo(int id, int quantidadeComprada, string visao)
+        {
+            if (quantidadeComprada <= 0) return RedirectToAction(nameof(Index), new { visao = visao });
+
+            var ativo = await _context.Carteira.FindAsync(id);
+            if (ativo == null) return NotFound();
+
+            // 1. Puxa a cotação de mercado atualizada da tabela de referências
+            decimal precoAtualMercado = 0;
+            if (ativo.TipoAtivo == "Fii")
+            {
+                var fii = await _context.RecomendacaoFii.FirstOrDefaultAsync(x => x.Ticker == ativo.Ticker);
+                if (fii != null) precoAtualMercado = fii.PrecoAtual;
+            }
+            else if (ativo.TipoAtivo == "Acao")
+            {
+                var acao = await _context.Recomendacao.FirstOrDefaultAsync(x => x.Ticker == ativo.Ticker);
+                if (acao != null) precoAtualMercado = acao.PrecoAtual;
+            }
+
+            if (precoAtualMercado == 0) precoAtualMercado = ativo.PrecoMedio; // Fallback de proteção
+
+            // 2. Executa o cálculo ponderado de preço médio no C# antes de gravar
+            decimal custoTotalAntigo = ativo.Quantidade * ativo.PrecoMedio;
+            decimal custoNovoAporte = quantidadeComprada * precoAtualMercado;
+
+            ativo.Quantidade += quantidadeComprada;
+            ativo.PrecoMedio = (custoTotalAntigo + custoNovoAporte) / ativo.Quantidade;
+
+            _context.Update(ativo);
+            await _context.SaveChangesAsync();
+
+            return RedirectToAction(nameof(Index), new { visao = visao });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> VenderAtivo(int id, int quantidadeVendida, string visao)
+        {
+            {
+                if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
+
+                var ativo = await _context.Carteira.FindAsync(id);
+                if (ativo == null || quantidadeVendida <= 0 || quantidadeVendida > ativo.Quantidade) if (ativo == null || quantidadeVendida <= 0 || quantidadeVendida > ativo.Quantidade)
+                    {
+                        TempData["Erro"] = "Quantidade inválida para venda ou ativo não encontrado.";
+                        return RedirectToAction(nameof(Index), new { visao = visao });
+                    }
+
+                decimal precoAtual = 0;
+
+                if (ativo.TipoAtivo == "Acao")
+                {
+                    var recomendacao = await _context.Recomendacao.FirstOrDefaultAsync(x => x.Ticker == ativo.Ticker);
+                    precoAtual = recomendacao?.PrecoAtual ?? ativo.PrecoMedio;
+                }
+                else if (ativo.TipoAtivo == "Fii")
+                {
+                    var recomendacaoFii = await _context.RecomendacaoFii.FirstOrDefaultAsync(x => x.Ticker == ativo.Ticker);
+                    precoAtual = recomendacaoFii?.PrecoAtual ?? ativo.PrecoMedio;
+                }
+                else
+                {
+                    precoAtual = ativo.PrecoMedio;
+                }
+
+                decimal resultadoPorCota = precoAtual - ativo.PrecoMedio;
+                decimal resultadoTotal = resultadoPorCota * quantidadeVendida;
+
+                if (Math.Abs(resultadoTotal) >= 0.01m)
+                {
+                    var novoLancamento = new Financeiro
+                    {
+                        Data = DateTime.Now,
+                        Categoria = "Investimento",
+                        Pagamento = "Pix",
+                        Dono = ativo.Dono,
+                        Valor = Math.Round(Math.Abs(resultadoTotal), 2)
+                    };
+
+                    if (resultadoTotal > 0)
+                    {
+                        novoLancamento.Descricao = $"Ganho de Capital - Venda {ativo.Ticker} ({quantidadeVendida} qts)";
+                        novoLancamento.Tipo = "Entrada";
+                    }
+                    else
+                    {
+                        novoLancamento.Descricao = $"Prejuízo de Capital - Venda {ativo.Ticker} ({quantidadeVendida} qts)";
+                        novoLancamento.Tipo = "Despesa";
+                    }
+
+                    _context.Financeiro.Add(novoLancamento);
+                }
+
+                // 4. Atualiza ou remove o ativo da Carteira
+                if (quantidadeVendida == ativo.Quantidade)
+                {
+                    _context.Carteira.Remove(ativo);
+                }
+                else
+                {
+                    ativo.Quantidade -= quantidadeVendida; ativo.Quantidade -= quantidadeVendida;
+                    _context.Carteira.Update(ativo);
+                }
+
+                await _context.SaveChangesAsync();
+                TempData["Sucesso"] = $"Venda de {quantidadeVendida} cotas de {ativo.Ticker} processada com sucesso!";
+
+                return RedirectToAction(nameof(Index), new { visao = visao });
+            }
+        }
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> RegistrarFolhaPagamento(int ano, int mes, decimal salarioBruto, decimal descontos, IFormFile? pdfFile, string visao)
@@ -396,29 +485,58 @@ namespace Acoes_Fiis.Controllers
                 DataRegistro = DateTime.Now
             };
 
-            // 3. Salva no Contexto do Entity Framework
             _context.FolhasPagamento.Add(novaFolha);
             await _context.SaveChangesAsync();
 
-            // Redireciona de volta para o painel mantendo o foco do usuário na visão correta
             return RedirectToAction("Index", new { visao = visao });
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> RegistrarAporteExtra(int priceId, decimal valor, int mesReferencia, string visao)
+        public async Task<IActionResult> RegistrarAporteExtra(int priceId, string valor, int mesReferencia, string visao)
         {
             if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
 
-            var novoAporte = new AporteExtra
+            decimal valorConvertido = 0;
+            if (!string.IsNullOrEmpty(valor))
             {
-                PriceId = priceId,
-                MesReferencia = mesReferencia,
-                Valor = valor
-            };
+                var culturaBr = new System.Globalization.CultureInfo("pt-BR");
+                string valorTratado = valor.Trim();
+                if (!valorTratado.Contains(",") && !valorTratado.Contains("."))
+                {
+                    valorConvertido = Convert.ToDecimal(valorTratado, culturaBr) / 100m;
+                }
+                else
+                {
+                    valorConvertido = Convert.ToDecimal(valorTratado, culturaBr);
+                }
+            }
 
-            _context.Add(novoAporte);
-            await _context.SaveChangesAsync();
+            if (valorConvertido > 0)
+            {
+                var financiamento = await _context.Financiamentos.FirstOrDefaultAsync();
+
+                if (financiamento != null)
+                {
+                    DateTime dataInicioContrato = financiamento.DataInicio;
+                    DateTime dataAtual = DateTime.Now;
+
+                    //Calcula a distância exata de meses entre a assinatura e o dia de hoje
+                    int mesesDeDiferenca = ((dataAtual.Year - dataInicioContrato.Year) * 12) + dataAtual.Month - dataInicioContrato.Month;
+
+                    int parcelaContratualCorreta = mesesDeDiferenca + 1;
+
+                    var novoAporte = new AporteExtra
+                    {
+                        PriceId = priceId,
+                        MesReferencia = parcelaContratualCorreta, // Usa o cálculo dinâmico baseado no banco (Ex: 12)
+                        Valor = valorConvertido
+                    };
+
+                    _context.Add(novoAporte);
+                    await _context.SaveChangesAsync();
+                }
+            }
 
             return RedirectToAction(nameof(Index), new { visao = visao });
         }
@@ -594,7 +712,7 @@ namespace Acoes_Fiis.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,Ticker,Quantidade,PrecoMedio,TipoAtivo,Setor,DataCompra,Dono")] Carteira carteira, string visao)
+        public async Task<IActionResult> Create(Carteira carteira, string visao)
         {
             if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
             if (string.IsNullOrEmpty(carteira.Dono)) carteira.Dono = visao;
@@ -626,18 +744,24 @@ namespace Acoes_Fiis.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,Ticker,Quantidade,PrecoMedio,TipoAtivo,Setor,DataCompra,Dono")] Carteira carteira, string visao)
+        public async Task<IActionResult> Edit(int id, Carteira carteira, string visao)
         {
             if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
             if (id != carteira.Id) return NotFound();
-
             ModelState.Remove("Dono");
+            ModelState.Remove("TaxaRentabilidade");
 
             if (ModelState.IsValid)
             {
                 try
                 {
-                    _context.Update(carteira);
+                    var registroBanco = await _context.Carteira.FindAsync(id);
+                    if (registroBanco == null) return NotFound();
+
+                    registroBanco.Quantidade = carteira.Quantidade;
+                    registroBanco.PrecoMedio = carteira.PrecoMedio;
+
+                    _context.Update(registroBanco);
                     await _context.SaveChangesAsync();
                 }
                 catch (DbUpdateConcurrencyException)
@@ -645,8 +769,9 @@ namespace Acoes_Fiis.Controllers
                     if (!CarteiraExists(carteira.Id)) return NotFound();
                     else throw;
                 }
-                return RedirectToAction(nameof(Index), new { visao = visao });
             }
+
+            // Redireciona com precisão mantendo o filtro de perfil ativo
             return RedirectToAction(nameof(Index), new { visao = visao });
         }
 

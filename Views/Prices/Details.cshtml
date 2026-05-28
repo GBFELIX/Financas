@@ -43,16 +43,6 @@
         <div class="col-md-12">
             <div class="card border-0 shadow-sm bg-light rounded-4">
                 <div class="card-body p-4">
-                    <h5 class="card-title text-primary fw-bold mb-3">
-                        <i class="bi bi-graph-up-arrow me-1"></i> Progresso do Financiamento
-                    </h5>
-                    <div class="progress mb-3 shadow-sm" style="height: 24px; border-radius: 50px;">
-                        <div class="progress-bar progress-bar-striped progress-bar-animated bg-success fw-bold text-white text-center fs-6"
-                             role="progressbar" style="width: @progresso%"
-                             aria-valuenow="@progresso" aria-valuemin="0" aria-valuemax="100">
-                            @progresso% Concluído
-                        </div>
-                    </div>
                     <div class="row text-center g-3 mt-2">
                         <div class="col-md-4 border-end">
                             <small class="text-muted d-block text-uppercase fw-semibold" style="font-size: 0.7rem;">Parcelas Restantes</small>
@@ -129,7 +119,7 @@
                 </div>
             </div>
 
-            <!-- Nova Seção: Histórico de Aportes Extras Pontuais Cadastrados -->
+            <!-- Histórico de Aportes Extras Pontuais Cadastrados -->
             <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
                 <div class="card-header bg-light border-bottom text-dark fw-bold d-flex justify-content-between align-items-center">
                     <span><i class="bi bi-list-check me-1"></i>Aportes Pontuais Injetados</span>
@@ -176,13 +166,12 @@
             </div>
         </div>
 
-        <!-- Coluna Direita: Tabela da Evolução Mês a Mês (Price) -->
         <div class="col-md-8">
             <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
                 <div class="card-header bg-primary text-white fw-bold py-3">
                     <i class="bi bi-calendar3 me-1"></i> Evolução do Saldo Devedor (Mês a Mês)
                 </div>
-                <div class="card-body p-0 bg-white" style="max-height: 540px; overflow-y: auto;">
+                <div class="card-body p-0 bg-white" id="containerScrollPrice" style="max-height: 540px; overflow-y: auto;">
                     <table class="table table-sm table-striped table-hover mb-0 align-middle text-center" style="font-size: 0.85rem;">
                         <thead class="table-light sticky-top shadow-sm">
                             <tr>
@@ -201,7 +190,8 @@
                                 {
                                     bool ehMesActual = (p.Data.Month == hoje.Month && p.Data.Year == hoje.Year);
 
-                                    <tr class="@(ehMesActual ? "table-warning border-start border-end border-primary fw-semibold" : "")">
+                                    // AJUSTE: Se for o mês atual, a linha ganha o id="linhaMesAtual"
+                                    <tr id="@(ehMesActual ? "linhaMesAtual" : "")" class="@(ehMesActual ? "table-warning border-start border-end border-primary fw-semibold animate-pulse" : "")">
                                         <td class="text-start ps-3">
                                             <span class="fw-bold">@p.Numero</span>
                                             @if (ehMesActual)
@@ -235,9 +225,33 @@
                 </div>
             </div>
         </div>
+
+        
     </div>
 </div>
 
 @section Scripts {
     <script src="~/js/site.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const container = document.getElementById("containerScrollPrice");
+            const linhaAtiva = document.getElementById("linhaMesAtual");
+
+            if (container && linhaAtiva) {
+                // Pequeno timeout de 300ms para garantir que os estilos do Bootstrap e imagens renderizaram completamente
+                setTimeout(() => {
+                    // Calcula a posição do elemento em relação ao topo do contêiner rolável
+                    const posicaoLinha = linhaAtiva.offsetTop;
+
+                    // Centraliza a linha no meio do espaço de visualização do card (para não ficar colada no teto)
+                    const meioDoContainer = container.clientHeight / 2;
+
+                    container.scrollTo({
+                        top: posicaoLinha - meioDoContainer,
+                        behavior: "smooth" // Faz o efeito de descida deslizante elegante
+                    });
+                }, 300);
+            }
+        });
+    </script>
 }
