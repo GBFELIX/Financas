@@ -322,117 +322,142 @@ namespace Acoes_Fiis.Controllers
             viewModel.ListaTickersFiis = await _context.RecomendacaoFii.Select(x => x.Ticker).ToListAsync();
             viewModel.ListaTickersGerais = await _context.AtivosGerais.Select(x => x.Ticker).ToListAsync();
         }
+
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> ComprarAtivo(int id, int quantidadeComprada, string visao)
         {
-            if (quantidadeComprada <= 0) return RedirectToAction(nameof(Index), new { visao = visao });
+            if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
+            if (quantidadeComprada <= 0) return RedirectToAction("Index", new { visao = visao });
 
             var ativo = await _context.Carteira.FindAsync(id);
             if (ativo == null) return NotFound();
 
-            // 1. Puxa a cotação de mercado atualizada da tabela de referências
-            decimal precoAtualMercado = 0;
+            // 1. Busca a cotação de mercado atual para usar como preço de execução
+            decimal precoExecucao = 0;
             if (ativo.TipoAtivo == "Fii")
             {
                 var fii = await _context.RecomendacaoFii.FirstOrDefaultAsync(x => x.Ticker == ativo.Ticker);
-                if (fii != null) precoAtualMercado = fii.PrecoAtual;
+                if (fii != null) precoExecucao = fii.PrecoAtual;
             }
             else if (ativo.TipoAtivo == "Acao")
             {
                 var acao = await _context.Recomendacao.FirstOrDefaultAsync(x => x.Ticker == ativo.Ticker);
-                if (acao != null) precoAtualMercado = acao.PrecoAtual;
+                if (acao != null) precoExecucao = acao.PrecoAtual;
             }
+            if (precoExecucao == 0) precoExecucao = ativo.PrecoMedio; // Fallback de proteção
 
-            if (precoAtualMercado == 0) precoAtualMercado = ativo.PrecoMedio; // Fallback de proteção
+            decimal valorTotalAporte = quantidadeComprada * precoExecucao;
+            DateTime dataHoje = DateTime.Now;
 
-            // 2. Executa o cálculo ponderado de preço médio no C# antes de gravar
+            // 2. Atualiza a Carteira Ativa (Recalcula Preço Médio Ponderado)
             decimal custoTotalAntigo = ativo.Quantidade * ativo.PrecoMedio;
-            decimal custoNovoAporte = quantidadeComprada * precoAtualMercado;
-
             ativo.Quantidade += quantidadeComprada;
-            ativo.PrecoMedio = (custoTotalAntigo + custoNovoAporte) / ativo.Quantidade;
-
+            ativo.PrecoMedio = (custoTotalAntigo + valorTotalAporte) / ativo.Quantidade;
             _context.Update(ativo);
+
+            // 3. GRAVA NO HISTÓRICO DE TRANSAÇÕES
+            var registroHistorico = new HistoricoAtivo
+            {
+                Ticker = ativo.Ticker,
+                TipoOperacao = "Compra",
+                Quantidade = quantidadeComprada,
+                PrecoUnidade = precoExecucao,
+                DataOperacao = dataHoje,
+                Dono = ativo.Dono
+            };
+            _context.HistoricoAtivos.Add(registroHistorico);
+
+            // 4. GRAVA AUTOMATICAMENTE NO FLUXO FINANCEIRO (Como Despesa de Investimento)
+            var lancamentoFinanceiro = new Financeiro
+            {
+                Descricao = $"Compra de Ativo - {ativo.Ticker} ({quantidadeComprada} un)",
+                Valor = Math.Round(valorTotalAporte, 2),
+                Data = dataHoje,
+                Tipo = "Despesa", // Dinheiro saindo do caixa para virar patrimônio
+                Categoria = "Investimento",
+                Pagamento = "Pix",
+                Dono = ativo.Dono
+            };
+            _context.Financeiro.Add(lancamentoFinanceiro);
+
+            // Comita todas as três operações juntas (Garante que se uma falhar, nenhuma salva)
             await _context.SaveChangesAsync();
 
-            return RedirectToAction(nameof(Index), new { visao = visao });
+            return RedirectToAction("Index", new { visao = visao });
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> VenderAtivo(int id, int quantidadeVendida, string visao)
         {
+            if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
+            if (quantidadeVendida <= 0) return RedirectToAction("Index", new { visao = visao });
+
+            var ativo = await _context.Carteira.FindAsync(id);
+            if (ativo == null) return NotFound();
+            if (quantidadeVendida > ativo.Quantidade) return BadRequest("Quantidade insuficiente para venda.");
+
+            decimal precoExecucao = 0;
+            if (ativo.TipoAtivo == "Fii")
             {
-                if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
-
-                var ativo = await _context.Carteira.FindAsync(id);
-                if (ativo == null || quantidadeVendida <= 0 || quantidadeVendida > ativo.Quantidade) if (ativo == null || quantidadeVendida <= 0 || quantidadeVendida > ativo.Quantidade)
-                    {
-                        TempData["Erro"] = "Quantidade inválida para venda ou ativo não encontrado.";
-                        return RedirectToAction(nameof(Index), new { visao = visao });
-                    }
-
-                decimal precoAtual = 0;
-
-                if (ativo.TipoAtivo == "Acao")
-                {
-                    var recomendacao = await _context.Recomendacao.FirstOrDefaultAsync(x => x.Ticker == ativo.Ticker);
-                    precoAtual = recomendacao?.PrecoAtual ?? ativo.PrecoMedio;
-                }
-                else if (ativo.TipoAtivo == "Fii")
-                {
-                    var recomendacaoFii = await _context.RecomendacaoFii.FirstOrDefaultAsync(x => x.Ticker == ativo.Ticker);
-                    precoAtual = recomendacaoFii?.PrecoAtual ?? ativo.PrecoMedio;
-                }
-                else
-                {
-                    precoAtual = ativo.PrecoMedio;
-                }
-
-                decimal resultadoPorCota = precoAtual - ativo.PrecoMedio;
-                decimal resultadoTotal = resultadoPorCota * quantidadeVendida;
-
-                if (Math.Abs(resultadoTotal) >= 0.01m)
-                {
-                    var novoLancamento = new Financeiro
-                    {
-                        Data = DateTime.Now,
-                        Categoria = "Investimento",
-                        Pagamento = "Pix",
-                        Dono = ativo.Dono,
-                        Valor = Math.Round(Math.Abs(resultadoTotal), 2)
-                    };
-
-                    if (resultadoTotal > 0)
-                    {
-                        novoLancamento.Descricao = $"Ganho de Capital - Venda {ativo.Ticker} ({quantidadeVendida} qts)";
-                        novoLancamento.Tipo = "Entrada";
-                    }
-                    else
-                    {
-                        novoLancamento.Descricao = $"Prejuízo de Capital - Venda {ativo.Ticker} ({quantidadeVendida} qts)";
-                        novoLancamento.Tipo = "Despesa";
-                    }
-
-                    _context.Financeiro.Add(novoLancamento);
-                }
-
-                // 4. Atualiza ou remove o ativo da Carteira
-                if (quantidadeVendida == ativo.Quantidade)
-                {
-                    _context.Carteira.Remove(ativo);
-                }
-                else
-                {
-                    ativo.Quantidade -= quantidadeVendida; ativo.Quantidade -= quantidadeVendida;
-                    _context.Carteira.Update(ativo);
-                }
-
-                await _context.SaveChangesAsync();
-                TempData["Sucesso"] = $"Venda de {quantidadeVendida} cotas de {ativo.Ticker} processada com sucesso!";
-
-                return RedirectToAction(nameof(Index), new { visao = visao });
+                var fii = await _context.RecomendacaoFii.FirstOrDefaultAsync(x => x.Ticker == ativo.Ticker);
+                if (fii != null) precoExecucao = fii.PrecoAtual;
             }
+            else if (ativo.TipoAtivo == "Acao")
+            {
+                var acao = await _context.Recomendacao.FirstOrDefaultAsync(x => x.Ticker == ativo.Ticker);
+                if (acao != null) precoExecucao = acao.PrecoAtual;
+            }
+            if (precoExecucao == 0) precoExecucao = ativo.PrecoMedio;
+
+            decimal valorTotalVenda = quantidadeVendida * precoExecucao;
+            DateTime dataHoje = DateTime.Now;
+
+            // 1. Apuração de Lucro/Prejuízo de Capital para a descrição do Financeiro
+            decimal custoMedioLoteVendido = quantidadeVendida * ativo.PrecoMedio;
+            decimal resultadoDiferenca = valorTotalVenda - custoMedioLoteVendido;
+            string tipoResultado = resultadoDiferenca >= 0 ? "Ganho de Capital" : "Prejuízo de Capital";
+
+            // 2. Atualiza ou Remove da Carteira Ativa
+            ativo.Quantidade -= quantidadeVendida;
+            if (ativo.Quantidade == 0)
+            {
+                _context.Carteira.Remove(ativo); // Se vendeu tudo, limpa a linha da carteira
+            }
+            else
+            {
+                _context.Update(ativo); // Preço médio não muda na venda, apenas a quantidade diminui
+            }
+
+            // 3. GRAVA NO HISTÓRICO DE TRANSAÇÕES
+            var registroHistorico = new HistoricoAtivo
+            {
+                Ticker = ativo.Ticker,
+                TipoOperacao = "Venda",
+                Quantidade = quantidadeVendida,
+                PrecoUnidade = precoExecucao,
+                DataOperacao = dataHoje,
+                Dono = ativo.Dono
+            };
+            _context.HistoricoAtivos.Add(registroHistorico);
+
+            // 4. GRAVA AUTOMATICAMENTE NO FLUXO FINANCEIRO (Como Entrada / Liquidez)
+            var lancamentoFinanceiro = new Financeiro
+            {
+                Descricao = $"Venda de Ativo - {ativo.Ticker} ({tipoResultado})",
+                Valor = Math.Round(valorTotalVenda, 2),
+                Data = dataHoje,
+                Tipo = "Entrada", // Dinheiro voltando líquido para o caixa financeiro
+                Categoria = "Investimento",
+                Pagamento = "Pix",
+                Dono = ativo.Dono
+            };
+            _context.Financeiro.Add(lancamentoFinanceiro);
+
+            await _context.SaveChangesAsync();
+
+            return RedirectToAction("Index", new { visao = visao });
         }
 
         [HttpPost]
@@ -644,11 +669,22 @@ namespace Acoes_Fiis.Controllers
         public async Task<IActionResult> AdicionarAtivo(string ticker, int quantidade, decimal precoMedio, decimal? taxaRentabilidade, string visao)
         {
             if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
+            if (quantidade <= 0) return RedirectToAction(nameof(Index), new { visao = visao });
 
+            // Força o ticker a ficar sempre em maiúsculo para evitar duplicidade por digitação
+            ticker = ticker.Trim().ToUpper();
+
+            DateTime dataHoje = DateTime.Now;
+            decimal valorTotalAporte = quantidade * precoMedio;
+
+            // Busca se o ativo já existe na carteira desse usuário
             var ativoExistente = await _context.Carteira.FirstOrDefaultAsync(x => x.Ticker == ticker && x.Dono == visao);
 
             if (ativoExistente != null)
             {
+                // -----------------------------------------------------------------
+                // CENÁRIO A: ATIVO JÁ EXISTE - ATUALIZA CARTEIRA (PREÇO MÉDIO)
+                // -----------------------------------------------------------------
                 int qtdAnterior = ativoExistente.Quantidade;
                 decimal pmAnterior = ativoExistente.PrecoMedio;
                 int quantidadeTotal = qtdAnterior + quantidade;
@@ -662,10 +698,13 @@ namespace Acoes_Fiis.Controllers
             }
             else
             {
+                // -----------------------------------------------------------------
+                // CENÁRIO B: ATIVO NOVO - ADICIONA NA CARTEIRA
+                // -----------------------------------------------------------------
                 string tipo = "Geral";
                 if (await _context.Recomendacao.AnyAsync(x => x.Ticker == ticker)) tipo = "Acao";
                 else if (await _context.RecomendacaoFii.AnyAsync(x => x.Ticker == ticker)) tipo = "Fii";
-                else if (ticker.ToUpper().Contains("CDB") || ticker.ToUpper().Contains("TESOURO")) tipo = "RendaFixa";
+                else if (ticker.Contains("CDB") || ticker.Contains("TESOURO") || ticker.Contains("LCI") || ticker.Contains("LCA")) tipo = "RendaFixa";
 
                 var novoItem = new Carteira
                 {
@@ -674,13 +713,44 @@ namespace Acoes_Fiis.Controllers
                     PrecoMedio = precoMedio,
                     TipoAtivo = tipo,
                     TaxaRentabilidade = taxaRentabilidade,
-                    DataCompra = DateTime.Now,
+                    DataCompra = dataHoje,
                     Dono = visao
                 };
                 _context.Add(novoItem);
             }
 
+            // =========================================================================
+            // FUNCIONALIDADES ADICIONADAS AUTOMATICAMENTE (VÁLIDAS PARA OS DOIS CENÁRIOS)
+            // =========================================================================
+
+            // 1. REGISTRA NO HISTÓRICO DE COMPRAS/VENDAS
+            var registroHistorico = new HistoricoAtivo
+            {
+                Ticker = ticker,
+                TipoOperacao = "Compra",
+                Quantidade = quantidade,
+                PrecoUnidade = precoMedio,
+                DataOperacao = dataHoje,
+                Dono = visao == "Casal" ? "Casal" : visao
+            };
+            _context.HistoricoAtivos.Add(registroHistorico);
+
+            // 2. INJETA COMO DESPESA NO FLUXO FINANCEIRO
+            var lancamentoFinanceiro = new Financeiro
+            {
+                Descricao = $"Compra de Ativo - {ticker} ({quantidade} un)",
+                Valor = Math.Round(valorTotalAporte, 2),
+                Data = dataHoje,
+                Tipo = "Despesa", // Dinheiro saindo para virar patrimônio
+                Categoria = "Investimento",
+                Pagamento = "Pix",
+                Dono = visao == "Casal" ? "Casal" : visao
+            };
+            _context.Financeiro.Add(lancamentoFinanceiro);
+
+            // Salva todas as alterações juntas (Carteira + Histórico + Financeiro) de forma atômica
             await _context.SaveChangesAsync();
+
             return RedirectToAction(nameof(Index), new { visao = visao });
         }
 

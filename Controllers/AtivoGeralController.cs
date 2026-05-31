@@ -30,40 +30,40 @@ namespace Acoes_Fiis.Controllers
             ViewBag.Classes = new List<string> { "BDR", "ETF", "Cripto", "Ouro", "Moeda" };
 
             var lista = await query.ToListAsync();
-            var service = new YahooService();
+            //var service = new YahooService();
 
-            decimal cotacaoDolar = 1;
-            try
-            {
-                var dolarDados = await service.ObterDadosAtivo("USDBRL=X");
-                cotacaoDolar = dolarDados.PrecoAtual;
-            }
-            catch { cotacaoDolar = 5.20m; }
+            //decimal cotacaoDolar = 1;
+            //try
+            //{
+            //    var dolarDados = await service.ObterDadosAtivo("USDBRL=X");
+            //    cotacaoDolar = dolarDados.PrecoAtual;
+            //}
+            //catch { cotacaoDolar = 5.20m; }
 
-            foreach (var item in lista)
-            {
-                if (item.DataAtualizacao > DateTime.Now.AddMinutes(-30)) continue;
+            //foreach (var item in lista)
+            //{
+            //    if (item.DataAtualizacao > DateTime.Now.AddMinutes(-30)) continue;
 
-                try
-                {
-                    var dados = await service.ObterDadosAtivo(item.Ticker);
+            //    try
+            //    {
+            //        var dados = await service.ObterDadosAtivo(item.Ticker);
 
-                    if (item.Moeda == "USD")
-                    {
-                        item.PrecoAtual = dados.PrecoAtual * cotacaoDolar;
-                    }
-                    else
-                    {
-                        item.PrecoAtual = dados.PrecoAtual;
-                    }
+            //        if (item.Moeda == "USD")
+            //        {
+            //            item.PrecoAtual = dados.PrecoAtual * cotacaoDolar;
+            //        }
+            //        else
+            //        {
+            //            item.PrecoAtual = dados.PrecoAtual;
+            //        }
 
-                    item.DataAtualizacao = DateTime.Now;
-                    _context.Update(item);
-                }
-                catch { continue; }
-            }
+            //        item.DataAtualizacao = DateTime.Now;
+            //        _context.Update(item);
+            //    }
+            //    catch { continue; }
+            //}
 
-            await _context.SaveChangesAsync();
+            //await _context.SaveChangesAsync();
 
             return View(await query.ToListAsync());
         }

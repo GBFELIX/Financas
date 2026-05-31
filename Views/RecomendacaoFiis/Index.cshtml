@@ -130,7 +130,7 @@
                 @foreach (var item in Model)
                 {
                     <tr>
-                        <td class="fw-bold">@item.Ticker</td>
+                        <td class="fw-bold">@item.Ticker.ToUpper()</td>
 
                         <td>
                             <form asp-action="UpdateSegmento" method="post" class="d-flex">
