@@ -1,0 +1,36 @@
+﻿@model CarteiraTotalViewModel
+
+<div class="modal fade" id="modalParametros" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-secondary text-white border-0 py-3">
+                <h5 class="modal-title fw-bold d-flex align-items-center gap-2 mb-0" style="font-size: 1rem;">
+                    <i class="bi bi-gear-fill text-warning"></i> Parâmetros do Sistema
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <form asp-action="SalvarParametros" asp-controller="Carteiras" method="post">
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted text-uppercase mb-2">Taxa CDI Anual (% a.a.)</label>
+                        <div class="input-group input-group-lg">
+                            <span class="input-group-text bg-light border-secondary-subtle text-secondary"><i class="bi bi-percent"></i></span>
+                            <input type="text" name="cdiAnual"
+                                   class="form-control border-secondary-subtle fw-bold text-center text-primary"
+                                   value="@(Model.Parametro?.CdiAnual.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) ?? "10.40")" required />
+                        </div>
+                        <div class="form-text text-center mt-2" style="font-size: 0.75rem;">
+                            Última alteração: @(Model.Parametro?.DataAtualizacao.ToString("dd/MM/yyyy HH:mm") ?? "Nunca")
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer bg-light border-top-0 rounded-bottom-4 p-2 justify-content-center gap-2">
+                    <button type="button" class="btn btn-sm btn-secondary rounded-pill px-3" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-sm btn-success rounded-pill px-4 fw-bold shadow-sm">Salvar Taxa</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

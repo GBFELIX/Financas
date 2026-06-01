@@ -183,10 +183,8 @@
                     @{
                         var hoje = DateTime.Today;
 
-                        // 1. SEPARAÇÃO DAS ENTRADAS (RECEITAS)
                         var entradas = Model.Lancamentos.Where(x => x.Tipo == "Entrada").OrderBy(x => x.Data);
 
-                        // 2. SEPARAÇÃO DAS DESPESAS AGRUPADAS POR CATEGORIA
                         var despesasPorCategoria = Model.Lancamentos
                         .Where(x => x.Tipo == "Despesa")
                         .GroupBy(x => x.Categoria)
@@ -274,7 +272,11 @@
                             @await Html.PartialAsync("Delete", item)
                         }
                     }
-
+                    <tr class="table-danger opacity-75">
+                        <td colspan="6" class="fw-bold small text-uppercase text-danger py-2 px-3">
+                            <i class="bi bi-patch-check-fill me-2"></i>Despesas
+                        </td>
+                    </tr>
                     @* --- BLOCO DE DESPESAS POR CATEGORIA --- *@
                     @foreach (var grupo in despesasPorCategoria)
                     {

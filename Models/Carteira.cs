@@ -62,8 +62,11 @@ namespace Acoes_Fiis.Models
         public List<string> ListaTickersAcoes { get; set; } = new();
         public List<string> ListaTickersFiis { get; set; } = new();
         public List<string> ListaTickersGerais { get; set; } = new();
-
+        public List<HistoricoAtivo> HistoricoTransacoes { get; set; } = new List<HistoricoAtivo>();
         public List<FolhaPagamento> HistoricoFolhas { get; set; } = new List<FolhaPagamento>();
+
+        public Parametro Parametro { get; set; } = new Parametro();
+
     }
 
     public class CarteiraItemViewModel

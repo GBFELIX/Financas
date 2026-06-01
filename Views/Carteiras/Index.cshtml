@@ -5,57 +5,99 @@
 }
 
 <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="fw-bold">Minha Carteira</h1>
-        <button type="button" class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#modalAdicionarAtivo">
-            <i class="bi bi-plus-circle"></i> Adicionar Ativo
-        </button>
+    <div class="card border-0 shadow-sm rounded-4 bg-white mb-4">
+        <div class="card-body py-2 px-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
+
+            <div class="d-flex align-items-center gap-2">
+                <div class="rounded-3 p-2 bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+                    <i class="bi bi-wallet2 fs-5"></i>
+                </div>
+                <h5 class="fw-bold text-dark mb-0 tracking-wide" style="font-size: 1.1rem;">Minha Carteira</h5>
+            </div>
+
+            <div class="d-flex align-items-center gap-2">
+
+                <div class="btn-group">
+                    <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle d-inline-flex align-items-center gap-2 rounded-pill px-3 py-2 fw-semibold" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-sliders text-secondary"></i> Ferramentas e Análises
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow border-0 rounded-3 mt-2 p-1" style="min-width: 260px; font-size: 0.85rem;">
+                        <li>
+                            <h6 class="dropdown-header text-uppercase text-muted fw-bold pb-1" style="font-size: 0.65rem;">Simuladores & Radar</h6>
+                        </li>
+                        <li>
+                            <button type="button" class="dropdown-item py-2 rounded-2 text-success d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#modalSimuladorDividendos">
+                                <i class="bi bi-calculator"></i> Simulador de Dividendos
+                            </button>
+                        </li>
+                        <li>
+                            <button type="button" class="dropdown-item py-2 rounded-2 text-warning fw-bold d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#modalRadarAporte">
+                                <i class="bi bi-compass"></i> Radar de Aporte
+                            </button>
+                        </li>
+                        <li><hr class="dropdown-divider my-1"></li>
+                        <li>
+                            <h6 class="dropdown-header text-uppercase text-muted fw-bold pb-1" style="font-size: 0.65rem;">Finanças & Financiamento</h6>
+                        </li>
+                        <li>
+                            <button type="button" class="dropdown-item py-2 rounded-2 text-primary d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#modalResumoAnual">
+                                <i class="bi bi-calendar-check"></i> Resumo Mensal (DRE)
+                            </button>
+                        </li>
+                        <li>
+                            <button type="button" class="dropdown-item py-2 rounded-2 text-danger d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#modalContraCheques">
+                                <i class="bi bi-bank"></i> Contra-Cheques
+                            </button>
+                        </li>
+                        <li>
+                            <button type="button" class="dropdown-item py-2 rounded-2 text-dark d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#modalEvolucaoDivida">
+                                <i class="bi bi-graph-down-arrow"></i> Evolução da Dívida / Amortização
+                            </button>
+                        </li>
+                        <li>
+                            <button type="button" class="dropdown-item py-2 rounded-2 text-dark d-flex align-items-center gap-2"
+                                    data-bs-toggle="modal" data-bs-target="#modalHistoricoAtivos">
+                                <i class="bi bi-clock-history text-secondary"></i> Histórico de Trade (Ações/FIIs)
+                            </button>
+                        </li>
+                        <li><hr class="dropdown-divider my-1"></li>
+                        <li>
+                            <button type="button" class="dropdown-item py-2 rounded-2 text-info fw-bold d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#modalStressTest">
+                                <i class="bi bi-shield-check"></i> Escudo de Emergência
+                            </button>
+                        </li>
+                        <li>
+                            <button type="button" class="dropdown-item py-2 rounded-2 text-dark d-flex align-items-center gap-2"
+                                    data-bs-toggle="modal" data-bs-target="#modalParametros">
+                                <i class="bi bi-gear-fill text-secondary"></i> Ajustar Parâmetros (CDI)
+                            </button>
+                        </li>
+                        
+                    </ul>
+                </div>
+
+                <button type="button" class="btn btn-sm btn-success d-inline-flex align-items-center gap-2 rounded-pill px-3 py-2 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalAdicionarAtivo">
+                    <i class="bi bi-plus-circle-fill"></i> Adicionar Ativo
+                </button>
+
+            </div>
+
+        </div>
     </div>
-    <div class="row g-2 mb-4">
-        @* Botão 1: Simulador de Dividendos (Nova Ferramenta) *@
-        <div class="col-md-4">
-            <button type="button" class="btn btn-outline-success w-100 shadow-sm rounded-3"
-                    data-bs-toggle="modal" data-bs-target="#modalSimuladorDividendos">
-                <i class="bi bi-calculator me-2"></i> Simulador de Dividendos
-            </button>
-        </div>
 
-        @* Botão 2: Resumo Mensal *@
-        <div class="col-md-4">
-            <button type="button" class="btn btn-outline-primary w-100 shadow-sm rounded-3" data-bs-toggle="modal" data-bs-target="#modalResumoAnual">
-                <i class="bi bi-calendar-check me-2"></i> Resumo Mensal (DRE)
-            </button>
-        </div>
+    <style>
+        .tracking-wide {
+            letter-spacing: 0.3px;
+        }
+        /* Deixa o hover das opções do menu mais limpo e arredondado */
+        .dropdown-item:hover {
+            background-color: #f8f9fa;
+        }
 
-        @* Botão 3: Radar de Aporte *@
-        <div class="col-md-4">
-            <button type="button" class="btn btn-outline-warning w-100 shadow-sm rounded-3 fw-bold" data-bs-toggle="modal" data-bs-target="#modalRadarAporte">
-                <i class="bi bi-compass me-2"></i> Radar de Aporte
-            </button>
-        </div>
-    </div>
-    <div class="row g-3 mb-4">
-        @* Botão 4: Painel de Amortização *@
-        <div class="col-md-4">
-            <button type="button" class="btn btn-outline-danger w-100 shadow-sm rounded-3 fw-bold" data-bs-toggle="modal" data-bs-target="#modalContraCheques">
-                <i class="bi bi-bank me-2"></i> Contra-Cheques
-            </button>
-        </div>
-
-        @* Botão 5: Evolução do Saldo Devedor *@
-        <div class="col-md-4">
-            <button type="button" class="btn btn-outline-dark w-100 shadow-sm rounded-3 fw-bold" data-bs-toggle="modal" data-bs-target="#modalEvolucaoDivida">
-                <i class="bi bi-graph-down-arrow me-2"></i> Evolução da Dívida / Amortização
-            </button>
-        </div>
-
-        @* Botão 6: Planejamento 2029 (Meta Apartamento) *@
-        <div class="col-md-4">
-            <button type="button" class="btn btn-outline-info w-100 shadow-sm rounded-3 fw-bold" data-bs-toggle="modal" data-bs-target="#modalStressTest">
-                <i class="bi bi-shield-check me-2"></i> Escudo de Emergência
-            </button>
-        </div>
-    </div>
+        .dropdown-item i {
+            font-size: 1rem;
+        }
+    </style>
 
     <div class="row mb-4 g-3">
         @* Card 1: Patrimônio com Fluxo Automático *@
@@ -334,6 +376,8 @@
     @await Html.PartialAsync("_ModalEvolucaoDivida", Model)
     @await Html.PartialAsync("_ModalEscudo", Model)
     @await Html.PartialAsync("_ModalSimulacao", Model)
+    @await Html.PartialAsync("_ModalHistoricoAtivos", Model)
+    @await Html.PartialAsync("_ModalParametro", Model)
 
     <div class="card shadow-sm border-0">
         <div class="card-header bg-light d-flex justify-content-between align-items-center">

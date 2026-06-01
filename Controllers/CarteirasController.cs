@@ -47,7 +47,7 @@ namespace Acoes_Fiis.Controllers
 
             // 4. Fluxo Financeiro, Saldos e Rendimento Corrente das Caixinhas
             decimal saldoFinanceiroAteHoje = ProcessarFluxoFinanceiroSaldos(financeiroData, agora, viewModel);
-            decimal rendimentoLiquidoCaixinha = CalcularRendimentoCaixinhaCorrente(saldoFinanceiroAteHoje, viewModel);
+            decimal rendimentoLiquidoCaixinha = await CalcularRendimentoCaixinhaCorrente(saldoFinanceiroAteHoje, viewModel);
 
             // 5. Execução de Automações e Gravação de Fechamentos no Banco
             await ProcessarAutomacoesFechamento(financeiroData, saldoFinanceiroAteHoje, totalProventosVariaveis, agora, visao);
@@ -186,10 +186,31 @@ namespace Acoes_Fiis.Controllers
 
             return financeiroData.Where(x => x.Data.Date <= agora.Date).Sum(x => x.Tipo == "Entrada" ? x.Valor : -x.Valor);
         }
-
-        private decimal CalcularRendimentoCaixinhaCorrente(decimal saldoFinanceiroAteHoje, CarteiraTotalViewModel viewModel)
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SalvarParametros(decimal cdiAnual)
         {
-            decimal taxaAnualCaixinhaAtual = 10.75m;
+            var parametro = await _context.Parametro.FirstOrDefaultAsync();
+
+            if (parametro == null)
+            {
+                parametro = new Parametro();
+                _context.Parametro.Add(parametro);
+            }
+
+            // Atualiza os dados
+            parametro.CdiAnual = cdiAnual;
+            parametro.DataAtualizacao = DateTime.Now;
+
+            await _context.SaveChangesAsync();
+
+            // Redireciona de volta para atualizar os cálculos na tela
+            return RedirectToAction("Index");
+        }
+        private async Task<decimal> CalcularRendimentoCaixinhaCorrente(decimal saldoFinanceiroAteHoje, CarteiraTotalViewModel viewModel)
+        {
+            var parametro = await _context.Parametro.FirstOrDefaultAsync();
+            decimal taxaAnualCaixinhaAtual = parametro?.CdiAnual ?? 14.75m;
             decimal taxaMensalCaixinhaAtual = (taxaAnualCaixinhaAtual / 12) / 100;
             decimal rendimentoLiquidoCaixinha = (saldoFinanceiroAteHoje * taxaMensalCaixinhaAtual) * 0.825m;
 
@@ -211,8 +232,10 @@ namespace Acoes_Fiis.Controllers
 
                 if (saldoFinalMesAnterior > 0)
                 {
-                    decimal taxaMensalCaixinha = (decimal)(Math.Pow(1 + (14.50 / 100.0), 1.0 / 12.0) - 1);
-                    decimal rendimentoLiquido = (saldoFinalMesAnterior * taxaMensalCaixinha) * 0.800m;
+                    var parametro = await _context.Parametro.FirstOrDefaultAsync();
+                    decimal cdiAnual = parametro?.CdiAnual ?? 14.75m;
+                    decimal taxaMensalCaixinha = (cdiAnual / 12) / 100;
+                    decimal rendimentoLiquido = (saldoFinalMesAnterior * taxaMensalCaixinha) * 0.825m;
 
                     if (rendimentoLiquido > 0.01m)
                     {
@@ -314,6 +337,13 @@ namespace Acoes_Fiis.Controllers
 
         private async Task CarregarDadosAuxiliares(CarteiraTotalViewModel viewModel, string visao)
         {
+            viewModel.Parametro = await _context.Parametro.FirstOrDefaultAsync();
+
+            viewModel.HistoricoTransacoes = await _context.HistoricoAtivos
+                .Where(x => x.Dono == visao || visao == "Casal")
+                .OrderByDescending(x => x.DataOperacao)
+                .ToListAsync();
+
             viewModel.HistoricoFolhas = await _context.FolhasPagamento
                 .Where(f => f.Visao == visao)
                 .OrderByDescending(f => f.Ano).ThenByDescending(f => f.Mes).ToListAsync();
@@ -386,7 +416,22 @@ namespace Acoes_Fiis.Controllers
 
             return RedirectToAction("Index", new { visao = visao });
         }
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ExcluirHistoricoAjax(int id)
+        {
+            var registro = await _context.HistoricoAtivos.FindAsync(id);
 
+            if (registro == null)
+            {
+                return NotFound(); // Retorna erro 404 se não achar o ID
+            }
+
+            _context.HistoricoAtivos.Remove(registro);
+            await _context.SaveChangesAsync();
+
+            return Ok(); // Retorna Status 200 (Sucesso) para o JavaScript saber que pode apagar a linha
+        }
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> VenderAtivo(int id, int quantidadeVendida, string visao)

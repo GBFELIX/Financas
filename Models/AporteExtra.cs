@@ -6,7 +6,7 @@ namespace Acoes_Fiis.Models
     public class AporteExtra
     {
         public int Id { get; set; }
-        public int MesReferencia { get; set; } // Em qual mês você vai dar o dinheiro (Ex: Mês 12)
+        public int MesReferencia { get; set; }
         public decimal Valor { get; set; }
 
         // Relacionamento com o Financiamento

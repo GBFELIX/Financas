@@ -1,0 +1,202 @@
+﻿@model CarteiraTotalViewModel
+
+<div class="modal fade" id="modalHistoricoAtivos" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-dark text-white border-0 py-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <h5 class="modal-title fw-bold d-flex align-items-center gap-2 mb-0">
+                    <i class="bi bi-clock-history text-warning"></i> Extrato de Compra e Venda
+                </h5>
+
+                <div class="d-flex align-items-center gap-2 ms-auto me-3" style="min-width: 320px;">
+                    <select id="filtroMesHistorico" class="form-select form-select-sm bg-secondary text-white border-0 rounded-pill px-3" onchange="filtrarHistoricoCombinado()">
+                        <option value="todos">Todos os Meses</option>
+                        <option value="01">Janeiro</option>
+                        <option value="02">Fevereiro</option>
+                        <option value="03">Março</option>
+                        <option value="04">Abril</option>
+                        <option value="05">Maio</option>
+                        <option value="06">Junho</option>
+                        <option value="07">Julho</option>
+                        <option value="08">Agosto</option>
+                        <option value="09">Setembro</option>
+                        <option value="10">Outubro</option>
+                        <option value="11">Novembro</option>
+                        <option value="12">Dezembro</option>
+                    </select>
+
+                    <select id="filtroAnoHistorico" class="form-select form-select-sm bg-secondary text-white border-0 rounded-pill px-3" onchange="filtrarHistoricoCombinado()">
+                        <option value="todos">Todos os Anos</option>
+                        @if (Model.HistoricoTransacoes != null && Model.HistoricoTransacoes.Any())
+                        {
+                            // Extrai os anos existentes no banco para não precisar deixar fixo no HTML
+                            var anosDisponiveis = Model.HistoricoTransacoes.Select(x => x.DataOperacao.Year.ToString()).Distinct().OrderByDescending(x => x);
+                            foreach (var ano in anosDisponiveis)
+                            {
+                                <option value="@ano">@ano</option>
+                            }
+                        }
+                    </select>
+                </div>
+
+                <button type="button" class="btn-close btn-close-white ms-0" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body p-0">
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-sm table-hover align-middle mb-0 text-center" style="font-size: 0.85rem;">
+                        <thead class="table-light sticky-top shadow-sm small text-uppercase fw-semibold" style="z-index: 1;">
+                            <tr>
+                                <th class="text-start ps-4 py-3">Data</th>
+                                <th>Ativo</th>
+                                <th>Operação</th>
+                                <th>Qtd</th>
+                                <th>Preço Un.</th>
+                                <th>Total</th>
+                                <th class="pe-3">Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbodyHistorico">
+                            @if (Model.HistoricoTransacoes != null && Model.HistoricoTransacoes.Any())
+                            {
+                                @foreach (var t in Model.HistoricoTransacoes)
+                                {
+                                    bool isCompra = t.TipoOperacao == "Compra";
+
+                                    <tr class="@(isCompra ? "bg-success bg-opacity-10" : "bg-danger bg-opacity-10") item-historico"
+                                        data-mes="@t.DataOperacao.ToString("MM")"
+                                        data-ano="@t.DataOperacao.Year.ToString()">
+                                        <td class="text-start ps-4 text-muted font-monospace">
+                                            @t.DataOperacao.ToString("dd/MM/yyyy HH:mm")
+                                        </td>
+                                        <td class="fw-bold text-dark">@t.Ticker</td>
+                                        <td>
+                                            @if (isCompra)
+                                            {
+                                                <span class="badge bg-success-subtle text-success border border-success border-opacity-25 px-2 py-1 rounded-pill fw-bold">
+                                                    <i class="bi bi-graph-up me-1"></i>COMPRA
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-danger-subtle text-danger border border-danger border-opacity-25 px-2 py-1 rounded-pill fw-bold">
+                                                    <i class="bi bi-graph-down me-1"></i>VENDA
+                                                </span>
+                                            }
+                                        </td>
+                                        <td class="fw-semibold">@t.Quantidade.ToString("N0")</td>
+                                        <td class="text-secondary fw-semibold">@t.PrecoUnidade.ToString("C2")</td>
+                                        <td class="fw-bold @(isCompra ? "text-danger" : "text-success")">
+                                            @((t.Quantidade * t.PrecoUnidade).ToString("C2"))
+                                        </td>
+                                        <td class="pe-3">
+                                            <button type="button"
+                                                    class="btn btn-sm btn-link text-danger p-0"
+                                                    onclick="deletarItemHistorico(this, @t.Id)">
+                                                <i class="bi bi-trash-fill fs-6"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr id="linhaSemDados">
+                                    <td colspan="7" class="text-center py-5 text-muted">
+                                        <i class="bi bi-journal-x d-block mb-2 fs-3 opacity-50"></i>
+                                        Nenhuma operação registrada nesta visão.
+                                    </td>
+                                </tr>
+                            }
+                            <tr id="linhaFiltroVazio" style="display: none;">
+                                <td colspan="7" class="text-center py-5 text-muted">
+                                    <i class="bi bi-funnel d-block mb-2 fs-3 opacity-50"></i>
+                                    Nenhuma transação encontrada para os filtros selecionados.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="modal-footer bg-light border-0 py-2 px-4 rounded-bottom-4 justify-content-between">
+                <small class="text-muted">
+                    <i class="bi bi-info-circle me-1"></i> A exclusão do histórico remove apenas o log desta transação e não altera o saldo atual da carteira.
+                </small>
+                <button type="button" class="btn btn-sm btn-secondary rounded-pill px-3" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function filtrarHistoricoCombinado() {
+        const mesSelecionado = document.getElementById("filtroMesHistorico").value;
+        const anoSelecionado = document.getElementById("filtroAnoHistorico").value;
+        const linhas = document.querySelectorAll(".item-historico");
+        const msgVazia = document.getElementById("linhaFiltroVazio");
+        let encontrouRegistros = false;
+
+        linhas.forEach(linha => {
+            const mesLinha = linha.getAttribute("data-mes");
+            const anoLinha = linha.getAttribute("data-ano");
+
+            // Verifica se a linha atende aos dois critérios ao mesmo tempo
+            const bateMes = (mesSelecionado === "todos" || mesLinha === mesSelecionado);
+            const bateAno = (anoSelecionado === "todos" || anoLinha === anoSelecionado);
+
+            if (bateMes && bateAno) {
+                linha.style.display = "";
+                encontrouRegistros = true;
+            } else {
+                linha.style.display = "none";
+            }
+        });
+
+        // Exibe feedback visual se os filtros cruzados não retornarem nada
+        if (msgVazia) {
+            msgVazia.style.display = (!encontrouRegistros && linhas.length > 0) ? "" : "none";
+        }
+    }
+    function deletarItemHistorico(botao, id) {
+        if (!confirm('Deseja realmente remover este registro do histórico de transações?')) {
+            return;
+        }
+
+        // Faz o envio para a Controller em segundo plano (AJAX)
+        fetch(`/Carteiras/ExcluirHistoricoAjax?id=${id}`, {
+            method: 'POST',
+            headers: {
+                // Importante para passar pela proteção do [ValidateAntiForgeryToken] do ASP.NET
+                'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+            }
+        })
+        .then(response => {
+            if (response.ok) {
+                // Localiza a linha (<tr>) do botão clicado e remove ela da tela com um efeito suave
+                const linha = botao.closest('tr');
+                linha.style.transition = 'all 0.3s ease';
+                linha.style.opacity = '0';
+
+                setTimeout(() => {
+                    linha.remove();
+
+                    // Verifica se ainda sobraram linhas na tabela, se não, mostra o aviso de vazio
+                    const linhasRestantes = document.querySelectorAll('.item-historico');
+                    if (linhasRestantes.length === 0) {
+                        document.getElementById('linhaFiltroVazio').style.display = 'none';
+                        // Se houver a linhaSemDados genérica, mostra ela
+                        const semDados = document.getElementById('linhaSemDados');
+                        if (semDados) semDados.removeAttribute('style');
+                    }
+                }, 300);
+            } else {
+                alert('Ocorreu um erro ao tentar excluir o registro no banco.');
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro de comunicação com o servidor.');
+        });
+    }
+</script>
