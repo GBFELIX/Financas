@@ -38,9 +38,11 @@ namespace Acoes_Fiis.Models
 
         public decimal TotalDespesas => Lancamentos.Where(x => x.Tipo == "Despesa").Sum(x => x.Valor);
 
+        public decimal InvestimentoMesCorrente => Lancamentos.Where(x => x.Categoria == "Investimento").Sum(x => x.Valor);
+
         public decimal RendimentoRendaFixaMes { get; set; }
 
-        public decimal SobraEstimada => (TotalEntradas - TotalDespesas) + RendimentoRendaFixaMes;
+        public decimal SobraEstimada => (TotalEntradas - TotalDespesas) + RendimentoRendaFixaMes + InvestimentoMesCorrente;
 
         public decimal TotalAnual { get; set; }
 
