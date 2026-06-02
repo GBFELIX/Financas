@@ -305,11 +305,19 @@
                         }
                         <tr>
                             <td class="fw-bold text-primary">@item.Ticker</td>
-                            <td class="fw-bold text-success">@item.Quantidade.ToString("N0")</td>
+                            <td class="fw-bold text-success" id="quantidade-@item.Id">@item.Quantidade.ToString("N0")</td>
                             <td>R$ @item.PrecoMedio.ToString("N2")</td>
                             <td>R$ @item.PrecoAtual.ToString("N2")</td>
-                            <td class="text-success small">@(item.UltimoRendimento > 0 ? item.UltimoRendimento.ToString("C2") : "-")</td>
-                            <td class="fw-bold text-success">@(item.ProventoMensalEstimado > 0 ? item.ProventoMensalEstimado.ToString("C2") : "-")</td>
+                            <td id="celula-rendimento-@item.Id"
+                                class="text-success small fw-semibold"
+                                style="cursor: pointer;"
+                                onclick="tornarRendimentoEditavel(@item.Id, @item.UltimoRendimento)">
+
+                                <span id="texto-rendimento-@item.Id">
+                                    @(item.UltimoRendimento > 0 ? item.UltimoRendimento.ToString("C2") : "R$ 0,00")
+                                </span>
+                            </td>
+                            <td class="fw-bold text-success" id="provento-estimado-@item.Id">@(item.ProventoMensalEstimado > 0 ? item.ProventoMensalEstimado.ToString("C2") : "-")</td>
                             <td class="fw-bold">R$ @item.ValorAtual.ToString("N2")</td>
                             <td class="@(item.LucroPrejuizo >= 0 ? "text-success" : "text-danger") fw-bold">
                                 R$ @item.LucroPrejuizo.ToString("N2")
@@ -654,4 +662,100 @@
             });
         }
     });
+    function tornarRendimentoEditavel(id, valorAtual) {
+        const celula = document.getElementById(`celula-rendimento-${id}`);
+
+        // Evita que cliques repetidos criem múltiplos inputs na mesma célula
+        if (celula.querySelector('input')) return;
+
+        // Cria o elemento de input temporário estruturado para dinheiro
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.step = '0.01';
+        input.min = '0.00';
+        input.className = 'form-control form-control-sm text-success fw-bold text-center border-primary d-inline-block';
+        input.style.maxWidth = '90px';
+        input.value = valorAtual;
+
+        // Esconde o texto antigo e adiciona o input na célula
+        const spanTexto = document.getElementById(`texto-rendimento-${id}`);
+        spanTexto.style.display = 'none';
+        celula.appendChild(input);
+        input.focus();
+        input.select();
+
+        // Função interna para salvar o dado processado
+        const salvarMudanca = () => {
+        const novoValor = parseFloat(input.value) || 0;
+
+        // Faz o envio via Fetch API para a Controller
+        fetch(`/Carteiras/AtualizarRendimentoInline?id=${id}&novoValor=${novoValor}`, {
+            method: 'POST',
+            headers: {
+                'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+            }
+        })
+        .then(response => {
+            if (response.ok) {
+                // 1. Atualiza a célula do rendimento unitário onde você clicou
+                input.remove();
+                spanTexto.textContent = novoValor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                spanTexto.style.display = '';
+                celula.setAttribute('onclick', `tornarRendimentoEditavel(${id}, ${novoValor})`);
+
+                // =========================================================================
+                // RECALCULO DO PROVENTO MENSAL ESTIMADO EM TEMPO REAL
+                // =========================================================================
+                const campoProvento = document.getElementById(`provento-estimado-${id}`);
+                const campoQuantidade = document.getElementById(`quantidade-${id}`);
+
+                if (campoProvento && campoQuantidade) {
+                    // Pega o texto da quantidade (ex: "1.500") e limpa pontos de formatação
+                    const qtdTexto = campoQuantidade.textContent.trim().replace(/\./g, '').replace(',', '.');
+                    const quantidade = parseFloat(qtdTexto) || 0;
+
+                    // Faz a matemática exata: Qtd x Novo Rendimento Unitário
+                    const novoProventoEstimado = quantidade * novoValor;
+
+                    // Injeta o resultado formatado em Reais na tela na mesma hora!
+                    if (novoProventoEstimado > 0) {
+                        campoProvento.textContent = novoProventoEstimado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                    } else {
+                        campoProvento.textContent = "-";
+                    }
+                }
+                // =========================================================================
+
+            } else {
+                alert('Erro ao salvar o novo valor de rendimento.');
+                cancelarEdicao();
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            cancelarEdicao();
+        });
+    };
+
+        const cancelarEdicao = () => {
+            input.remove();
+            spanTexto.style.display = '';
+        };
+
+        // Atalhos de teclado: Enter salva, Esc cancela
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                salvarMudanca();
+            }
+            if (e.key === 'Escape') {
+                cancelarEdicao();
+            }
+        });
+
+        // Se o usuário clicar fora do input, salva automaticamente
+        input.addEventListener('blur', function() {
+            salvarMudanca();
+        });
+    }
 </script>

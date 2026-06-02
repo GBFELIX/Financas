@@ -432,6 +432,26 @@ namespace Acoes_Fiis.Controllers
 
             return Ok(); // Retorna Status 200 (Sucesso) para o JavaScript saber que pode apagar a linha
         }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AtualizarRendimentoInline(int id, decimal novoValor)
+        {
+            var itemCarteira = await _context.RecomendacaoFii.FindAsync(id);
+
+            if (itemCarteira == null)
+            {
+                return NotFound();
+            }
+
+            itemCarteira.UltimoRendimento = novoValor;
+
+            _context.Update(itemCarteira);
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> VenderAtivo(int id, int quantidadeVendida, string visao)
