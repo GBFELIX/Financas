@@ -119,6 +119,7 @@
                     <th>Segmento</th>
                     <th>Preço Atual</th>
                     <th>P/VP</th>
+                    <th>VPA</th>
                     <th>Rend. Mensal</th>
                     <th>Data Atualização</th>
                     <th>Projeção 12m</th>
@@ -154,7 +155,9 @@
                             }
                             <span class="fw-bold @pvpCor">@pvp.ToString("N2")</span>
                         </td>
-
+                        <td>
+                            <span class="fw-bold">@item.VPA.ToString("N2")</span>
+                        </td>
                         <td>
                             <form asp-action="UpdateRendimento" method="post" class="d-flex align-items-center">
                                 <input type="hidden" name="id" value="@item.Id" />
@@ -168,11 +171,12 @@
 
                         <td class="text-primary fw-bold">
                             @item.DataAtualizacao.ToString("dd/MM/yyyy")
+                            <i class="bi @(item.DataAtualizacao > DateTime.Now.AddMinutes(-30) ? "bi-patch-check-fill text-success" : "bi-clock text-warning")"></i>
                         </td>
                         <td class="text-primary fw-bold">
-                            
+                            @(item.UltimoRendimento > 0 ? (item.UltimoRendimento * 12).ToString("N2") : "N/A")
                         </td>
-
+                            
                         <td>
                             @{
                                 string rec = "Aguardar";

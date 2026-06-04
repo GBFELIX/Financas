@@ -337,6 +337,9 @@ namespace Acoes_Fiis.Controllers
 
         private async Task CarregarDadosAuxiliares(CarteiraTotalViewModel viewModel, string visao)
         {
+
+            viewModel.ConfiguracaoBackups = await _context.ConfiguracaoBackups.FirstOrDefaultAsync();
+
             viewModel.Parametro = await _context.Parametro.FirstOrDefaultAsync();
 
             viewModel.HistoricoTransacoes = await _context.HistoricoAtivos
@@ -363,7 +366,6 @@ namespace Acoes_Fiis.Controllers
             var ativo = await _context.Carteira.FindAsync(id);
             if (ativo == null) return NotFound();
 
-            // 1. Busca a cotação de mercado atual para usar como preço de execução
             decimal precoExecucao = 0;
             if (ativo.TipoAtivo == "Fii")
             {
@@ -375,18 +377,16 @@ namespace Acoes_Fiis.Controllers
                 var acao = await _context.Recomendacao.FirstOrDefaultAsync(x => x.Ticker == ativo.Ticker);
                 if (acao != null) precoExecucao = acao.PrecoAtual;
             }
-            if (precoExecucao == 0) precoExecucao = ativo.PrecoMedio; // Fallback de proteção
+            if (precoExecucao == 0) precoExecucao = ativo.PrecoMedio;
 
             decimal valorTotalAporte = quantidadeComprada * precoExecucao;
             DateTime dataHoje = DateTime.Now;
 
-            // 2. Atualiza a Carteira Ativa (Recalcula Preço Médio Ponderado)
             decimal custoTotalAntigo = ativo.Quantidade * ativo.PrecoMedio;
             ativo.Quantidade += quantidadeComprada;
             ativo.PrecoMedio = (custoTotalAntigo + valorTotalAporte) / ativo.Quantidade;
             _context.Update(ativo);
 
-            // 3. GRAVA NO HISTÓRICO DE TRANSAÇÕES
             var registroHistorico = new HistoricoAtivo
             {
                 Ticker = ativo.Ticker,
@@ -398,20 +398,18 @@ namespace Acoes_Fiis.Controllers
             };
             _context.HistoricoAtivos.Add(registroHistorico);
 
-            // 4. GRAVA AUTOMATICAMENTE NO FLUXO FINANCEIRO (Como Despesa de Investimento)
             var lancamentoFinanceiro = new Financeiro
             {
                 Descricao = $"Compra de Ativo - {ativo.Ticker} ({quantidadeComprada} un)",
                 Valor = Math.Round(valorTotalAporte, 2),
                 Data = dataHoje,
-                Tipo = "Despesa", // Dinheiro saindo do caixa para virar patrimônio
+                Tipo = "Despesa",
                 Categoria = "Investimento",
                 Pagamento = "Pix",
                 Dono = ativo.Dono
             };
             _context.Financeiro.Add(lancamentoFinanceiro);
 
-            // Comita todas as três operações juntas (Garante que se uma falhar, nenhuma salva)
             await _context.SaveChangesAsync();
 
             return RedirectToAction("Index", new { visao = visao });
@@ -424,13 +422,13 @@ namespace Acoes_Fiis.Controllers
 
             if (registro == null)
             {
-                return NotFound(); // Retorna erro 404 se não achar o ID
+                return NotFound();
             }
 
             _context.HistoricoAtivos.Remove(registro);
             await _context.SaveChangesAsync();
 
-            return Ok(); // Retorna Status 200 (Sucesso) para o JavaScript saber que pode apagar a linha
+            return Ok();
         }
 
         [HttpPost]
@@ -479,23 +477,20 @@ namespace Acoes_Fiis.Controllers
             decimal valorTotalVenda = quantidadeVendida * precoExecucao;
             DateTime dataHoje = DateTime.Now;
 
-            // 1. Apuração de Lucro/Prejuízo de Capital para a descrição do Financeiro
             decimal custoMedioLoteVendido = quantidadeVendida * ativo.PrecoMedio;
             decimal resultadoDiferenca = valorTotalVenda - custoMedioLoteVendido;
             string tipoResultado = resultadoDiferenca >= 0 ? "Ganho de Capital" : "Prejuízo de Capital";
 
-            // 2. Atualiza ou Remove da Carteira Ativa
             ativo.Quantidade -= quantidadeVendida;
             if (ativo.Quantidade == 0)
             {
-                _context.Carteira.Remove(ativo); // Se vendeu tudo, limpa a linha da carteira
+                _context.Carteira.Remove(ativo);
             }
             else
             {
-                _context.Update(ativo); // Preço médio não muda na venda, apenas a quantidade diminui
+                _context.Update(ativo);
             }
 
-            // 3. GRAVA NO HISTÓRICO DE TRANSAÇÕES
             var registroHistorico = new HistoricoAtivo
             {
                 Ticker = ativo.Ticker,
@@ -507,13 +502,12 @@ namespace Acoes_Fiis.Controllers
             };
             _context.HistoricoAtivos.Add(registroHistorico);
 
-            // 4. GRAVA AUTOMATICAMENTE NO FLUXO FINANCEIRO (Como Entrada / Liquidez)
             var lancamentoFinanceiro = new Financeiro
             {
                 Descricao = $"Venda de Ativo - {ativo.Ticker} ({tipoResultado})",
                 Valor = Math.Round(valorTotalVenda, 2),
                 Data = dataHoje,
-                Tipo = "Entrada", // Dinheiro voltando líquido para o caixa financeiro
+                Tipo = "Entrada",
                 Categoria = "Investimento",
                 Pagamento = "Pix",
                 Dono = ativo.Dono
@@ -531,39 +525,32 @@ namespace Acoes_Fiis.Controllers
         {
             if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
 
-            // 1. Processamento e Upload Seguro do PDF
             string? caminhoSalvo = null;
             if (pdfFile != null && pdfFile.Length > 0)
             {
-                // Verifica se é realmente um arquivo PDF
                 if (!pdfFile.ContentType.Equals("application/pdf", StringComparison.OrdinalIgnoreCase))
                 {
                     ModelState.AddModelError("", "Apenas arquivos no formato PDF são permitidos.");
                     return RedirectToAction("Index", new { visao = visao }); // Ou retorne para a view com erro
                 }
 
-                // Define a pasta de destino dentro da estrutura do projeto (wwwroot/uploads/contracheques)
                 string pastaDestino = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "contracheques");
                 if (!Directory.Exists(pastaDestino))
                 {
                     Directory.CreateDirectory(pastaDestino);
                 }
 
-                // Cria um nome de arquivo único para evitar substituições acidentais
                 string nomeArquivo = $"{visao.ToLower()}_{ano}_{mes}_{Guid.NewGuid().ToString().Substring(0, 8)}.pdf";
                 string caminhoCompleto = Path.Combine(pastaDestino, nomeArquivo);
 
-                // Salva o arquivo fisicamente no servidor
                 using (var stream = new FileStream(caminhoCompleto, FileMode.Create))
                 {
                     await pdfFile.CopyToAsync(stream);
                 }
 
-                // Caminho relativo que será guardado no banco e usado nas tags <a> do HTML
                 caminhoSalvo = $"/uploads/contracheques/{nomeArquivo}";
             }
 
-            // 2. Criação do Registro para Persistência
             var novaFolha = new FolhaPagamento
             {
                 Ano = ano,
@@ -611,7 +598,6 @@ namespace Acoes_Fiis.Controllers
                     DateTime dataInicioContrato = financiamento.DataInicio;
                     DateTime dataAtual = DateTime.Now;
 
-                    //Calcula a distância exata de meses entre a assinatura e o dia de hoje
                     int mesesDeDiferenca = ((dataAtual.Year - dataInicioContrato.Year) * 12) + dataAtual.Month - dataInicioContrato.Month;
 
                     int parcelaContratualCorreta = mesesDeDiferenca + 1;
@@ -619,7 +605,7 @@ namespace Acoes_Fiis.Controllers
                     var novoAporte = new AporteExtra
                     {
                         PriceId = priceId,
-                        MesReferencia = parcelaContratualCorreta, // Usa o cálculo dinâmico baseado no banco (Ex: 12)
+                        MesReferencia = parcelaContratualCorreta,
                         Valor = valorConvertido
                     };
 
@@ -736,20 +722,15 @@ namespace Acoes_Fiis.Controllers
             if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
             if (quantidade <= 0) return RedirectToAction(nameof(Index), new { visao = visao });
 
-            // Força o ticker a ficar sempre em maiúsculo para evitar duplicidade por digitação
             ticker = ticker.Trim().ToUpper();
 
             DateTime dataHoje = DateTime.Now;
             decimal valorTotalAporte = quantidade * precoMedio;
 
-            // Busca se o ativo já existe na carteira desse usuário
             var ativoExistente = await _context.Carteira.FirstOrDefaultAsync(x => x.Ticker == ticker && x.Dono == visao);
 
             if (ativoExistente != null)
             {
-                // -----------------------------------------------------------------
-                // CENÁRIO A: ATIVO JÁ EXISTE - ATUALIZA CARTEIRA (PREÇO MÉDIO)
-                // -----------------------------------------------------------------
                 int qtdAnterior = ativoExistente.Quantidade;
                 decimal pmAnterior = ativoExistente.PrecoMedio;
                 int quantidadeTotal = qtdAnterior + quantidade;
@@ -763,9 +744,6 @@ namespace Acoes_Fiis.Controllers
             }
             else
             {
-                // -----------------------------------------------------------------
-                // CENÁRIO B: ATIVO NOVO - ADICIONA NA CARTEIRA
-                // -----------------------------------------------------------------
                 string tipo = "Geral";
                 if (await _context.Recomendacao.AnyAsync(x => x.Ticker == ticker)) tipo = "Acao";
                 else if (await _context.RecomendacaoFii.AnyAsync(x => x.Ticker == ticker)) tipo = "Fii";
@@ -784,11 +762,6 @@ namespace Acoes_Fiis.Controllers
                 _context.Add(novoItem);
             }
 
-            // =========================================================================
-            // FUNCIONALIDADES ADICIONADAS AUTOMATICAMENTE (VÁLIDAS PARA OS DOIS CENÁRIOS)
-            // =========================================================================
-
-            // 1. REGISTRA NO HISTÓRICO DE COMPRAS/VENDAS
             var registroHistorico = new HistoricoAtivo
             {
                 Ticker = ticker,
@@ -800,20 +773,18 @@ namespace Acoes_Fiis.Controllers
             };
             _context.HistoricoAtivos.Add(registroHistorico);
 
-            // 2. INJETA COMO DESPESA NO FLUXO FINANCEIRO
             var lancamentoFinanceiro = new Financeiro
             {
                 Descricao = $"Compra de Ativo - {ticker} ({quantidade} un)",
                 Valor = Math.Round(valorTotalAporte, 2),
                 Data = dataHoje,
-                Tipo = "Despesa", // Dinheiro saindo para virar patrimônio
+                Tipo = "Despesa",
                 Categoria = "Investimento",
                 Pagamento = "Pix",
                 Dono = visao == "Casal" ? "Casal" : visao
             };
             _context.Financeiro.Add(lancamentoFinanceiro);
 
-            // Salva todas as alterações juntas (Carteira + Histórico + Financeiro) de forma atômica
             await _context.SaveChangesAsync();
 
             return RedirectToAction(nameof(Index), new { visao = visao });
@@ -843,6 +814,71 @@ namespace Acoes_Fiis.Controllers
                 await _context.SaveChangesAsync();
             }
             return RedirectToAction(nameof(Index), new { visao = novoItem.Dono });
+        }
+        [HttpPost]
+        public async Task<IActionResult> SalvarConfiguracaoBackup(string caminhoPastaLocal, int intervaloHoras)
+        {
+            var config = await _context.ConfiguracaoBackups.FirstOrDefaultAsync();
+            if (config == null)
+            {
+                config = new ConfiguracaoBackup();
+                _context.ConfiguracaoBackups.Add(config);
+            }
+
+            config.CaminhoPastaLocal = caminhoPastaLocal;
+            config.IntervaloHoras = intervaloHoras;
+
+            await _context.SaveChangesAsync();
+            return RedirectToAction("Index", "Carteiras");
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ForcarBackupAgora()
+        {
+            var config = await _context.ConfiguracaoBackups.FirstOrDefaultAsync();
+            if (config == null || !Directory.Exists(config.CaminhoPastaLocal))
+            {
+                return BadRequest("Caminho da pasta do Google Drive inválido.");
+            }
+
+            try
+            {
+                string nomeBanco = "Investimentos";
+                string nomeArquivoFixo = $"Backup_{nomeBanco}.bak";
+
+                string pastaTemporaria = @"C:\Users\Public\Documents\BackupsTemp";
+                if (!Directory.Exists(pastaTemporaria))
+                {
+                    Directory.CreateDirectory(pastaTemporaria);
+                }
+
+                string caminhoTemporarioSql = Path.Combine(pastaTemporaria, nomeArquivoFixo);
+                string caminhoFinalDrive = Path.Combine(config.CaminhoPastaLocal, nomeArquivoFixo);
+
+                if (System.IO.File.Exists(caminhoTemporarioSql)) System.IO.File.Delete(caminhoTemporarioSql);
+
+                string queryBackup = $"BACKUP DATABASE [{nomeBanco}] TO DISK = '{caminhoTemporarioSql}' WITH FORMAT;";
+                await _context.Database.ExecuteSqlRawAsync(queryBackup);
+
+                if (System.IO.File.Exists(caminhoTemporarioSql))
+                {
+                    if (System.IO.File.Exists(caminhoFinalDrive))
+                    {
+                        System.IO.File.Delete(caminhoFinalDrive);
+                    }
+
+                    System.IO.File.Move(caminhoTemporarioSql, caminhoFinalDrive);
+                }
+
+                config.UltimoBackup = DateTime.Now;
+                await _context.SaveChangesAsync();
+
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Erro ao substituir backup: {ex.Message}");
+            }
         }
 
         [HttpPost]
@@ -906,7 +942,6 @@ namespace Acoes_Fiis.Controllers
                 }
             }
 
-            // Redireciona com precisão mantendo o filtro de perfil ativo
             return RedirectToAction(nameof(Index), new { visao = visao });
         }
 
@@ -966,12 +1001,10 @@ namespace Acoes_Fiis.Controllers
         {
             if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
 
-            // Busca o registro no banco de dados
             var folha = await _context.FolhasPagamento.FindAsync(id);
 
             if (folha != null)
             {
-                // 1. Se houver um PDF salvo, apaga o arquivo físico do servidor
                 if (!string.IsNullOrEmpty(folha.PathPdf))
                 {
                     string caminhoArquivoFisico = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", folha.PathPdf.TrimStart('/'));
@@ -987,7 +1020,6 @@ namespace Acoes_Fiis.Controllers
                 await _context.SaveChangesAsync();
             }
 
-            // Redireciona de volta para a Index mantendo o perfil selecionado
             return RedirectToAction("Index", new { visao = visao });
         }
     }

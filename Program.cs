@@ -16,6 +16,7 @@ builder.Services.AddDbContext<Acoes_FiisContext>(options =>
 
 builder.Services.AddScoped<FinanciamentoService>();
 builder.Services.AddHostedService<AtivosBackgroundService>();
+builder.Services.AddHostedService<BackupBackgroundService>();
 //builder.Services.AddHostedService<YahooService>();
 
 builder.Services.AddControllersWithViews();

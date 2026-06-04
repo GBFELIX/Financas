@@ -4,10 +4,13 @@
     Layout = null;
     var visao = ViewBag.VisaoAtual as string ?? "Gabriel";
 
-    // Puxa as listas enviadas pela Controller para o gráfico de Renda Variável
-    // Certifique-se de alimentar essas duas novas ViewBags no método da Controller se quiser isolar os meses
     var labelsGraficoRV = ViewBag.HistoricoLabelsGraficoRV as List<string> ?? ViewBag.HistoricoLabelsGrafico as List<string>;
     var dadosGraficoRV = ViewBag.HistoricoGanhosGraficoRV as List<decimal> ?? new List<decimal>();
+
+    var labelsGraficoRF = ViewBag.HistoricoLabelsGrafico as List<string> ?? new List<string>();
+    var dadosGraficoRF = ViewBag.HistoricoGanhosGrafico as List<decimal> ?? new List<decimal>();
+
+    decimal totalRf12Meses = dadosGraficoRF.Sum();
     decimal totalDividendos12Meses = dadosGraficoRV.Sum();
 }
 
@@ -26,7 +29,7 @@
                 <div class="col-6">
                     <div class="card border-0 shadow-sm p-3 text-center bg-light rounded-3 h-100">
                         <small class="text-muted d-block fw-bold text-uppercase mb-1" style="font-size: 0.7rem;">Rendimento Renda Fixa</small>
-                        <span class="fs-5 fw-bold text-success">@Model.RendimentoRendaFixaMes.ToString("C2")</span>
+                        <span class="fs-5 fw-bold text-success">@totalRf12Meses.ToString("C2")</span>
                         <div class="text-muted mt-1" style="font-size: 0.6rem;">
                             <i class="bi bi-wallet2 text-success"></i> Caixinhas + Renda Fixa
                         </div>

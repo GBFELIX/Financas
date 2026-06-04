@@ -1,0 +1,76 @@
+﻿@model CarteiraTotalViewModel
+
+<div class="modal fade" id="modalBackup" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-dark text-white border-0 py-3">
+                <h5 class="modal-title fw-bold d-flex align-items-center gap-2 mb-0" style="font-size: 1.1rem;">
+                    <i class="bi bi-database-fill-gear text-warning"></i> Rotina de Backup Automatizada
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <form asp-action="SalvarConfiguracaoBackup" asp-controller="Carteiras" method="post">
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted text-uppercase mb-2">Caminho da Pasta Sincronizada (Computador)</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light"><i class="bi bi-folder-fill text-warning"></i></span>
+                            <input type="text" name="caminhoPastaLocal" class="form-control"
+                                   placeholder="Ex: C:\Users\Nome\Google Drive\MeuBackup"
+                                   value="@Model.ConfiguracaoBackups.CaminhoPastaLocal" required />
+                        </div>
+                        <div class="form-text" style="font-size: 0.75rem;">
+                            Indique a pasta física do seu computador que está vinculada ao aplicativo do Google Drive.
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted text-uppercase mb-2">Frequência do Backup Automático</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light"><i class="bi bi-clock-history"></i></span>
+                            <select name="intervaloHoras" class="form-select fw-bold">
+                                <option value="12">A cada 12 Horas</option>
+                                <option value="24" selected>A cada 24 Horas (1 Vez por Dia)</option>
+                                <option value="48">A cada 48 Horas (A cada 2 Dias)</option>
+                                <option value="168">A cada 7 Dias (1 Vez por Semana)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-text text-center text-secondary border-top pt-2 mt-3" style="font-size: 0.8rem;">
+                        <i class="bi bi-calendar-check me-1"></i>Último backup realizado:
+                        <span class="fw-bold text-success">@(Model.ConfiguracaoBackups?.UltimoBackup?.ToString("dd/MM/yyyy HH:mm") ?? "Nenhum registro")</span>
+                    </div>
+                </div>
+
+                <div class="modal-footer bg-light border-top-0 rounded-bottom-4 p-3 d-flex justify-content-between">
+                    <button type="button" class="btn btn-warning rounded-pill px-3 fw-bold shadow-sm text-dark d-flex align-items-center gap-1" onclick="executarBackupImediato()">
+                        <i class="bi bi-play-circle-fill"></i> Backup Agora
+                    </button>
+
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-sm btn-secondary rounded-pill px-3" data-bs-dismiss="modal">Fechar</button>
+                        <button type="submit" class="btn btn-sm btn-success rounded-pill px-4 fw-bold shadow-sm">Salvar Rotina</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function executarBackupImediato() {
+        if(!confirm("Deseja gerar e salvar um backup do banco de dados na pasta indicada agora mesmo?")) return;
+
+        fetch('/Carteiras/ForcarBackupAgora', { method: 'POST' })
+        .then(response => {
+            if(response.ok) {
+                alert("Backup gerado e salvo com sucesso na pasta do Google Drive!");
+                location.reload();
+            } else {
+                alert("Erro ao executar backup. Verifique se o caminho da pasta é válido e se o banco tem permissão de escrita.");
+            }
+        });
+    }
+</script>

@@ -67,6 +67,8 @@ namespace Acoes_Fiis.Models
 
         public Parametro Parametro { get; set; } = new Parametro();
 
+        public ConfiguracaoBackup ConfiguracaoBackups { get; set; } = new ConfiguracaoBackup();
+
     }
 
     public class CarteiraItemViewModel

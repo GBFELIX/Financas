@@ -16,13 +16,11 @@ namespace Acoes_Fiis.Controllers
         // GET: Home/Index
         public IActionResult Index(string visao)
         {
-            // Se não houver uma visão selecionada na URL, adota "Gabriel" por padrão
             if (string.IsNullOrEmpty(visao))
             {
                 visao = "Gabriel";
             }
 
-            // Injeta o estado na ViewBag para alimentar o Layout e a View Index da Home
             ViewBag.VisaoAtual = visao;
 
             return View();
