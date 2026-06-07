@@ -1,0 +1,107 @@
+﻿<div class="modal fade" id="modalMetas" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-dark text-white border-0 py-3">
+                <h5 class="modal-title fw-bold d-flex align-items-center gap-2 mb-0" style="font-size: 1.1rem;">
+                    <i class="bi bi-pie-chart-fill text-info"></i> Definir Estratégia de Alocação
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            
+            <form asp-action="SalvarMetasAlocacao" asp-controller="Carteiras" method="post" id="formMetas">
+                <div class="modal-body p-4">
+                    
+                    <label class="form-label fw-bold small text-muted text-uppercase mb-2">Perfis Recomendados</label>
+                    <div class="d-flex gap-2 mb-4 justify-content-between">
+                        <button type="button" class="btn btn-outline-success btn-sm rounded-pill px-3" onclick="aplicarModo(60, 30, 10)">🛡️ Conservador</button>
+                        <button type="button" class="btn btn-outline-warning btn-sm rounded-pill px-3 text-dark" onclick="aplicarModo(40, 40, 20)">⚖️ Equilibrado</button>
+                        <button type="button" class="btn btn-outline-danger btn-sm rounded-pill px-3" onclick="aplicarModo(20, 40, 40)">🚀 Arrojado</button>
+                    </div>
+
+                    <hr class="my-3 opacity-25">
+
+                    <label class="form-label fw-bold small text-muted text-uppercase mb-3">Ajuste Personalizado (%)</label>
+                    
+                    <div class="mb-3">
+                        <div class="row align-items-center">
+                            <div class="col-7"><span class="fw-bold text-secondary">💰 Renda Fixa:</span></div>
+                            <div class="col-5">
+                                <div class="input-group input-group-sm">
+                                    <input type="number" id="meta-rf" name="percentualRF" class="form-control text-center fw-bold" min="0" max="100" value="40" oninput="validarSomaMetas()" required />
+                                    <span class="input-group-text">%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="row align-items-center">
+                            <div class="col-7"><span class="fw-bold text-secondary">🏢 FIIs (Imobiliário):</span></div>
+                            <div class="col-5">
+                                <div class="input-group input-group-sm">
+                                    <input type="number" id="meta-fiis" name="percentualFIIs" class="form-control text-center fw-bold" min="0" max="100" value="40" oninput="validarSomaMetas()" required />
+                                    <span class="input-group-text">%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="row align-items-center">
+                            <div class="col-7"><span class="fw-bold text-secondary">📈 Ações:</span></div>
+                            <div class="col-5">
+                                <div class="input-group input-group-sm">
+                                    <input type="number" id="meta-acoes" name="percentualAcoes" class="form-control text-center fw-bold" min="0" max="100" value="20" oninput="validarSomaMetas()" required />
+                                    <span class="input-group-text">%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="alerta-soma" class="alert alert-sm p-2 text-center small d-none mt-3"></div>
+                </div>
+                
+                <div class="modal-footer bg-light border-top-0 rounded-bottom-4 p-3">
+                    <button type="button" class="btn btn-sm btn-secondary rounded-pill px-3" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" id="btn-salvar-metas" class="btn btn-sm btn-success rounded-pill px-4 fw-bold shadow-sm">Aplicar Estratégia</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Função que preenche os campos automaticamente ao clicar nos Perfis
+    function aplicarModo(rf, fiis, acoes) {
+        document.getElementById('meta-rf').value = rf;
+        document.getElementById('meta-fiis').value = fiis;
+        document.getElementById('meta-acoes').value = acoes;
+        validarSomaMetas();
+    }
+
+    // Validador em tempo real para garantir que a soma feche sempre em 100%
+    function validarSomaMetas() {
+        const rf = parseFloat(document.getElementById('meta-rf').value) || 0;
+        const fiis = parseFloat(document.getElementById('meta-fiis').value) || 0;
+        const acoes = parseFloat(document.getElementById('meta-acoes').value) || 0;
+        const soma = rf + fiis + acoes;
+
+        const alerta = document.getElementById('alerta-soma');
+        const btnSalvar = document.getElementById('btn-salvar-metas');
+
+        alerta.classList.remove('d-none', 'alert-danger', 'alert-success');
+
+        if (soma !== 100) {
+            alerta.classList.add('alert-danger');
+            alerta.innerText = `⚠️ A soma dos percentuais é ${soma}%. Ajuste para fechar exatamente em 100%.`;
+            btnSalvar.disabled = true;
+        } else {
+            alerta.classList.add('alert-success');
+            alerta.innerText = `✅ Distribuição perfeita! Total: 100%.`;
+            btnSalvar.disabled = false;
+        }
+    }
+
+    // Executa a validação inicial quando abre o modal
+    document.getElementById('modalMetas').addEventListener('shown.bs.modal', validarSomaMetas);
+</script>

@@ -61,6 +61,14 @@ namespace Acoes_Fiis.Controllers
 
             // 8. Processamento do Financiamento Imobiliário e Dados Auxiliares
             ProcessarFinanciamentoImobiliario(financiamento, agora, viewModel);
+
+            decimal totalRealRendaFixa = viewModel.PatrimonioTotalReal - viewModel.TotalPatrimonio;
+
+            decimal totalRealFiis = ViewBag.TotalAcumuladoFiisSalvo ?? 0m;
+            decimal totalRealAcoes = ViewBag.TotalAcumuladoAcoesSalvo ?? 0m;
+
+            await CarregarModulosPainelFinanceiro(totalRealRendaFixa, totalRealFiis, totalRealAcoes);
+
             await CarregarDadosAuxiliares(viewModel, visao);
 
             return View(viewModel);
@@ -86,6 +94,8 @@ namespace Acoes_Fiis.Controllers
         {
             decimal totalRFLiquido = 0;
             decimal totalProventosVariaveis = 0;
+            decimal totalAcumuladoAcoes = 0;
+            decimal totalAcumuladoFiis = 0;
 
             foreach (var item in itensBanco)
             {
@@ -122,6 +132,8 @@ namespace Acoes_Fiis.Controllers
                         else if (pvp < 1.5m && pl < 15) { viewItem.Recomendacao = "Compra (Preço Justo)"; viewItem.CorBadge = "primary"; }
                         else if (pl > 20 || pvp > 3.0m) { viewItem.Recomendacao = "Venda / Caro"; viewItem.CorBadge = "danger"; }
                         else { viewItem.Recomendacao = "Neutro / Manter"; viewItem.CorBadge = "secondary"; }
+
+                        totalAcumuladoAcoes += (item.Quantidade * acao.PrecoAtual);
                     }
                 }
                 else if (item.TipoAtivo == "Fii")
@@ -149,6 +161,8 @@ namespace Acoes_Fiis.Controllers
                             "Venda / Realizar Lucro" => "danger",
                             _ => "dark"
                         };
+
+                        totalAcumuladoFiis += (item.Quantidade * fii.PrecoAtual);
                     }
                 }
                 else if (item.TipoAtivo == "Geral")
@@ -160,14 +174,87 @@ namespace Acoes_Fiis.Controllers
                         viewItem.Recomendacao = "Não Avaliado";
                     }
                 }
-
                 viewModel.Itens.Add(viewItem);
                 totalProventosVariaveis += viewItem.ProventoMensalEstimado;
             }
 
+            ViewBag.TotalAcumuladoAcoesSalvo = totalAcumuladoAcoes;
+            ViewBag.TotalAcumuladoFiisSalvo = totalAcumuladoFiis;
+
             return (totalRFLiquido, totalProventosVariaveis);
         }
+        private async Task CarregarModulosPainelFinanceiro(decimal totalRF, decimal totalFIIs, decimal totalAcoes)
+        {
+            decimal patrimonioTotal = totalRF + totalFIIs + totalAcoes;
 
+            // ==========================================
+            // METAS DE REBALANCEAMENTO
+            // ==========================================
+            var metas = await _context.MetasAlocacao.ToListAsync();
+            decimal alvoRF = metas.FirstOrDefault(m => m.Categoria == "Renda Fixa")?.PercentualAlvo ?? 40m;
+            decimal alvoFIIs = metas.FirstOrDefault(m => m.Categoria == "FIIs")?.PercentualAlvo ?? 40m;
+            decimal alvoAcoes = metas.FirstOrDefault(m => m.Categoria == "Ações")?.PercentualAlvo ?? 20m;
+
+            var painelRebalanceamento = new List<ItemRebalanceamentoViewModel>();
+            if (patrimonioTotal > 0)
+            {
+                painelRebalanceamento.Add(CalcularItemRebalanceamento("Renda Fixa", alvoRF, totalRF, patrimonioTotal));
+                painelRebalanceamento.Add(CalcularItemRebalanceamento("FIIs", alvoFIIs, totalFIIs, patrimonioTotal));
+                painelRebalanceamento.Add(CalcularItemRebalanceamento("Ações", alvoAcoes, totalAcoes, patrimonioTotal));
+            }
+
+            ViewBag.PainelRebalanceamento = painelRebalanceamento;
+            ViewBag.MetaRFAtual = alvoRF;
+            ViewBag.MetaFIIsAtual = alvoFIIs;
+            ViewBag.MetaAcoesAtual = alvoAcoes;
+
+            // ==========================================
+            // AGENDA HISTÓRICA DE PROVENTOS
+            // ==========================================
+            var proventosDoBanco = await _context.HistoricoProventos
+                .OrderBy(p => p.DataPagamento)
+                .ToListAsync();
+
+            var proventosAgrupados = proventosDoBanco
+                .GroupBy(p => p.DataPagamento.ToString("MM/yyyy"))
+                .Select(g => new
+                {
+                    MesAno = g.Key,
+                    TotalRecebido = g.Sum(p => p.ValorTotal)
+                }).ToList();
+
+            List<string> proventosLabels = proventosAgrupados.Select(x => x.MesAno).ToList();
+            List<decimal> proventosValores = proventosAgrupados.Select(x => x.TotalRecebido).ToList();
+
+            if (!proventosLabels.Any())
+            {
+                proventosLabels.Add(DateTime.Now.ToString("MM/yyyy"));
+                proventosValores.Add(0m);
+            }
+
+            ViewBag.HistoricoProventosLabels = proventosLabels;
+            ViewBag.HistoricoProventosValores = proventosValores;
+        }
+
+        private ItemRebalanceamentoViewModel CalcularItemRebalanceamento(string categoria, decimal alvo, decimal valorAtual, decimal total)
+        {
+            decimal pctAtual = (valorAtual / total) * 100m;
+            decimal desvio = pctAtual - alvo;
+
+            string status = "⚖️ No Alvo";
+            if (desvio < -2.0m) status = "🟢 APORTAR";
+            if (desvio > 2.0m) status = "⏳ AGUARDAR";
+
+            return new ItemRebalanceamentoViewModel
+            {
+                Categoria = categoria,
+                PercentualAlvo = alvo,
+                ValorAtual = valorAtual,
+                PercentualAtual = Math.Round(pctAtual, 2),
+                Desvio = Math.Round(desvio, 2),
+                Status = status
+            };
+        }
         private decimal ProcessarFluxoFinanceiroSaldos(List<Financeiro> financeiroData, DateTime agora, CarteiraTotalViewModel viewModel)
         {
             viewModel.ResumoMensal = financeiroData
@@ -337,6 +424,7 @@ namespace Acoes_Fiis.Controllers
 
         private async Task CarregarDadosAuxiliares(CarteiraTotalViewModel viewModel, string visao)
         {
+            viewModel.MetaAlocacao = await _context.MetasAlocacao.FirstOrDefaultAsync();
 
             viewModel.ConfiguracaoBackups = await _context.ConfiguracaoBackups.FirstOrDefaultAsync();
 
@@ -444,7 +532,7 @@ namespace Acoes_Fiis.Controllers
 
             itemCarteira.UltimoRendimento = novoValor;
 
-            _context.Update(itemCarteira);
+            _context.RecomendacaoFii.Update(itemCarteira);
             await _context.SaveChangesAsync();
 
             return Ok();
@@ -1021,6 +1109,35 @@ namespace Acoes_Fiis.Controllers
             }
 
             return RedirectToAction("Index", new { visao = visao });
+        }
+        [HttpPost]
+        public async Task<IActionResult> SalvarMetasAlocacao(decimal percentualRF, decimal percentualFIIs, decimal percentualAcoes)
+        {
+            if ((percentualRF + percentualFIIs + percentualAcoes) != 100m)
+                return BadRequest("A soma das alocações deve ser exatamente 100%.");
+
+            // Busca as metas existentes para atualizar ou cria novas
+            var todasMetas = await _context.MetasAlocacao.ToListAsync();
+
+            AtualizarOuCriarMeta(todasMetas, "Renda Fixa", percentualRF);
+            AtualizarOuCriarMeta(todasMetas, "FIIs", percentualFIIs);
+            AtualizarOuCriarMeta(todasMetas, "Ações", percentualAcoes);
+
+            await _context.SaveChangesAsync();
+            return RedirectToAction("Index"); // Redireciona de volta para seu painel principal
+        }
+
+        private void AtualizarOuCriarMeta(List<MetaAlocacao> lista, string categoria, decimal valor)
+        {
+            var meta = lista.FirstOrDefault(m => m.Categoria == categoria);
+            if (meta == null)
+            {
+                _context.MetasAlocacao.Add(new MetaAlocacao { Categoria = categoria, PercentualAlvo = valor });
+            }
+            else
+            {
+                meta.PercentualAlvo = valor;
+            }
         }
     }
 }

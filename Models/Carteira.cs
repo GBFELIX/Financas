@@ -68,9 +68,21 @@ namespace Acoes_Fiis.Models
         public Parametro Parametro { get; set; } = new Parametro();
 
         public ConfiguracaoBackup ConfiguracaoBackups { get; set; } = new ConfiguracaoBackup();
+        public MetaAlocacao MetaAlocacao { get; set; } = new MetaAlocacao();
+        public List<HistoricoProvento> HistoricoProventos { get; set; } = new List<HistoricoProvento>();
+
+
 
     }
-
+    public class ItemRebalanceamentoViewModel
+    {
+        public string Categoria { get; set; }
+        public decimal PercentualAlvo { get; set; }
+        public decimal ValorAtual { get; set; }
+        public decimal PercentualAtual { get; set; }
+        public decimal Desvio { get; set; } // Diferença entre o Alvo e o Atual
+        public string Status { get; set; } // "Aportar", "No Alvo" ou "Aguardar"
+    }
     public class CarteiraItemViewModel
     {
         public Carteira? ObjetoOriginal { get; set; }

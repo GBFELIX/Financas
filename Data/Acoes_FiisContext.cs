@@ -30,5 +30,7 @@ namespace Acoes_Fiis.Data
         public DbSet<Acoes_Fiis.Models.FolhaPagamento> FolhasPagamento { get; set; } = default!;
         public DbSet<Acoes_Fiis.Models.Parametro> Parametro { get; set; } = default!;
         public DbSet<Acoes_Fiis.Models.ConfiguracaoBackup> ConfiguracaoBackups { get; set; } = default!;
+        public DbSet<Acoes_Fiis.Models.MetaAlocacao> MetasAlocacao { get; set; }
+        public DbSet<Acoes_Fiis.Models.HistoricoProvento> HistoricoProventos { get; set; }
     }
 }

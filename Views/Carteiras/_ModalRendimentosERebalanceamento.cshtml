@@ -1,0 +1,130 @@
+﻿<div class="modal fade" id="modalRendimentosERebalanceamento" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+
+            <div class="modal-header bg-dark text-white border-0 pb-0 pt-3 rounded-top-4">
+                <ul class="nav nav-tabs border-0 w-100" id="tabsModalFinanceiro" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active text-white border-0 bg-transparent fw-bold pb-3 px-4 position-relative"
+                                id="tab-rendimentos" data-bs-toggle="tab" data-bs-target="#conteudo-rendimentos"
+                                type="button" role="tab" aria-selected="true">
+                            <i class="bi bi-calendar2-check-fill text-success me-1"></i> Agenda de Proventos
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link text-white border-0 bg-transparent fw-bold pb-3 px-4 position-relative"
+                                id="tab-rebalanceamento" data-bs-toggle="tab" data-bs-target="#conteudo-rebalanceamento"
+                                type="button" role="tab" aria-selected="false">
+                            <i class="bi bi-pie-chart-fill text-info me-1"></i> Rebalanceamento Dinâmico
+                        </button>
+                    </li>
+                </ul>
+                <button type="button" class="btn-close btn-close-white mb-3" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body p-4">
+                <div class="tab-content" id="conteudoTabsModal">
+
+                    @* ------------------------------------------------------------------- *@
+                    @* ABA 1: AGENDA DE PROVENTOS (MÓDULO 2)                               *@
+                    @* ------------------------------------------------------------------- *@
+                    <div class="tab-pane fade show active" id="conteudo-rendimentos" role="tabpanel" aria-labelledby="tab-rendimentos">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="fw-bold text-dark m-0">Histórico de Bola de Neve (R$)</h5>
+                            <span class="badge bg-success rounded-pill px-3 py-2 fw-bold">Total: R$ @Model.RendaMensalTotalConsolidada.ToString("N2")</span>
+                        </div>
+
+                        <div style="height: 280px; position: relative;" class="mb-2">
+                            <canvas id="chartHistoricoProventos"></canvas>
+                        </div>
+                    </div>
+
+                    @* ------------------------------------------------------------------- *@
+                    @* ABA 2: REBALANCEAMENTO PATRIMONIAL (MÓDULO 1)                       *@
+                    @* ------------------------------------------------------------------- *@
+                    <div class="tab-pane fade" id="conteudo-rebalanceamento" role="tabpanel" aria-labelledby="tab-rebalanceamento">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <div>
+                                <h5 class="fw-bold text-dark m-0">Estratégia de Alocação Real</h5>
+                                <small class="text-muted">Acompanhe os desvios com base no perfil escolhido</small>
+                            </div>
+
+                            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3"
+                                    onclick="abrirConfiguracaoMetasRapido()">
+                                <i class="bi bi-sliders"></i> Alterar Modo
+                            </button>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle border-0">
+                                <thead class="table-light text-uppercase fs-7 text-secondary fw-bold border-0">
+                                    <tr>
+                                        <th class="border-0">Classe de Ativo</th>
+                                        <th class="text-center border-0">Meta Alvo</th>
+                                        <th class="text-center border-0">Alocação Atual</th>
+                                        <th class="text-center border-0">Desvio</th>
+                                        <th class="text-center border-0">Sugestão</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="border-0 fs-6 text-dark">
+                                    @if (ViewBag.PainelRebalanceamento != null)
+                                    {
+                                        foreach (var item in (List<ItemRebalanceamentoViewModel>)ViewBag.PainelRebalanceamento)
+                                        {
+                                            string corDesvio = item.Desvio < 0 ? "text-danger" : "text-success";
+                                            string badgeStatus = item.Status.Contains("APORTAR") ? "bg-success" :
+                                            item.Status.Contains("AGUARDAR") ? "bg-warning text-dark" : "bg-secondary";
+                                            <tr>
+                                                <td class="fw-bold border-0">@item.Categoria</td>
+                                                <td class="text-center border-0">@item.PercentualAlvo.ToString("N1")%</td>
+                                                <td class="text-center border-0 fw-semibold">@item.PercentualAtual.ToString("N1")%</td>
+                                                <td class="text-center border-0 fw-bold @corDesvio">
+                                                    @(item.Desvio > 0 ? "+" : "")@item.Desvio.ToString("N1")%
+                                                </td>
+                                                <td class="text-center border-0">
+                                                    <span class="badge @badgeStatus rounded-pill px-3 py-1fw-bold">@item.Status</span>
+                                                </td>
+                                            </tr>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <tr>
+                                            <td colspan="5" class="text-center text-muted py-3 border-0">
+                                                Nenhum parâmetro de alocação encontrado. Configure as metas primeiro.
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+            <div class="modal-footer bg-light border-0 rounded-bottom-4 py-2">
+                <button type="button" class="btn btn-sm btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Fechar Painel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    #tabsModalFinanceiro .nav-link.active {
+        color: #fff !not-allowed;
+        border-bottom: 3px solid #198754 !important;
+    }
+
+    #tabsModalFinanceiro .nav-link {
+        opacity: 0.75;
+        transition: all 0.2s ease;
+    }
+
+        #tabsModalFinanceiro .nav-link:hover {
+            opacity: 1;
+        }
+
+    .fs-7 {
+        font-size: 0.78rem;
+    }
+</style>

@@ -78,7 +78,12 @@
                                 <i class="bi bi-cloud-arrow-up-fill"></i> Configurar Rotina de Backup
                             </button>
                         </li>
-                        
+                        <li>
+                            <button type="button" class="btn btn-outline-primary btn-sm rounded-pill d-flex align-items-center gap-2"
+                                    data-bs-toggle="modal" data-bs-target="#modalMetas">
+                                <i class="bi bi-sliders"></i> Alterar Modo de Alocação
+                            </button>
+                        </li>
                     </ul>
                 </div>
 
@@ -125,10 +130,14 @@
 
         @* Card 2: Rendimentos Mensais *@
         <div class="col-md-3">
-            <div class="card bg-primary text-white shadow border-0 h-100 rounded-4">
-                <div class="card-body text-center">
+            <div class="card bg-primary text-white shadow border-0 h-100 rounded-4"
+                 style="cursor: pointer;"
+                 data-bs-toggle="modal"
+                 data-bs-target="#modalRendimentosERebalanceamento"
+                 title="Clique para ver Detalhes e Rebalanceamento">
+                <div class="card-body text-center p-4">
                     <h6 class="text-uppercase small fw-bold opacity-75">Rendimentos do Mês</h6>
-                    <h3 class="mb-1">R$ @Model.RendaMensalTotalConsolidada.ToString("N2")</h3>
+                    <h2 class="mb-1 fw-bold">R$ @Model.RendaMensalTotalConsolidada.ToString("N2")</h2>
                     <div class="mt-2 pt-2 border-top border-white border-opacity-25">
                         <small class="d-block">Ganhos (Mês): <span class="fw-bold">R$ @Model.EntradasMesCorrente.ToString("N2")</span></small>
                     </div>
@@ -393,6 +402,8 @@
     @await Html.PartialAsync("_ModalHistoricoAtivos", Model)
     @await Html.PartialAsync("_ModalParametro", Model)
     @await Html.PartialAsync("_ModalBackup", Model)
+    @await Html.PartialAsync("_ModalMetas", Model)
+    @await Html.PartialAsync("_ModalRendimentosERebalanceamento", Model)
 
     <div class="card shadow-sm border-0">
         <div class="card-header bg-light d-flex justify-content-between align-items-center">
@@ -750,6 +761,8 @@
             if (e.key === 'Enter') {
                 e.preventDefault();
                 salvarMudanca();
+
+                alert('deu certo')
             }
             if (e.key === 'Escape') {
                 cancelarEdicao();
@@ -760,5 +773,71 @@
         input.addEventListener('blur', function() {
             salvarMudanca();
         });
+    }
+        document.addEventListener("DOMContentLoaded", function () {
+        const modalElement = document.getElementById('modalRendimentosERebalanceamento');
+        let chartProventos = null;
+
+        // Dispara a montagem do gráfico assim que o Modal termina de abrir na tela
+        modalElement.addEventListener('shown.bs.modal', function () {
+            const canvasProventos = document.getElementById('chartHistoricoProventos');
+            if (!canvasProventos) return;
+
+            // Puxa as informações tratadas na Controller para os Proventos Históricos
+            // Caso ainda não tenha dados no banco, ele gera uma lista padrão vazia []
+            const labelsProventos = @Html.Raw(Json.Serialize(ViewBag.HistoricoProventosLabels)) || [];
+            const dadosProventos = @Html.Raw(Json.Serialize(ViewBag.HistoricoProventosValores)) || [];
+
+            const ctxProventos = canvasProventos.getContext('2d');
+
+            // Proteção contra duplicação de instâncias de gráficos
+            if (chartProventos) {
+                chartProventos.destroy();
+            }
+
+            chartProventos = new Chart(ctxProventos, {
+                type: 'bar',
+                data: {
+                    labels: labelsProventos.length > 0 ? labelsProventos : ['Nenhum Dado'],
+                    datasets: [{
+                        label: 'Dividendos Recebidos (R$)',
+                        data: dadosProventos.length > 0 ? dadosProventos : [0],
+                        backgroundColor: '#0d6efd', // Azul padrão do Card de rendimentos
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => 'Recebido: ' + new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(context.raw)
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { callback: (v) => 'R$ ' + v.toLocaleString('pt-BR') }
+                        }
+                    }
+                }
+            });
+        });
+    });
+
+    // Atalho caso queira abrir a configuração de metas fechando o atual
+    function abrirConfiguracaoMetasRapido() {
+        // Fecha o modal de detalhes
+        const modalDetalhes = bootstrap.Modal.getInstance(document.getElementById('modalRendimentosERebalanceamento'));
+        if(modalDetalhes) modalDetalhes.hide();
+
+        // Abre o seu modal de configuração de metas (ID #modalMetas que criamos na etapa anterior)
+        setTimeout(() => {
+            const modalConfigMetas = new bootstrap.Modal(document.getElementById('modalMetas'));
+            modalConfigMetas.show();
+        }, 400);
     }
 </script>
