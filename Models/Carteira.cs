@@ -69,7 +69,6 @@ namespace Acoes_Fiis.Models
 
         public ConfiguracaoBackup ConfiguracaoBackups { get; set; } = new ConfiguracaoBackup();
         public MetaAlocacao MetaAlocacao { get; set; } = new MetaAlocacao();
-        public List<HistoricoProvento> HistoricoProventos { get; set; } = new List<HistoricoProvento>();
 
 
 

@@ -67,7 +67,7 @@ namespace Acoes_Fiis.Controllers
             decimal totalRealFiis = ViewBag.TotalAcumuladoFiisSalvo ?? 0m;
             decimal totalRealAcoes = ViewBag.TotalAcumuladoAcoesSalvo ?? 0m;
 
-            await CarregarModulosPainelFinanceiro(totalRealRendaFixa, totalRealFiis, totalRealAcoes);
+            await CarregarModulosPainelFinanceiro(totalRealRendaFixa, totalRealFiis, totalRealAcoes, viewModel.PatrimonioTotalReal, visao);
 
             await CarregarDadosAuxiliares(viewModel, visao);
 
@@ -183,7 +183,8 @@ namespace Acoes_Fiis.Controllers
 
             return (totalRFLiquido, totalProventosVariaveis);
         }
-        private async Task CarregarModulosPainelFinanceiro(decimal totalRF, decimal totalFIIs, decimal totalAcoes)
+
+        private async Task CarregarModulosPainelFinanceiro(decimal totalRF, decimal totalFIIs, decimal totalAcoes, decimal patrimonioTotalReal, string visao)
         {
             decimal patrimonioTotal = totalRF + totalFIIs + totalAcoes;
 
@@ -211,29 +212,35 @@ namespace Acoes_Fiis.Controllers
             // ==========================================
             // AGENDA HISTÓRICA DE PROVENTOS
             // ==========================================
-            var proventosDoBanco = await _context.HistoricoProventos
-                .OrderBy(p => p.DataPagamento)
+            string mesAnoAtual = DateTime.Now.ToString("MM/yyyy");
+
+            // 1. Grava ou Atualiza o patrimônio do mês corrente de forma inteligente
+            var registroMesAtual = await _context.EvolucaoPatrimonial
+                .FirstOrDefaultAsync(e => e.MesAno == mesAnoAtual && e.Dono == visao);
+
+            if (registroMesAtual == null)
+            {
+                _context.EvolucaoPatrimonial.Add(new EvolucaoPatrimonial { MesAno = mesAnoAtual, PatrimonioLiquido = patrimonioTotalReal, Dono = visao });
+            }
+            else if (registroMesAtual.PatrimonioLiquido != patrimonioTotalReal)
+            {
+                registroMesAtual.PatrimonioLiquido = patrimonioTotalReal; // Atualiza se o valor mudou ao longo do mês
+            }
+            await _context.SaveChangesAsync();
+
+            // 2. Busca o histórico completo ordenado para o gráfico de linha
+            var historicoPatrimonio = await _context.EvolucaoPatrimonial
+                .Where(e => e.Dono == visao)
+                .OrderBy(e => e.Id) 
+                .Take(12) 
                 .ToListAsync();
 
-            var proventosAgrupados = proventosDoBanco
-                .GroupBy(p => p.DataPagamento.ToString("MM/yyyy"))
-                .Select(g => new
-                {
-                    MesAno = g.Key,
-                    TotalRecebido = g.Sum(p => p.ValorTotal)
-                }).ToList();
+            List<string> labelsEvolucao = historicoPatrimonio.Select(x => x.MesAno).ToList();
+            List<decimal> valoresEvolucao = historicoPatrimonio.Select(x => x.PatrimonioLiquido).ToList();
 
-            List<string> proventosLabels = proventosAgrupados.Select(x => x.MesAno).ToList();
-            List<decimal> proventosValores = proventosAgrupados.Select(x => x.TotalRecebido).ToList();
-
-            if (!proventosLabels.Any())
-            {
-                proventosLabels.Add(DateTime.Now.ToString("MM/yyyy"));
-                proventosValores.Add(0m);
-            }
-
-            ViewBag.HistoricoProventosLabels = proventosLabels;
-            ViewBag.HistoricoProventosValores = proventosValores;
+            // Injeta na ViewBag para o Chart.js de Linha
+            ViewBag.HistoricoEvolucaoLabels = labelsEvolucao;
+            ViewBag.HistoricoEvolucaoValores = valoresEvolucao;
         }
 
         private ItemRebalanceamentoViewModel CalcularItemRebalanceamento(string categoria, decimal alvo, decimal valorAtual, decimal total)

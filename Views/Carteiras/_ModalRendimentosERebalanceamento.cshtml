@@ -8,7 +8,7 @@
                         <button class="nav-link active text-white border-0 bg-transparent fw-bold pb-3 px-4 position-relative"
                                 id="tab-rendimentos" data-bs-toggle="tab" data-bs-target="#conteudo-rendimentos"
                                 type="button" role="tab" aria-selected="true">
-                            <i class="bi bi-calendar2-check-fill text-success me-1"></i> Agenda de Proventos
+                            <i class="bi bi-graph-up-arrow text-success me-1"></i> Evolução Patrimonial
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
@@ -26,16 +26,16 @@
                 <div class="tab-content" id="conteudoTabsModal">
 
                     @* ------------------------------------------------------------------- *@
-                    @* ABA 1: AGENDA DE PROVENTOS (MÓDULO 2)                               *@
+                    @* ABA 1: EVOLUÇÃO PATRIMONIAL (MÓDULO 2 CORRIGIDO)                    *@
                     @* ------------------------------------------------------------------- *@
                     <div class="tab-pane fade show active" id="conteudo-rendimentos" role="tabpanel" aria-labelledby="tab-rendimentos">
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h5 class="fw-bold text-dark m-0">Histórico de Bola de Neve (R$)</h5>
-                            <span class="badge bg-success rounded-pill px-3 py-2 fw-bold">Total: R$ @Model.RendaMensalTotalConsolidada.ToString("N2")</span>
+                            <h5 class="fw-bold text-dark m-0">Crescimento do Patrimônio Líquido</h5>
+                            <span class="badge bg-success rounded-pill px-3 py-2 fw-bold">Atual: R$ @Model.PatrimonioTotalReal.ToString("N2")</span>
                         </div>
 
                         <div style="height: 280px; position: relative;" class="mb-2">
-                            <canvas id="chartHistoricoProventos"></canvas>
+                            <canvas id="chartEvolucaoPatrimonial"></canvas>
                         </div>
                     </div>
 
@@ -82,7 +82,7 @@
                                                     @(item.Desvio > 0 ? "+" : "")@item.Desvio.ToString("N1")%
                                                 </td>
                                                 <td class="text-center border-0">
-                                                    <span class="badge @badgeStatus rounded-pill px-3 py-1fw-bold">@item.Status</span>
+                                                    <span class="badge @badgeStatus rounded-pill px-3 py-1 fw-bold">@item.Status</span>
                                                 </td>
                                             </tr>
                                         }
@@ -111,7 +111,7 @@
 
 <style>
     #tabsModalFinanceiro .nav-link.active {
-        color: #fff !not-allowed;
+        color: #fff !important;
         border-bottom: 3px solid #198754 !important;
     }
 
@@ -128,3 +128,222 @@
         font-size: 0.78rem;
     }
 </style>
+
+<script>
+    // 1. Função de Cálculo do Preço Médio Ponderado
+    function calcularNovoPrecoMedio(id, qtdAtual, pmAtual, precoAtual) {
+        const inputQtd = document.getElementById(`inputQtdCompra-${id}`);
+        const txtAporte = document.getElementById(`txtNovoAporte-${id}`);
+        const txtNovoPM = document.getElementById(`txtNovoPM-${id}`);
+
+        if (!inputQtd) return;
+
+        const qtdComprada = parseFloat(inputQtd.value) || 0;
+
+        // Calcula o capital exigido para o novo lote
+        const custoAporte = qtdComprada * precoAtual;
+        txtAporte.innerText = custoAporte.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+        // Aplica a fórmula ponderada de mercado para re-precificação
+        const custoTotalAcumulado = (qtdAtual * pmAtual) + custoAporte;
+        const totalAcoesNovas = qtdAtual + qtdComprada;
+
+        const novoPrecoMedioEstimado = totalAcoesNovas > 0 ? (custoTotalAcumulado / totalAcoesNovas) : 0;
+        txtNovoPM.innerText = novoPrecoMedioEstimado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    // Gatilho inicial para computar o cálculo no "Page Load" de cada abertura de modal
+    document.addEventListener("DOMContentLoaded", function() {
+
+    });
+
+    // 2. Inicialização do TomSelect para busca inteligente de Tickers
+    document.addEventListener("DOMContentLoaded", function () {
+        const modalSelect = document.getElementById('selectModalTicker');
+        if (modalSelect) {
+            new TomSelect(modalSelect, {
+                plugins: ['dropdown_input'],
+                create: false,
+                sortField: { field: "text", direction: "asc" },
+                maxOptions: 60,
+                render: {
+                    option: function(data, escape) {
+                        return '<div class="option py-2">' + escape(data.text) + '</div>';
+                    },
+                    item: function(data, escape) {
+                        return '<div class="item fw-bold text-success">' + escape(data.text) + '</div>';
+                    }
+                }
+            });
+        }
+    });
+
+    // 3. Sistema de Edição Inline de Rendimentos na Tabela
+    function tornarRendimentoEditavel(id, valorAtual) {
+        const celula = document.getElementById(`celula-rendimento-${id}`);
+
+        if (celula.querySelector('input')) return;
+
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.step = '0.01';
+        input.min = '0.00';
+        input.className = 'form-control form-control-sm text-success fw-bold text-center border-primary d-inline-block';
+        input.style.maxWidth = '90px';
+        input.value = valorAtual;
+
+        const spanTexto = document.getElementById(`texto-rendimento-${id}`);
+        spanTexto.style.display = 'none';
+        celula.appendChild(input);
+        input.focus();
+        input.select();
+
+        const salvarMudanca = () => {
+            const novoValor = parseFloat(input.value) || 0;
+
+            fetch(`/Carteiras/AtualizarRendimentoInline?id=${id}&novoValor=${novoValor}`, {
+                method: 'POST',
+                headers: {
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    input.remove();
+                    spanTexto.textContent = novoValor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                    spanTexto.style.display = '';
+                    celula.setAttribute('onclick', `tornarRendimentoEditavel(${id}, ${novoValor})`);
+
+                    // RECALCULO DO PROVENTO MENSAL ESTIMADO EM TEMPO REAL
+                    const campoProvento = document.getElementById(`provento-estimado-${id}`);
+                    const campoQuantidade = document.getElementById(`quantidade-${id}`);
+
+                    if (campoProvento && campoQuantidade) {
+                        const qtdTexto = campoQuantidade.textContent.trim().replace(/\./g, '').replace(',', '.');
+                        const quantidade = parseFloat(qtdTexto) || 0;
+                        const novoProventoEstimado = quantidade * novoValor;
+
+                        if (novoProventoEstimado > 0) {
+                            campoProvento.textContent = novoProventoEstimado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                        } else {
+                            campoProvento.textContent = "-";
+                        }
+                    }
+                } else {
+                    alert('Erro ao salvar o novo valor de rendimento.');
+                    cancelarEdicao();
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                cancelarEdicao();
+            });
+        };
+
+        const cancelarEdicao = () => {
+            input.remove();
+            spanTexto.style.display = '';
+        };
+
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                salvarMudanca();
+            }
+            if (e.key === 'Escape') {
+                cancelarEdicao();
+            }
+        });
+
+        input.addEventListener('blur', function() {
+            salvarMudanca();
+        });
+    }
+
+    // =========================================================================
+    // 4. SCRIPT ADICIONADO: NOVO MOTOR DO GRÁFICO DE EVOLUÇÃO PATRIMONIAL LÍQUIDA
+    // =========================================================================
+              // Ajuste: A variável deve ficar fora do DOMContentLoaded para manter a referência global
+    let chartEvolucao = null;
+
+    document.addEventListener("DOMContentLoaded", function () {
+        const modalElement = document.getElementById('modalRendimentosERebalanceamento');
+        if (!modalElement) return;
+
+        modalElement.addEventListener('shown.bs.modal', function () {
+            const canvasEvolucao = document.getElementById('chartEvolucaoPatrimonial');
+            if (!canvasEvolucao) return;
+
+            // Recebe as listas do C#
+            let labelsEvolucao = @Html.Raw(Json.Serialize(ViewBag.HistoricoEvolucaoLabels)) || [];
+            let dadosEvolucao = @Html.Raw(Json.Serialize(ViewBag.HistoricoEvolucaoValores)) || [];
+
+            // CORREÇÃO: Inverte a ordem das listas para exibir da esquerda (antigo) para a direita (recente)
+            labelsEvolucao.reverse();
+            dadosEvolucao.reverse();
+
+            // Tratamento preventivo para o primeiro mês do sistema (gráfico de 1 ponto só)
+            if (labelsEvolucao.length === 1) {
+                labelsEvolucao = ['Início', labelsEvolucao[0]];
+                dadosEvolucao = [dadosEvolucao[0], dadosEvolucao[0]];
+            }
+            else if (labelsEvolucao.length === 0) {
+                labelsEvolucao = ['Início', new Date().toLocaleDateString('pt-BR', { month: '2-digit', year: 'numeric' })];
+                dadosEvolucao = [@Model.PatrimonioTotalReal, @Model.PatrimonioTotalReal];
+            }
+
+            const ctxEvolucao = canvasEvolucao.getContext('2d');
+
+            // Agora o destroy funcionará perfeitamente ao fechar e reabrir o modal
+            if (chartEvolucao) {
+                chartEvolucao.destroy();
+            }
+
+            chartEvolucao = new Chart(ctxEvolucao, {
+                type: 'line',
+                data: {
+                    labels: labelsEvolucao,
+                    datasets: [{
+                        label: 'Patrimônio Líquido (R$)',
+                        data: dadosEvolucao,
+                        borderColor: '#0d6efd',
+                        backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                        fill: true,
+                        tension: 0.3,
+                        borderWidth: 3,
+                        pointBackgroundColor: '#0d6efd',
+                        pointRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => 'Saldo: ' + new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(context.raw)
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            ticks: { callback: (v) => 'R$ ' + v.toLocaleString('pt-BR') }
+                        }
+                    }
+                }
+            });
+        });
+    });
+    // Função auxiliar para transição fluida entre modais
+    function abrirConfiguracaoMetasRapido() {
+        const modalDetalhes = bootstrap.Modal.getInstance(document.getElementById('modalRendimentosERebalanceamento'));
+        if(modalDetalhes) modalDetalhes.hide();
+
+        setTimeout(() => {
+            const modalConfigMetas = new bootstrap.Modal(document.getElementById('modalMetas'));
+            modalConfigMetas.show();
+        }, 400);
+    }
+</script>

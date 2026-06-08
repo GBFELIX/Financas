@@ -1,4 +1,6 @@
-﻿<div class="modal fade" id="modalMetas" tabindex="-1" aria-hidden="true">
+﻿@model CarteiraTotalViewModel
+
+<div class="modal fade" id="modalMetas" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg rounded-4">
             <div class="modal-header bg-dark text-white border-0 py-3">
@@ -27,7 +29,7 @@
                             <div class="col-7"><span class="fw-bold text-secondary">💰 Renda Fixa:</span></div>
                             <div class="col-5">
                                 <div class="input-group input-group-sm">
-                                    <input type="number" id="meta-rf" name="percentualRF" class="form-control text-center fw-bold" min="0" max="100" value="40" oninput="validarSomaMetas()" required />
+                                    <input type="text" id="meta-rf" name="percentualRF" class="form-control text-center fw-bold" min="0" max="100" value="@((ViewBag.MetaRFAtual ?? 0m).ToString("F0"))" oninput="validarSomaMetas()" required />
                                     <span class="input-group-text">%</span>
                                 </div>
                             </div>
@@ -39,7 +41,7 @@
                             <div class="col-7"><span class="fw-bold text-secondary">🏢 FIIs (Imobiliário):</span></div>
                             <div class="col-5">
                                 <div class="input-group input-group-sm">
-                                    <input type="number" id="meta-fiis" name="percentualFIIs" class="form-control text-center fw-bold" min="0" max="100" value="40" oninput="validarSomaMetas()" required />
+                                    <input type="number" id="meta-fiis" name="percentualFIIs" class="form-control text-center fw-bold" min="0" max="100" value="@((ViewBag.MetaFIIsAtual ?? 0m).ToString("F0"))" oninput="validarSomaMetas()" required />
                                     <span class="input-group-text">%</span>
                                 </div>
                             </div>
@@ -51,7 +53,7 @@
                             <div class="col-7"><span class="fw-bold text-secondary">📈 Ações:</span></div>
                             <div class="col-5">
                                 <div class="input-group input-group-sm">
-                                    <input type="number" id="meta-acoes" name="percentualAcoes" class="form-control text-center fw-bold" min="0" max="100" value="20" oninput="validarSomaMetas()" required />
+                                    <input type="number" id="meta-acoes" name="percentualAcoes" class="form-control text-center fw-bold" min="0" max="100" value="@((ViewBag.MetaAcoesAtual ?? 0m).ToString("F0"))" oninput="validarSomaMetas()" required />
                                     <span class="input-group-text">%</span>
                                 </div>
                             </div>
