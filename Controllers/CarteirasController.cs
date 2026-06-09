@@ -214,7 +214,6 @@ namespace Acoes_Fiis.Controllers
             // ==========================================
             string mesAnoAtual = DateTime.Now.ToString("MM/yyyy");
 
-            // 1. Grava ou Atualiza o patrimônio do mês corrente de forma inteligente
             var registroMesAtual = await _context.EvolucaoPatrimonial
                 .FirstOrDefaultAsync(e => e.MesAno == mesAnoAtual && e.Dono == visao);
 
@@ -229,18 +228,49 @@ namespace Acoes_Fiis.Controllers
             await _context.SaveChangesAsync();
 
             // 2. Busca o histórico completo ordenado para o gráfico de linha
-            var historicoPatrimonio = await _context.EvolucaoPatrimonial
+            if (visao != "Casal")
+            {
+                var historicoDoBanco = await _context.EvolucaoPatrimonial
                 .Where(e => e.Dono == visao)
-                .OrderBy(e => e.Id) 
-                .Take(12) 
                 .ToListAsync();
 
-            List<string> labelsEvolucao = historicoPatrimonio.Select(x => x.MesAno).ToList();
-            List<decimal> valoresEvolucao = historicoPatrimonio.Select(x => x.PatrimonioLiquido).ToList();
+                // 2. Ordena cronologicamente quebrando a string "MM/AAAA" (Ano primeiro, depois Mês)
+                var historicoOrdenado = historicoDoBanco
+                    .OrderByDescending(x => x.MesAno.Substring(3, 4))
+                    .ThenByDescending(x => x.MesAno.Substring(0, 2))
+                    .Take(12)
+                    .ToList();
 
-            // Injeta na ViewBag para o Chart.js de Linha
-            ViewBag.HistoricoEvolucaoLabels = labelsEvolucao;
-            ViewBag.HistoricoEvolucaoValores = valoresEvolucao;
+                // 3. Monta as listas para a View na ordem correta (Esquerda -> Direita)
+                List<string> labelsEvolucao = historicoOrdenado.Select(x => x.MesAno).ToList();
+                List<decimal> valoresEvolucao = historicoOrdenado.Select(x => x.PatrimonioLiquido).ToList();
+
+                ViewBag.HistoricoEvolucaoLabels = labelsEvolucao;
+                ViewBag.HistoricoEvolucaoValores = valoresEvolucao;
+            }
+            else
+            {
+                var historicoCasal = await _context.EvolucaoPatrimonial
+                .Where(x => x.Dono != "Casal")
+                .GroupBy(e => e.MesAno)
+                .Select(g => new
+                {
+                    MesAno = g.Key,
+                    PatrimonioSomado = g.Sum(x => x.PatrimonioLiquido)
+                })
+                // Filtra registros com MesAno nulo, se houver
+                .ToListAsync();
+
+                var historicoOrdenado = historicoCasal
+                    .OrderByDescending(x => x.MesAno.Substring(3, 4)) // Ordena pelo Ano (ex: "2026")
+                    .ThenByDescending(x => x.MesAno.Substring(0, 2))  // Ordena pelo Mês (ex: "01")
+                    .Take(12) // Pega os últimos 12 meses da linha do tempo cronológica
+                    .ToList();
+
+                // Divide os dados ordenados para as ViewBags do Gráfico
+                ViewBag.HistoricoEvolucaoLabels = historicoOrdenado.Select(x => x.MesAno).ToList();
+                ViewBag.HistoricoEvolucaoValores = historicoOrdenado.Select(x => x.PatrimonioSomado).ToList();
+            }
         }
 
         private ItemRebalanceamentoViewModel CalcularItemRebalanceamento(string categoria, decimal alvo, decimal valorAtual, decimal total)

@@ -55,7 +55,7 @@ namespace Acoes_Fiis.Models
         public decimal PatrimonioLiquido => PatrimonioTotalReal - SaldoDevedorAtual;
         public decimal SobraDisponivelParaAmortizar => EntradasMesCorrente - SaidasMesCorrente;
         public double PercentualQuitacao => SaldoDevedorAtual > 0
-            ? (double)(PatrimonioTotalReal / SaldoDevedorAtual) * 100
+            ? (double)((PatrimonioTotalReal - PatrimonioTotalReal) / SaldoDevedorAtual) * 100
             : 100;
 
         // --- Listas Auxiliares (Autocomplete) ---

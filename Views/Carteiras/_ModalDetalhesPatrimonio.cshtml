@@ -76,7 +76,7 @@
                     @* Barra de Saúde Financeira *@
                     @{
                         var totalEntradas = Model.ResumoMensal.Sum(x => x.Entradas) - Model.EntradasFuturas;
-                        var totalSaidas = Model.ResumoMensal.Sum(x => x.Saidas);
+                        var totalSaidas = Model.ResumoMensal.Sum(x => x.Saidas) - Model.SaidasFuturas;
                         var percSaida = totalEntradas > 0 ? (totalSaidas / totalEntradas) * 100 : 0;
 
                         // Garante o formato decimal correto com ponto para o estilo do Bootstrap

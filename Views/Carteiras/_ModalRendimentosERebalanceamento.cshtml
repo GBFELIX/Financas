@@ -39,9 +39,7 @@
                         </div>
                     </div>
 
-                    @* ------------------------------------------------------------------- *@
                     @* ABA 2: REBALANCEAMENTO PATRIMONIAL (MÓDULO 1)                       *@
-                    @* ------------------------------------------------------------------- *@
                     <div class="tab-pane fade" id="conteudo-rebalanceamento" role="tabpanel" aria-labelledby="tab-rebalanceamento">
                         <div class="d-flex justify-content-between align-items-center mb-4">
                             <div>
@@ -140,11 +138,9 @@
 
         const qtdComprada = parseFloat(inputQtd.value) || 0;
 
-        // Calcula o capital exigido para o novo lote
         const custoAporte = qtdComprada * precoAtual;
         txtAporte.innerText = custoAporte.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-        // Aplica a fórmula ponderada de mercado para re-precificação
         const custoTotalAcumulado = (qtdAtual * pmAtual) + custoAporte;
         const totalAcoesNovas = qtdAtual + qtdComprada;
 
@@ -152,12 +148,10 @@
         txtNovoPM.innerText = novoPrecoMedioEstimado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
 
-    // Gatilho inicial para computar o cálculo no "Page Load" de cada abertura de modal
     document.addEventListener("DOMContentLoaded", function() {
 
     });
 
-    // 2. Inicialização do TomSelect para busca inteligente de Tickers
     document.addEventListener("DOMContentLoaded", function () {
         const modalSelect = document.getElementById('selectModalTicker');
         if (modalSelect) {
@@ -178,7 +172,6 @@
         }
     });
 
-    // 3. Sistema de Edição Inline de Rendimentos na Tabela
     function tornarRendimentoEditavel(id, valorAtual) {
         const celula = document.getElementById(`celula-rendimento-${id}`);
 
@@ -260,10 +253,8 @@
         });
     }
 
-    // =========================================================================
-    // 4. SCRIPT ADICIONADO: NOVO MOTOR DO GRÁFICO DE EVOLUÇÃO PATRIMONIAL LÍQUIDA
-    // =========================================================================
-              // Ajuste: A variável deve ficar fora do DOMContentLoaded para manter a referência global
+
+    // NOVO MOTOR DO GRÁFICO DE EVOLUÇÃO PATRIMONIAL LÍQUIDA
     let chartEvolucao = null;
 
     document.addEventListener("DOMContentLoaded", function () {
@@ -274,15 +265,12 @@
             const canvasEvolucao = document.getElementById('chartEvolucaoPatrimonial');
             if (!canvasEvolucao) return;
 
-            // Recebe as listas do C#
             let labelsEvolucao = @Html.Raw(Json.Serialize(ViewBag.HistoricoEvolucaoLabels)) || [];
             let dadosEvolucao = @Html.Raw(Json.Serialize(ViewBag.HistoricoEvolucaoValores)) || [];
 
-            // CORREÇÃO: Inverte a ordem das listas para exibir da esquerda (antigo) para a direita (recente)
             labelsEvolucao.reverse();
             dadosEvolucao.reverse();
 
-            // Tratamento preventivo para o primeiro mês do sistema (gráfico de 1 ponto só)
             if (labelsEvolucao.length === 1) {
                 labelsEvolucao = ['Início', labelsEvolucao[0]];
                 dadosEvolucao = [dadosEvolucao[0], dadosEvolucao[0]];
@@ -294,7 +282,6 @@
 
             const ctxEvolucao = canvasEvolucao.getContext('2d');
 
-            // Agora o destroy funcionará perfeitamente ao fechar e reabrir o modal
             if (chartEvolucao) {
                 chartEvolucao.destroy();
             }
@@ -336,7 +323,6 @@
             });
         });
     });
-    // Função auxiliar para transição fluida entre modais
     function abrirConfiguracaoMetasRapido() {
         const modalDetalhes = bootstrap.Modal.getInstance(document.getElementById('modalRendimentosERebalanceamento'));
         if(modalDetalhes) modalDetalhes.hide();
