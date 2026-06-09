@@ -79,7 +79,6 @@
                         var totalSaidas = Model.ResumoMensal.Sum(x => x.Saidas) - Model.SaidasFuturas;
                         var percSaida = totalEntradas > 0 ? (totalSaidas / totalEntradas) * 100 : 0;
 
-                        // Garante o formato decimal correto com ponto para o estilo do Bootstrap
                         var stringWidth = percSaida.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) + "%";
                     }
                     <div class="mb-2 d-flex justify-content-between small">

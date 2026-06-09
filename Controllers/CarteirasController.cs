@@ -560,16 +560,24 @@ namespace Acoes_Fiis.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> AtualizarRendimentoInline(int id, decimal novoValor)
         {
-            var itemCarteira = await _context.RecomendacaoFii.FindAsync(id);
+            var itemCarteira = await _context.Carteira.FindAsync(id);
 
             if (itemCarteira == null)
             {
-                return NotFound();
+                return NotFound("Item não encontrado na carteira.");
             }
 
-            itemCarteira.UltimoRendimento = novoValor;
+            var recomendacaoFii = await _context.RecomendacaoFii
+                .FirstOrDefaultAsync(x => x.Ticker == itemCarteira.Ticker);
 
-            _context.RecomendacaoFii.Update(itemCarteira);
+            if (recomendacaoFii == null)
+            {
+                return NotFound($"Tabela de recomendações não contém o ticker {itemCarteira.Ticker}.");
+            }
+
+            recomendacaoFii.UltimoRendimento = novoValor;
+
+            _context.RecomendacaoFii.Update(recomendacaoFii);
             await _context.SaveChangesAsync();
 
             return Ok();
