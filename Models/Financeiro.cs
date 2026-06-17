@@ -14,7 +14,6 @@ namespace Acoes_Fiis.Models
 
         [Column(TypeName = "decimal(18,2)")]
         public decimal Valor { get; set; }
-
         public DateTime Data { get; set; } = DateTime.Now;
 
         public string Tipo { get; set; } = string.Empty;

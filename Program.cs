@@ -3,16 +3,21 @@ using Acoes_Fiis.Services;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using System;
 using System.Globalization;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
+//AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<Acoes_FiisContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("Acoes_FiisContext") ?? throw new InvalidOperationException("Connection string 'Acoes_FiisContext' not found.")));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("acoes_fiiscontext") ?? throw new InvalidOperationException("connection string 'acoes_fiiscontext' not found.")));
 
 //builder.Services.AddDbContext<Acoes_FiisContext>(options =>
 //    options.UseSqlite("Data Source=Planejamento.db"));
+
+//builder.Services.AddDbContext<Acoes_FiisContext>(options =>
+//    options.UseNpgsql(builder.Configuration.GetConnectionString("Acoes_FiisContext")));
 
 builder.Services.AddScoped<FinanciamentoService>();
 builder.Services.AddHostedService<AtivosBackgroundService>();

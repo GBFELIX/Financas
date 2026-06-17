@@ -39,6 +39,18 @@ namespace Acoes_Fiis.Controllers
             }
         }
         [HttpPost]
+        public async Task<IActionResult> UpdateSegmento(int id, string novoSegmento)
+        {
+            var Acao = await _context.Recomendacao.FindAsync(id);
+            if (Acao != null)
+            {
+                Acao.TipoAcao = novoSegmento;
+                _context.Update(Acao);
+                await _context.SaveChangesAsync();
+            }
+            return RedirectToAction(nameof(Index));
+        }
+        [HttpPost]
         public async Task<IActionResult> AtualizarTodos(string filtroTipo)
         {
             var query = _context.Recomendacao.AsQueryable();

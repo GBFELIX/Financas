@@ -19,32 +19,29 @@ namespace Acoes_Fiis.Models
         public decimal Roe { get; set; } // Em porcentagem (ex: 15.0)
         [Column(TypeName = "decimal(18,2)")]
         public decimal DividendYield { get; set; } // Em porcentagem
-
-        [DataType(DataType.DateTime)]
-        [Column(TypeName = "datetime")]
         public DateTime DataAtualizacao { get; set; }
-        // Cálculos Automáticos
         public decimal PVP => PrecoAtual / VPA;
         public decimal PL => LPA > 0 ? PrecoAtual / LPA : 0; // Preço/Lucro
 
         [Display(Name = "Tipo de Ativo")]
 
         public string? TipoAtivo { get; set; }
+        public string? TipoAcao { get; set; }
         public string Status
         {
             get
             {
-                // Lógica de "Compra Forte"
+                // 1. Risco/Venda sempre no topo (Filtro de Segurança Inicial)
+                if (PVP > 2.5m || Roe < 0)
+                    return "Venda/Risco";
+
+                // 2. Lógica de "Compra Forte"
                 if (PVP < 1.0m && Roe > 10m && PL < 15m)
                     return "Compra Forte";
 
-                // Lógica de "Compra" (Barata, mas com ROE modesto)
+                // 3. Lógica de "Compra" (Modesta)
                 if (PVP < 1.2m && Roe > 5m)
                     return "Compra";
-
-                // Lógica de "Venda" (Muito cara ou ROE negativo)
-                if (PVP > 2.5m || Roe < 0)
-                    return "Venda/Risco";
 
                 return "Aguardar/Neutro";
             }
@@ -57,15 +54,13 @@ namespace Acoes_Fiis.Models
             "Venda/Risco" => "badge bg-danger",
             _ => "badge bg-secondary"
         };
+
         [NotMapped]
         public decimal PrecoTetoVenda
         {
             get
             {
                 if (VPA <= 0) return 0;
-
-                // Exemplo: Se o P/VP for maior que 1.5, vira "Venda"
-                // Então: PrecoTeto = VPA * 1.5
                 return VPA * 1.5m;
             }
         }
@@ -76,16 +71,22 @@ namespace Acoes_Fiis.Models
             get
             {
                 if (PrecoAtual <= 0 || PrecoTetoVenda <= 0) return 0;
+                // Se o preço atual já passou o teto de venda, a distância é zero (já deveria vender)
+                if (PrecoAtual >= PrecoTetoVenda) return 0;
+
                 return ((PrecoTetoVenda / PrecoAtual) - 1) * 100;
             }
         }
+
         [NotMapped]
         public decimal ValorJustoGraham
         {
             get
             {
-                // A fórmula de Graham é: Raiz Quadrada de (22.5 * LPA * VPA)
-                // Só calculamos se LPA e VPA forem positivos para evitar erro matemático
+                // Correção Conceitual: Se for FII, a fórmula de Graham não se aplica
+                // Caso você tenha a propriedade TipoAtivo na classe (como visto na imagem_c42d10.png)
+                if (TipoAtivo == "FII" || TipoAtivo == "FundoImobiliario") return 0;
+
                 if (LPA <= 0 || VPA <= 0) return 0;
 
                 double resultado = Math.Sqrt(22.5 * (double)LPA * (double)VPA);
@@ -99,8 +100,12 @@ namespace Acoes_Fiis.Models
             get
             {
                 if (PrecoAtual <= 0 || ValorJustoGraham <= 0) return 0;
-                // Diferença percentual entre o preço atual e o valor justo
-                return ((ValorJustoGraham / PrecoAtual) - 1) * 100;
+
+                // Se o preço atual for maior ou igual ao preço justo, não há margem de segurança (desconto)
+                if (PrecoAtual >= ValorJustoGraham) return 0;
+
+                // Fórmula real da Margem de Desconto: (Valor Justo - Preço Atual) / Valor Justo
+                return ((ValorJustoGraham - PrecoAtual) / ValorJustoGraham) * 100;
             }
         }
     }

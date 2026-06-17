@@ -21,7 +21,6 @@ namespace Acoes_Fiis.Models
         public string ClasseAtivo { get; set; }
 
         public string Moeda { get; set; } = "BRL"; // Para saber se o preço está em Reais ou Dólares
-
         public DateTime DataAtualizacao { get; set; }
     }
 }

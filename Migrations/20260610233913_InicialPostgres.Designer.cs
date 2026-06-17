@@ -3,6 +3,7 @@ using System;
 using Acoes_Fiis.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Acoes_Fiis.Migrations
 {
     [DbContext(typeof(Acoes_FiisContext))]
-    partial class Acoes_FiisContextModelSnapshot : ModelSnapshot
+    [Migration("20260610233913_InicialPostgres")]
+    partial class InicialPostgres
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

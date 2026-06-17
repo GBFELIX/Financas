@@ -127,85 +127,100 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach (var item in Model)
+                @{
+                    // Agrupa o modelo por ClasseAtivo e ordena os grupos alfabeticamente
+                    var gruposPorClasse = Model.GroupBy(x => string.IsNullOrEmpty(x.ClasseAtivo) ? "Outros" : x.ClasseAtivo)
+                    .OrderBy(g => g.Key);
+                }
+
+                @foreach (var grupo in gruposPorClasse)
                 {
-                    <tr>
-                        <td>
-                            @switch (item.ClasseAtivo)
-                            {
-                                case "Cripto":
-                                    <span class="badge bg-warning text-dark">₿ Cripto</span>
-                                    break;
-                                case "BDR":
-                                    <span class="badge bg-info text-dark">🌍 BDR</span>
-                                    break;
-                                case "ETF":
-                                    <span class="badge bg-primary">📊 ETF</span>
-                                    break;
-                                case "Ouro":
-                                    <span class="badge bg-secondary" style="background-color: #ffd700 !important; color: black;">📀 Ouro</span>
-                                    break;
-                                case "Moeda":
-                                    <span class="badge bg-success">💵 Moeda</span>
-                                    break;
-                                default:
-                                    <span class="badge bg-dark">@item.ClasseAtivo</span>
-                                    break;
-                            }
-                        </td>
-                        <td class="fw-bold">@item.Ticker</td>
-                        <td>@item.Nome</td>
-                        <td class="fw-bold">
-                            R$ @item.PrecoAtual.ToString(item.ClasseAtivo == "Cripto" || item.ClasseAtivo == "Moeda" ? "N4" : "N2")
-                        </td>
-
-                        @* LÓGICA DE RECOMENDAÇÃO BASEADA NA CLASSE *@
-                        <td>
-                            @{
-                                string rec = "Analisar";
-                                string cor = "bg-secondary";
-
-                                switch (item.ClasseAtivo)
-                                {
-                                    case "Cripto":
-                                        rec = "Especulativo";
-                                        cor = "bg-dark";
-                                        break;
-                                    case "BDR":
-                                    case "ETF":
-                                        rec = "Diversificar";
-                                        cor = "bg-primary";
-                                        break;
-                                    case "Ouro":
-                                    case "Moeda":
-                                        rec = "Hedge";
-                                        cor = "bg-info text-dark";
-                                        break;
-                                }
-                            }
-                            <span class="badge @cor">@rec</span>
-                        </td>
-
-                        <td><span class="badge border text-dark">@item.Moeda</span></td>
-                        <td>
-                            <small>@item.DataAtualizacao.ToString("dd/MM HH:mm")</small>
-                            @if (item.DataAtualizacao > DateTime.Now.AddMinutes(-30))
-                            {
-                                <i class="bi bi-check-circle-fill text-success"></i>
-                            }
-                        </td>
-                        <td>
-                            <div class="btn-group">
-                                <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil-fill"></i></a>
-                                <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash-fill"></i></a>
-                            </div>
+                    <!-- Linha de Cabeçalho do Grupo de Classe de Ativo -->
+                    <tr class="table-light fw-bold text-secondary text-uppercase" style="font-size: 0.85rem; letter-spacing: 0.5px;">
+                        <td colspan="8" class="ps-3 py-2 bg-light border-bottom">
+                            <i class="bi bi-globe2 me-1 text-primary"></i> @grupo.Key (@grupo.Count())
                         </td>
                     </tr>
+
+                    @foreach (var item in grupo)
+                    {
+                        <tr>
+                            <td>
+                                @switch (item.ClasseAtivo)
+                                {
+                                    case "Cripto":
+                                        <span class="badge bg-warning text-dark">₿ Cripto</span>
+                                        break;
+                                    case "BDR":
+                                        <span class="badge bg-info text-dark">🌍 BDR</span>
+                                        break;
+                                    case "ETF":
+                                        <span class="badge bg-primary">📊 ETF</span>
+                                        break;
+                                    case "Ouro":
+                                        <span class="badge bg-secondary" style="background-color: #ffd700 !important; color: black;">📀 Ouro</span>
+                                        break;
+                                    case "Moeda":
+                                        <span class="badge bg-success">💵 Moeda</span>
+                                        break;
+                                    default:
+                                        <span class="badge bg-dark">@item.ClasseAtivo</span>
+                                        break;
+                                }
+                            </td>
+                            <td class="fw-bold">@item.Ticker</td>
+                            <td>@item.Nome</td>
+                            <td class="fw-bold">
+                                R$ @item.PrecoAtual.ToString(item.ClasseAtivo == "Cripto" || item.ClasseAtivo == "Moeda" ? "N4" : "N2")
+                            </td>
+
+                            @* LÓGICA DE RECOMENDAÇÃO BASEADA NA CLASSE *@
+                            <td>
+                                @{
+                                    string rec = "Analisar";
+                                    string cor = "bg-secondary";
+
+                                    switch (item.ClasseAtivo)
+                                    {
+                                        case "Cripto":
+                                            rec = "Especulativo";
+                                            cor = "bg-dark";
+                                            break;
+                                        case "BDR":
+                                        case "ETF":
+                                            rec = "Diversificar";
+                                            cor = "bg-primary";
+                                            break;
+                                        case "Ouro":
+                                        case "Moeda":
+                                            rec = "Hedge";
+                                            cor = "bg-info text-dark";
+                                            break;
+                                    }
+                                }
+                                <span class="badge @cor">@rec</span>
+                            </td>
+
+                            <td><span class="badge border text-dark">@item.Moeda</span></td>
+                            <td>
+                                <small>@item.DataAtualizacao.ToString("dd/MM HH:mm")</small>
+                                @if (item.DataAtualizacao > DateTime.Now.AddMinutes(-30))
+                                {
+                                    <i class="bi bi-check-circle-fill text-success"></i>
+                                }
+                            </td>
+                            <td>
+                                <div class="btn-group">
+                                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil-fill"></i></a>
+                                    <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash-fill"></i></a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
                 }
             </tbody>
         </table>
     </div>
-</div>
 
 <div class="modal fade" id="modalInfoGlobal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">

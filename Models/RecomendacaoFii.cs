@@ -27,6 +27,7 @@ namespace Acoes_Fiis.Models
         public string TipoFii { get; set; } // Tijolo, Papel, FoF
         public string Segmento { get; set; } // Logística, Shopping, etc.
 
+
         public DateTime DataAtualizacao { get; set; }
 
         [NotMapped]

@@ -112,39 +112,114 @@
     }
 
     <div class="table-responsive shadow rounded">
-        <table class="table table-hover align-middle bg-white mb-0">
-            <thead class="table-dark">
-                <tr>
-                    <th>Ticker</th>
-                    <th>Segmento</th>
-                    <th>Preço Atual</th>
-                    <th>P/VP</th>
-                    <th>VPA</th>
-                    <th>Rend. Mensal</th>
-                    <th>Data Atualização</th>
-                    <th>Projeção 12m</th>
-                    <th>Recomendação</th>
-                    <th>Ações</th>
+    <table class="table table-hover align-middle bg-white mb-0">
+        <thead class="table-dark">
+            <tr>
+                <th>Ticker</th>
+                <th>Segmento</th>
+                <th>Tipo</th>
+                <th>Preço Atual</th>
+                <th>P/VP</th>
+                <th>VPA</th>
+                <th>Rend. Mensal</th>
+                <th>Data Atualização</th>
+                <th>Projeção 12m</th>
+                <th>Recomendação</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            @{
+                // Agrupa o modelo pelo campo Segmento (trata nulos como 'Não Definido')
+                var gruposPorSegmento = Model.GroupBy(x => string.IsNullOrEmpty(x.Segmento) ? "Não Definido" : x.Segmento)
+                                             .OrderBy(g => g.Key);
+            }
+
+            @foreach (var grupo in gruposPorSegmento)
+            {
+                <tr class="table-light fw-bold text-secondary text-uppercase" style="font-size: 0.85rem; letter-spacing: 0.5px;">
+                    <td colspan="11" class="ps-3 py-2 bg-light border-bottom">
+                        <i class="bi bi-folder-fill me-1 text-primary"></i> @grupo.Key (@grupo.Count())
+                    </td>
                 </tr>
-            </thead>
-            <tbody>
-                @foreach (var item in Model)
+
+                @foreach (var item in grupo)
                 {
                     <tr>
                         <td class="fw-bold">@item.Ticker.ToUpper()</td>
 
-                        <td>
-                            <form asp-action="UpdateSegmento" method="post" class="d-flex">
-                                <input type="hidden" name="id" value="@item.Id" />
-                                <select name="novoSegmento" class="form-select form-select-sm" onchange="this.form.submit()">
-                                    <!option value="Logística" @(item.Segmento == "Logística" ? "selected" : "")>Logística</!option>
-                                    <!option value="Papel" @(item.Segmento == "Papel" ? "selected" : "")>Papel (CRI)</!option>
-                                    <!option value="Shopping" @(item.Segmento == "Shopping" ? "selected" : "")>Shopping</!option>
-                                    <!option value="Lajes" @(item.Segmento == "Lajes" ? "selected" : "")>Lajes</!option>
-                                    <!option value="Híbrido" @(item.Segmento == "Híbrido" ? "selected" : "")>Híbrido</!option>
-                                </select>
-                            </form>
-                        </td>
+                            <!-- 1. COLUNA: SEGMENTO DO FII (Micro) -->
+                            <td>
+                                <form asp-action="UpdateSegmento" method="post" class="d-flex justify-content-center align-items-center">
+                                    <input type="hidden" name="id" value="@item.Id" />
+
+                                    <div class="position-relative" style="width: 24px; height: 24px;">
+                                        <!-- Select invisível por cima para capturar o clique e o Tooltip (title) -->
+                                        <select name="novoSegmento"
+                                                class="form-select form-select-sm position-absolute top-0 start-0 w-100 h-100 opacity-0 cursor-pointer"
+                                                style="z-index: 2;"
+                                                title="Segmento: @(string.IsNullOrEmpty(item.Segmento) ? "Não Definido" : item.Segmento) (Clique para alterar)"
+                                                onchange="this.form.submit()">
+
+                                            <option value="Logística" selected="@(item.Segmento == "Logística")">🚚 Logística</option>
+                                            <option value="Papel" selected="@(item.Segmento == "Papel")">📜 Papel (CRI)</option>
+                                            <option value="Shopping" selected="@(item.Segmento == "Shopping")">🛍️ Shopping</option>
+                                            <option value="Lajes" selected="@(item.Segmento == "Lajes")">🏢 Lajes Corporativas</option>
+                                            <option value="Híbrido" selected="@(item.Segmento == "Híbrido")">🔄 Híbrido</option>
+                                        </select>
+
+                                        <!-- Camada de baixo: Desenho dinâmico do Segmento atual -->
+                                        <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style="z-index: 1; pointer-events: none; font-size: 1.1rem;">
+                                            @{
+                                                string emojiSegmento = item.Segmento switch
+                                                {
+                                                    "Logística" => "🚚",
+                                                    "Papel" => "📜",
+                                                    "Shopping" => "🛍️",
+                                                    "Lajes" => "🏢",
+                                                    "Híbrido" => "🔄",
+                                                    _ => "❓"
+                                                };
+                                            }
+                                            @emojiSegmento
+                                        </div>
+                                    </div>
+                                </form>
+                            </td>
+
+                            <!-- 2. COLUNA: TIPO DO FII (Macro) -->
+                            <td>
+                                <form asp-action="UpdateTipo" method="post" class="d-flex justify-content-center align-items-center">
+                                    <input type="hidden" name="id" value="@item.Id" />
+
+                                    <div class="position-relative" style="width: 24px; height: 24px;">
+                                        <select name="novoTipo"
+                                                class="form-select form-select-sm position-absolute top-0 start-0 w-100 h-100 opacity-0 cursor-pointer"
+                                                style="z-index: 2;"
+                                                title="Tipo de FII: @(string.IsNullOrEmpty(item.TipoFii) ? "Não Definido" : item.TipoFii) (Clique para alterar)"
+                                                onchange="this.form.submit()">
+
+                                            <option value="Tijolo" selected="@(item.TipoFii == "Tijolo")">🧱 Tijolo</option>
+                                            <option value="Papel" selected="@(item.TipoFii == "Papel")">📜 Papel</option>
+                                            <option value="Híbrido" selected="@(item.TipoFii == "Híbrido")">🔄 Híbrido</option>
+                                        </select>
+
+                                        <!-- Camada de baixo: Desenho dinâmico do TipoFii atual -->
+                                        <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style="z-index: 1; pointer-events: none; font-size: 1.1rem;">
+                                            @{
+                                                string emojiTipoFii = item.TipoFii switch
+                                                {
+                                                    "Tijolo" => "🧱",
+                                                    "Papel" => "📜",
+                                                    "Híbrido" => "🔄",
+                                                    _ => "❓"
+                                                };
+                                            }
+                                            @emojiTipoFii
+                                        </div>
+                                    </div>
+                                </form>
+                            </td>
 
                         <td>R$ @item.PrecoAtual.ToString("N2")</td>
 
@@ -196,9 +271,10 @@
                         </td>
                     </tr>
                 }
-            </tbody>
-        </table>
-    </div>
+            }
+        </tbody>
+    </table>
+</div>
 </div>
 
 <div class="modal fade" id="modalIndicadores" tabindex="-1" aria-labelledby="modalIndicadoresLabel" aria-hidden="true">

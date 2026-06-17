@@ -23,14 +23,17 @@
 
                 <label class="small text-muted text-uppercase fw-bold mb-3">Oportunidades do Radar</label>
 
-                @if (Model.SugestoesAporte.Any())
+                @if (Model.SugestoesAporte != null && Model.SugestoesAporte.Any())
                 {
-                    @* Container Flex para forçar 5 por linha *@
+                    // Força a matemática da sobra do mês como decimal puro no topo
+                    decimal sobraMes = Model.EntradasMesCorrente - Model.SaidasMesCorrente;
+
                     <div class="d-flex flex-wrap gap-3 justify-content-start">
                         @foreach (var item in Model.SugestoesAporte)
                         {
-                            var sobraMes = Model.EntradasMesCorrente - Model.SaidasMesCorrente;
-                            var qtdPossivel = item.PrecoAtual > 0 ? (int)(sobraMes / item.PrecoAtual) : 0;
+                            // CORREÇÃO 1: Garante que o preço atual seja tratado como decimal para não quebrar a divisão no C#
+                            decimal precoAtivo = (decimal)item.PrecoAtual;
+                            int qtdPossivel = precoAtivo > 0 ? (int)(sobraMes / precoAtivo) : 0;
 
                             @* Largura calculada: (100% / 5) - compensação do gap *@
                             <div class="card border-0 bg-light rounded-4 hover-shadow transition text-center p-2"
@@ -40,22 +43,22 @@
                                     <div>
                                         <span class="badge @(item.Tipo == "FII" ? "bg-primary" : "bg-success") mb-2">@item.Tipo</span>
                                         <h4 class="fw-bold mb-0">@item.Ticker</h4>
-                                        <div class="fw-bold text-dark fs-5">@item.PrecoAtual.ToString("C2")</div>
+                                        <div class="fw-bold text-dark fs-5">@precoAtivo.ToString("C2")</div>
                                     </div>
 
                                     <div class="my-2">
                                         <small class="text-info d-block fw-bold" style="font-size: 0.75rem;">
                                             @(item.Tipo == "FII" ? "P/VP" : "P/L"): @item.IndicadorDesconto.ToString("N2")
                                         </small>
-                                        <small class="text-muted d-block" style="font-size: 0.7rem; line-height: 1;">@item.Mensagem</small>
+                                        <small class="text-muted d-block" style="font-size: 0.7rem; line-height: 1.1;">@item.Mensagem</small>
                                     </div>
 
                                     @if (qtdPossivel > 0)
                                     {
-                                        <div class="bg-white rounded-3 py-2 border border-warning-subtle">
-                                            <small class="d-block text-muted" style="font-size: 0.65rem;">VOCÊ COMPRA</small>
+                                        <div class="bg-white rounded-3 py-1 border border-warning-subtle">
+                                            <small class="d-block text-muted" style="font-size: 0.55rem; letter-spacing: 0.5px;">CAPACIDADE MÁXIMA</small>
                                             <strong class="text-dark fs-5">@qtdPossivel</strong>
-                                            <small class="text-muted" style="font-size: 0.65rem;">cotas</small>
+                                            <small class="text-muted d-block" style="font-size: 0.55rem;">@(qtdPossivel == 1 ? "cota disponível" : "cotas disponíveis")</small>
                                         </div>
                                     }
                                 </div>

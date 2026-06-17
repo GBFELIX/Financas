@@ -25,11 +25,17 @@
                     </div>
 
                     <div class="row">
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-3 mb-3">
                             <label asp-for="Valor" class="form-label">Valor (R$)</label>
-                            <input asp-for="Valor" id="inputValor-@Model.Id" class="form-control" type="text" />
+                            <input asp-for="Valor" id="inputValor-@Model.Id" class="form-control" type="text" data-valor-original="@Model.Valor" />
                             <span asp-validation-for="Valor" class="text-danger"></span>
                         </div>
+
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label text-success">Somar (+ R$)</label>
+                            <input id="inputAdicional-@Model.Id" class="form-control border-success text-success" type="number" step="0.01" placeholder="0,00" oninput="jsCalcular_@(Model.Id)()" />
+                        </div>
+
                         <div class="col-md-6 mb-3">
                             <label asp-for="Data" class="form-label"></label>
                             <input asp-for="Data" class="form-control" type="date" />
@@ -71,7 +77,7 @@
                         <select asp-for="Pagamento" class="form-select">
                             <option value="Pix">Pix / Dinheiro</option>
                             <option value="Cartão Crédito">Cartão de Crédito</option>
-                            <option value="Cartão Débito">Cartão de Débito</option>
+                            <option value="Cartão Débito">Cartão de Dezbito</option>
                         </select>
                         <span asp-validation-for="Pagamento" class="text-danger"></span>
                     </div>
@@ -85,6 +91,24 @@
         </div>
     </div>
 </div>
+
+<script>
+    function jsCalcular_@(Model.Id)() {
+        var inputPrincipal = document.getElementById("inputValor-@Model.Id");
+        var inputAdicional = document.getElementById("inputAdicional-@Model.Id");
+
+        if (inputPrincipal && inputAdicional) {
+            var valorOriginalStr = inputPrincipal.getAttribute("data-valor-original").replace(',', '.');
+            var valorOriginal = parseFloat(valorOriginalStr) || 0;
+
+            var valorAdicional = parseFloat(inputAdicional.value) || 0;
+
+            var resultadoFinal = valorOriginal + valorAdicional;
+
+            inputPrincipal.value = resultadoFinal.toFixed(2).replace('.', ',');
+        }
+    }
+</script>
 
 @section Scripts {
     @{

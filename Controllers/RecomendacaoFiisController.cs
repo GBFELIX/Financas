@@ -46,6 +46,18 @@ namespace Acoes_Fiis.Controllers
             }
             return RedirectToAction(nameof(Index));
         }
+        [HttpPost]
+        public async Task<IActionResult> UpdateTipo(int id, string novoTipo)
+        {
+            var fii = await _context.RecomendacaoFii.FindAsync(id);
+            if (fii != null)
+            {
+                fii.TipoFii = novoTipo;
+                _context.Update(fii);
+                await _context.SaveChangesAsync();
+            }
+            return RedirectToAction(nameof(Index));
+        }
 
         [HttpPost]
         public async Task<IActionResult> UpdateSegmento(int id, string novoSegmento)

@@ -18,7 +18,7 @@
                             <span class="input-group-text bg-light"><i class="bi bi-folder-fill text-warning"></i></span>
                             <input type="text" name="caminhoPastaLocal" class="form-control"
                                    placeholder="Ex: C:\Users\Nome\Google Drive\MeuBackup"
-                                   value="@Model.ConfiguracaoBackups.CaminhoPastaLocal" required />
+                                   value="@Model.ConfiguracaoBackups?.CaminhoPastaLocal" required />
                         </div>
                         <div class="form-text" style="font-size: 0.75rem;">
                             Indique a pasta física do seu computador que está vinculada ao aplicativo do Google Drive.

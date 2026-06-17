@@ -208,72 +208,160 @@
                         <th>P/VP</th>
                         <th>P/L</th>
                         <th>ROE</th>
-                        <th>DY</th>
                         <th>Preço Teto</th>
                         <th>Margem Subida</th>
                         <th>Justo (Graham)</th>
                         <th>Margem Seg.</th>
                         <th>Atualização</th>
-                        <th style="min-width: 150px;">Tipo</th>
+                        <th>Tipo</th>
+                        <th>Setor</th>
                         <th class="text-center">Recomendação</th>
                         <th class="text-center" style="width: 50px;">Ação</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var item in Model)
+                    @{
+                        // Agrupa o modelo pela propriedade TipoAcao e ordena alfabeticamente
+                        var gruposPorSetor = Model.GroupBy(x => string.IsNullOrEmpty(x.TipoAcao) ? "Setor Não Definido" : x.TipoAcao)
+                        .OrderBy(g => g.Key);
+                    }
+
+                    @foreach (var grupo in gruposPorSetor)
                     {
-                        <tr>
-                            <td class="ps-4 fw-bold text-primary sticky-col">@item.Ticker.ToUpper()</td>
-                            <td><span class="text-nowrap">R$ @item.PrecoAtual.ToString("N2")</span></td>
-                            <td class="text-muted">@item.PVP.ToString("N2")</td>
-                            <td class="text-muted">@(item.PL == 0 ? "N/A" : item.PL.ToString("N2"))</td>
-                            <td class="@(item.Roe > 15 ? "text-success fw-bold" : "")">@item.Roe.ToString("N1")%</td>
-                            <td class="fw-bold">@item.DividendYield.ToString("N2")%</td>
-                            <td class="text-nowrap">R$ @item.PrecoTetoVenda.ToString("N2")</td>
-                            <td class="text-nowrap @(item.DistanciaParaVenda > 0 ? "text-success" : "text-danger")">
-                                @(item.DistanciaParaVenda > 0 ? "+" : "")@item.DistanciaParaVenda.ToString("N1")%
-                            </td>
-                            <td class="text-nowrap">R$ @item.ValorJustoGraham.ToString("N2")</td>
-                            <td>
-                                @if (item.MargemSeguranca > 20)
-                                {
-                                    <span class="text-success fw-bold">@item.MargemSeguranca.ToString("N0")%</span>
-                                }
-                                else if (item.MargemSeguranca > 0)
-                                {
-                                    <span class="text-info">@item.MargemSeguranca.ToString("N0")%</span>
-                                }
-                                else
-                                {
-                                    <span class="text-danger">@item.MargemSeguranca.ToString("N0")%</span>
-                                }
-                            </td>
-                            <td class="small text-muted text-nowrap">
-                                @item.DataAtualizacao.ToString("dd/MM HH:mm")
-                                <i class="bi @(item.DataAtualizacao > DateTime.Now.AddMinutes(-30) ? "bi-patch-check-fill text-success" : "bi-clock text-warning")"></i>
-                            </td>
-                            <td>
-                                <form asp-action="AlterarTipoRapido" method="post">
-                                    <input type="hidden" name="id" value="@item.Id" />
-                                    <select name="novoTipo" onchange="this.form.submit()" class="form-select form-select-sm py-0 shadow-none">
-                                        <!option value="Setor Perene" @(item.TipoAtivo == "Setor Perene" ? "selected" : "")>🏦 Perene</!option>
-                                        <!option value="Dividendos" @(item.TipoAtivo == "Dividendos" ? "selected" : "")>💰 Divs</!option>
-                                        <!option value="Crescimento" @(item.TipoAtivo == "Crescimento" ? "selected" : "")>🚀 Cresc</!option>
-                                    </select>
-                                </form>
-                            </td>
-                            <td class="text-center text-nowrap px-3">
-                                <span class="@item.CorClasse badge rounded-pill" style="padding: 5px 12px; font-size: 0.75rem;">
-                                    @item.Status
-                                </span>
-                            </td>
-                            <td>
-                                <div class="btn-group">
-                                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil-fill"></i></a>
-                                    <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash-fill"></i></a>
-                                </div>
+                        <tr class="table-light fw-bold text-secondary text-uppercase" style="font-size: 0.85rem; letter-spacing: 0.5px;">
+                            <td colspan="14" class="ps-4 py-2 bg-light border-bottom">
+                                <i class="bi bi-tags-fill me-1 text-primary"></i> @grupo.Key (@grupo.Count())
                             </td>
                         </tr>
+
+                        @foreach (var item in grupo)
+                        {
+                            <tr>
+                                <td class="ps-4 fw-bold text-primary sticky-col">@item.Ticker.ToUpper()</td>
+                                <td><span class="text-nowrap">R$ @item.PrecoAtual.ToString("N2")</span></td>
+                                <td class="text-muted">@item.PVP.ToString("N2")</td>
+                                <td class="text-muted">@(item.PL == 0 ? "N/A" : item.PL.ToString("N2"))</td>
+                                <td class="@(item.Roe > 15 ? "text-success fw-bold" : "")">@item.Roe.ToString("N1")%</td>
+                                <td class="text-nowrap">R$ @item.PrecoTetoVenda.ToString("N2")</td>
+                                <td class="text-nowrap @(item.DistanciaParaVenda > 0 ? "text-success" : "text-danger")">
+                                    @(item.DistanciaParaVenda > 0 ? "+" : "")@item.DistanciaParaVenda.ToString("N1")%
+                                </td>
+                                <td class="text-nowrap">R$ @item.ValorJustoGraham.ToString("N2")</td>
+                                <td>
+                                    @if (item.MargemSeguranca > 20)
+                                    {
+                                        <span class="text-success fw-bold">@item.MargemSeguranca.ToString("N0")%</span>
+                                    }
+                                    else if (item.MargemSeguranca > 0)
+                                    {
+                                        <span class="text-info">@item.MargemSeguranca.ToString("N0")%</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-danger">@item.MargemSeguranca.ToString("N0")%</span>
+                                    }
+                                </td>
+                                <td class="small text-muted text-nowrap">
+                                    @item.DataAtualizacao.ToString("dd/MM HH:mm")
+                                    <i class="bi @(item.DataAtualizacao > DateTime.Now.AddMinutes(-30) ? "bi-patch-check-fill text-success" : "bi-clock text-warning")"></i>
+                                </td>
+                                <td>
+                                    <form asp-action="AlterarTipoRapido" method="post" class="d-flex justify-content-center align-items-center">
+                                        <input type="hidden" name="id" value="@item.Id" />
+
+                                        <div class="position-relative" style="width: 24px; height: 24px;">
+                                            <select name="novoTipo"
+                                                    class="form-select form-select-sm position-absolute top-0 start-0 w-100 h-100 opacity-0 cursor-pointer"
+                                                    style="z-index: 2;"
+                                                    title="Tipo Atual: @item.TipoAtivo (Clique para alterar)"
+                                                    onchange="this.form.submit()">
+
+                                                <option value="Setor Perene" selected="@(item.TipoAtivo == "Setor Perene")">🏦 Setor Perene</option>
+                                                <option value="Dividendos" selected="@(item.TipoAtivo == "Dividendos")">💰 Dividendos</option>
+                                                <option value="Crescimento" selected="@(item.TipoAtivo == "Crescimento")">🚀 Crescimento</option>
+                                            </select>
+
+                                            <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style="z-index: 1; pointer-events: none; font-size: 1.1rem;">
+                                                @{
+                                                    string emojiTipo = item.TipoAtivo switch
+                                                    {
+                                                        "Setor Perene" => "🏦",
+                                                        "Dividendos" => "💰",
+                                                        "Crescimento" => "🚀",
+                                                        _ => "❓"
+                                                    };
+                                                }
+                                                @emojiTipo
+                                            </div>
+                                        </div>
+                                    </form>
+                                </td>
+
+                                <td>
+                                    <form asp-action="UpdateSegmento" method="post" class="d-flex justify-content-center align-items-center">
+                                        <input type="hidden" name="id" value="@item.Id" />
+
+                                        <div class="position-relative" style="width: 24px; height: 24px;">
+                                            <select name="novoSegmento"
+                                                    class="form-select form-select-sm position-absolute top-0 start-0 w-100 h-100 opacity-0 cursor-pointer"
+                                                    style="z-index: 2;"
+                                                    title="Setor Atual: @(string.IsNullOrEmpty(item.TipoAcao) ? "Não Definido" : item.TipoAcao) (Clique para alterar)"
+                                                    onchange="this.form.submit()">
+
+                                                <option value="Bancário" selected="@(item.TipoAcao == "Bancário")">🏦 Bancário</option>
+                                                <option value="Seguros" selected="@(item.TipoAcao == "Seguros")">🛡️ Seguros</option>
+                                                <option value="Petroleiras" selected="@(item.TipoAcao == "Petroleiras")">🛢️ Petroleiras</option>
+                                                <option value="Saneamento" selected="@(item.TipoAcao == "Saneamento")">🚰 Saneamento</option>
+                                                <option value="Elétrico" selected="@(item.TipoAcao == "Elétrico")">⚡ Elétrico</option>
+                                                <option value="Telecom" selected="@(item.TipoAcao == "Telecom")">📶 Telecomunicações</option>
+                                                <option value="Varejo" selected="@(item.TipoAcao == "Varejo")">🛍️ Varejo / Consumo</option>
+                                                <option value="Tecnologia" selected="@(item.TipoAcao == "Tecnologia")">💻 Tecnologia</option>
+                                                <option value="Mineração/Siderurgia" selected="@(item.TipoAcao == "Mineração/Siderurgia")">⛏️ Mineração / Siderurgia</option>
+                                                <option value="Construção/Shopping" selected="@(item.TipoAcao == "Construção/Shopping")">🏢 Construção / Imobiliário</option>
+                                                <option value="Logística/Bens de Capital" selected="@(item.TipoAcao == "Logística/Bens de Capital")">🚛 Logística / Indústria</option>
+                                                <option value="Saúde" selected="@(item.TipoAcao == "Saúde")">🩺 Saúde / Farmácia</option>
+                                                <option value="Outros" selected="@(item.TipoAcao == "Outros")">📦 Outros</option>
+                                            </select>
+
+                                            <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style="z-index: 1; pointer-events: none; font-size: 1.1rem;">
+                                                @{
+                                                    string emojiSetor = item.TipoAcao switch
+                                                    {
+                                                        "Bancário" => "🏦",
+                                                        "Seguros" => "🛡️",
+                                                        "Petroleiras" => "🛢️",
+                                                        "Saneamento" => "🚰",
+                                                        "Elétrico" => "⚡",
+                                                        "Telecom" => "📶",
+                                                        "Varejo" => "🛍️",
+                                                        "Tecnologia" => "💻",
+                                                        "Mineração/Siderurgia" => "⛏️",
+                                                        "Construção/Shopping" => "🏢",
+                                                        "Logística/Bens de Capital" => "🚛",
+                                                        "Saúde" => "🩺",
+                                                        "Outros" => "📦",
+                                                        _ => "❓"
+                                                    };
+                                                }
+                                                @emojiSetor
+                                            </div>
+                                        </div>
+                                    </form>
+                                </td>
+
+                                <td class="text-center text-nowrap px-3">
+                                    <span class="@item.CorClasse badge rounded-pill" style="padding: 5px 12px; font-size: 0.75rem;">
+                                        @item.Status
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="btn-group">
+                                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil-fill"></i></a>
+                                        <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash-fill"></i></a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
                     }
                 </tbody>
             </table>

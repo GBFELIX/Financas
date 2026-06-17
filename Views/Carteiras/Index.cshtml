@@ -22,23 +22,11 @@
                         <i class="bi bi-sliders text-secondary"></i> Ferramentas e Análises
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end shadow border-0 rounded-3 mt-2 p-1" style="min-width: 260px; font-size: 0.85rem;">
-                        <li>
-                            <h6 class="dropdown-header text-uppercase text-muted fw-bold pb-1" style="font-size: 0.65rem;">Simuladores & Radar</h6>
-                        </li>
-                        <li>
-                            <button type="button" class="dropdown-item py-2 rounded-2 text-success d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#modalSimuladorDividendos">
-                                <i class="bi bi-calculator"></i> Simulador de Dividendos
-                            </button>
-                        </li>
-                        <li>
-                            <button type="button" class="dropdown-item py-2 rounded-2 text-warning fw-bold d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#modalRadarAporte">
-                                <i class="bi bi-compass"></i> Radar de Aporte
-                            </button>
-                        </li>
-                        <li><hr class="dropdown-divider my-1"></li>
+                        
                         <li>
                             <h6 class="dropdown-header text-uppercase text-muted fw-bold pb-1" style="font-size: 0.65rem;">Finanças & Financiamento</h6>
                         </li>
+                        <li><hr class="dropdown-divider my-1"></li>
                         <li>
                             <button type="button" class="dropdown-item py-2 rounded-2 text-primary d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#modalResumoAnual">
                                 <i class="bi bi-calendar-check"></i> Resumo Mensal (DRE)
@@ -59,6 +47,25 @@
                                     data-bs-toggle="modal" data-bs-target="#modalHistoricoAtivos">
                                 <i class="bi bi-clock-history text-secondary"></i> Histórico de Trade (Ações/FIIs)
                             </button>
+                        </li>
+                        <li><hr class="dropdown-divider my-1"></li>
+                        <li>
+                            <h6 class="dropdown-header text-uppercase text-muted fw-bold pb-1" style="font-size: 0.65rem;">Simulador</h6>
+                        </li>
+                        <li><hr class="dropdown-divider my-1"></li>
+                        <li>
+                            <button type="button" class="dropdown-item py-2 rounded-2 text-success d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#modalSimuladorDividendos">
+                                <i class="bi bi-calculator"></i> Simulador de Dividendos
+                            </button>
+                        </li>
+                        @* <li>
+                            <button type="button" class="dropdown-item py-2 rounded-2 text-warning fw-bold d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#modalRadarAporte">
+                                <i class="bi bi-compass"></i> Radar de Aporte
+                            </button>
+                        </li> *@
+                        <li><hr class="dropdown-divider my-1"></li>
+                        <li>
+                            <h6 class="dropdown-header text-uppercase text-muted fw-bold pb-1" style="font-size: 0.65rem;">Configurações</h6>
                         </li>
                         <li><hr class="dropdown-divider my-1"></li>
                         <li>
@@ -139,20 +146,35 @@
                     <h6 class="text-uppercase small fw-bold opacity-75">Rendimentos do Mês</h6>
                     <h2 class="mb-1 fw-bold">R$ @Model.RendaMensalTotalConsolidada.ToString("N2")</h2>
                     <div class="mt-2 pt-2 border-top border-white border-opacity-25">
-                        <small class="d-block">Ganhos (Mês): <span class="fw-bold">R$ @Model.EntradasMesCorrente.ToString("N2")</span></small>
+                        <small class="d-block">Ganhos (Mês): <span class="fw-bold">R$ @((Model.EntradasMesCorrente + Model.RendaMensalTotalConsolidada).ToString("N2"))</span></small>
                     </div>
                 </div>
             </div>
         </div>
 
+        @{
+            // Matemática rápida de cobertura sem pesar o HTML
+            decimal proventoMensalEstimado = Model.ProventoAnualEstimado / 12m;
+            decimal divisorSaidas = Model.SaidasMesCorrente > 0 ? Model.SaidasMesCorrente : 1m;
+            double percentualCobertura = (double)(proventoMensalEstimado / divisorSaidas) * 100;
+        }
+
         @* Card 3: Projeção e Despesas *@
         <div class="col-md-3">
             <div class="card bg-info text-dark shadow border-0 h-100 rounded-4">
-                <div class="card-body text-center">
-                    <h6 class="text-uppercase small fw-bold opacity-75">Projeção Anual (Proventos)</h6>
-                    <h3 class="mb-1">R$ @Model.ProventoAnualEstimado.ToString("N2")</h3>
+                <div class="card-body text-center d-flex flex-column justify-content-between py-3">
+                    <div>
+                        <h6 class="text-uppercase small fw-bold opacity-75 mb-1">Projeção Anual (Proventos)</h6>
+                        <h3 class="mb-0 fw-bold">R$ @Model.ProventoAnualEstimado.ToString("N2")</h3>
+                    </div>
+
                     <div class="mt-2 pt-2 border-top border-dark border-opacity-10">
-                        <small class="d-block text-danger fw-bold">Saídas (Mês): R$ @Model.SaidasMesCorrente.ToString("N2")</small>
+                        <small class="d-block text-danger fw-bold mb-1">
+                            Saídas (Mês): R$ @Model.SaidasMesCorrente.ToString("N2")
+                        </small>
+                        <span class="badge bg-dark bg-opacity-10 text-dark fw-bold fs-7 px-2 py-1 rounded-pill">
+                            <i class="bi bi-lightning-charge-fill text-warning me-1"></i>Cobre @percentualCobertura.ToString("N0")% dos gastos
+                        </span>
                     </div>
                 </div>
             </div>
@@ -161,15 +183,21 @@
 
         @* Card 4: Resultado Geral de Carteira *@
         <div class="col-md-3">
-            <div class="card shadow border-0 h-100 rounded-4 @(Model.TotalLucro >= 0 ? "bg-success" : "bg-danger") text-white">
-                <div class="card-body text-center d-flex flex-column justify-content-center">
-                    <h6 class="text-uppercase small fw-bold opacity-75">Resultado RV</h6>
-                    <h3 class="mb-0">R$ @Model.TotalLucro.ToString("N2")</h3>
-                    <small class="mt-1">Lucro/Prejuízo Total</small>
+            <div class="card shadow border-0 h-100 rounded-4 @(Model.TotalLucro >= 0 ? "bg-success" : "bg-danger") text-white position-relative card-interativo"
+                 data-bs-toggle="modal"
+                 data-bs-target="#modalRadarAporte"
+                 style="cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
+                <div class="card-body text-center d-flex flex-column justify-content-center py-3">
+                    <h6 class="text-uppercase small fw-bold opacity-75 mb-1">Resultado RV</h6>
+                    <h3 class="mb-0 fw-bold">R$ @Model.TotalLucro.ToString("N2")</h3>
+                    <small class="opacity-90 fs-7 mt-1">Lucro/Prejuízo Total</small>
+
+                    <div class="position-absolute bottom-0 start-50 translate-middle-x mb-1 opacity-50 style-gatilho">
+                        <small style="font-size: 0.65rem;" class="text-uppercase fw-bold letter-spacing-1"><i class="bi bi-search me-1"></i>Ver Diagnóstico</small>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
 
     @if (TempData["Sucesso"] != null)
@@ -626,6 +654,15 @@
         border-color: #a3cfbb !important;
         box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25) !important;
     }
+
+        .card-interativo:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.15) !important;
+        }
+
+        .card-interativo:active {
+            transform: translateY(0);
+        }
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
