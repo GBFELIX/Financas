@@ -265,6 +265,15 @@
                         </td>
                         <td>
                             <div class="btn-group">
+                                    @{
+                                        // Define o segmento da URL (acoes ou fiis) com base no tipo do ativo
+                                        // Ajuste 'item.Tipo' para o nome real da sua propriedade (ex: "Ação", "FII", "Papel", "Tijolo")
+                                        var segmentoUrl = (item.Ticker == "FII" || item.TipoFii == "Papel" || item.TipoFii == "Tijolo") ? "fiis" : "acoes";
+                                        var urlInvestidor10 = $"https://investidor10.com.br/{segmentoUrl}/{item.Ticker.ToLower()}";
+                                    }
+                                    <a href="@urlInvestidor10" target="_blank" class="btn btn-sm btn-outline-info" title="Ver no Investidor10">
+                                        <i class="bi bi-graph-up-arrow"></i>
+                                    </a>
                                 <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil-fill"></i></a>
                                 <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash-fill"></i></a>
                             </div>
