@@ -1,0 +1,348 @@
+﻿@model CarteiraTotalViewModel
+
+<div class="modal fade" id="modalDiagnosticoAlocacao" tabindex="-1" aria-labelledby="modalDiagnosticoAlocacaoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header bg-dark text-white rounded-top-4 border-0">
+                <h5 class="modal-title fw-bold" id="modalDiagnosticoAlocacaoLabel">
+                    <i class="bi bi-pie-chart-fill text-info me-2"></i>Diagnóstico de Alocação de Ativos
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body bg-light">
+
+                <ul class="nav nav-pills mb-3 justify-content-center" id="pills-tab-diagnostico" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active fw-bold" id="pills-divisao-tab" data-bs-toggle="pill" data-bs-target="#pills-divisao" type="button" role="tab">
+                            <i class="bi bi-pie-chart-fill me-2"></i>Gráficos por Setor
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link fw-bold" id="pills-nivelamento-tab" data-bs-toggle="pill" data-bs-target="#pills-nivelamento" type="button" role="tab">
+                            <i class="bi bi-sliders me-2"></i>Metas vs Alocação Real
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="pills-tabContentDiagnostico">
+                    <div class="tab-pane fade show active" id="pills-divisao" role="tabpanel">
+                        <div class="row g-3">
+                            <div class="col-md-4 text-center">
+                                <div class="bg-white p-3 rounded-4 shadow-sm h-100">
+                                    <h6 class="fw-bold text-secondary mb-3">Ações por Setor</h6>
+                                    <canvas id="chartAcoesSetor"></canvas>
+                                </div>
+                            </div>
+                            <div class="col-md-4 text-center">
+                                <div class="bg-white p-3 rounded-4 shadow-sm h-100">
+                                    <h6 class="fw-bold text-secondary mb-3">FIIs por Segmento</h6>
+                                    <canvas id="chartFiisSegmento"></canvas>
+                                </div>
+                            </div>
+                            <div class="col-md-4 text-center">
+                                <div class="bg-white p-3 rounded-4 shadow-sm h-100">
+                                    <h6 class="fw-bold text-secondary mb-3">Ativos Gerais</h6>
+                                    <canvas id="chartGeraisClasse"></canvas>
+                                </div>
+                            </div>
+                            <div class="card shadow-sm rounded border-0 h-100">
+                                <div class="card-body text-center">
+                                    <h6 class="card-title fw-bold text-secondary mb-3">Distribuição Geral da Carteira</h6>
+                                    <div style="max-height: 400px;" class="d-flex justify-content-center">
+                                        <canvas id="chartCarteiraConsolidado"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tab-pane fade" id="pills-nivelamento" role="tabpanel">
+                        <div class="row g-3">
+                            <div class="col-md-7">
+                                <div class="bg-white p-3 rounded-4 shadow-sm h-100">
+                                    <h6 class="fw-bold text-dark mb-3">
+                                        <i class="bi bi-arrow-left-right me-2 text-primary"></i>Nivelamento de Metas
+                                    </h6>
+                                    <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3"
+                                            onclick="abrirConfiguracaoMetasRapido()">
+                                        <i class="bi bi-sliders"></i> Alterar Modo
+                                    </button>
+                                    <div class="table-responsive">
+                                        <table class="table table-hover align-middle mb-0">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>Macro Categoria</th>
+                                                    <th class="text-center" style="width: 130px;">Alvo</th>
+                                                    <th class="text-center">Atual</th>
+                                                    <th class="text-center">Desvio</th>
+                                                    <th class="text-center">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @if (ViewBag.PainelRebalanceamento != null)
+                                                {
+                                                    foreach (var item in (List<ItemRebalanceamentoViewModel>)ViewBag.PainelRebalanceamento)
+                                                    {
+                                                        // Configuração visual dinâmica para as linhas
+                                                        string corDesvio = item.Desvio < 0 ? "text-danger" : "text-success";
+
+                                                        string badgeStatus = "bg-secondary";
+                                                        string iconeStatus = "bi-check";
+
+                                                        if (item.Status.Contains("APORTAR"))
+                                                        {
+                                                            badgeStatus = "bg-warning text-dark";
+                                                            iconeStatus = "bi-arrow-down";
+                                                        }
+                                                        else if (item.Status.Contains("AGUARDAR") || item.Status.Contains("OK"))
+                                                        {
+                                                            badgeStatus = "bg-success";
+                                                            iconeStatus = "bi-check";
+                                                        }
+                                                        else if (item.Status.Contains("REDUZIR"))
+                                                        {
+                                                            badgeStatus = "bg-danger";
+                                                            iconeStatus = "bi-arrow-up";
+                                                        }
+
+                                                        string emojiClasse = item.Categoria.ToUpper() switch
+                                                        {
+                                                            var c when c.Contains("AÇÃO") || c.Contains("ACOES") => "🏦 Ações",
+                                                            var c when c.Contains("FII") || c.Contains("IMOBIL") => "🧱 FIIs",
+                                                            var c when c.Contains("FIXA") || c.Contains("TESOURO") => "⚡ Renda Fixa",
+                                                            var c when c.Contains("GLOBAL") || c.Contains("CRIPTO") => "🌍 Global",
+                                                            _ => "📦 " + item.Categoria
+                                                        };
+
+                                                        <tr>
+                                                            <td class="fw-bold">@emojiClasse</td>
+
+                                                            <td class="text-center">
+                                                                <form asp-action="UpdateMetaAlvo" method="post" class="d-flex justify-content-center">
+                                                                    <input type="hidden" name="categoria" value="@item.Categoria" />
+                                                                    <div class="input-group input-group-sm">
+                                                                        <input type="number" name="novaMeta" value="@item.PercentualAlvo.ToString("N0")"
+                                                                               class="form-control text-center fw-bold border-secondary-subtle"
+                                                                               min="0" max="100" step="1"
+                                                                               onchange="this.form.submit()" />
+                                                                        <span class="input-group-text bg-light fw-bold" style="font-size: 0.75rem;">%</span>
+                                                                    </div>
+                                                                </form>
+                                                            </td>
+
+                                                            <td class="text-center fw-semibold text-muted">
+                                                                @item.PercentualAtual.ToString("N1")%
+                                                            </td>
+
+                                                            <td class="text-center fw-bold @corDesvio">
+                                                                @(item.Desvio > 0 ? "+" : "")@item.Desvio.ToString("N1")%
+                                                            </td>
+
+                                                            <td class="text-center">
+                                                                <span class="badge @badgeStatus rounded-pill px-3 py-1 fw-bold shadow-xs" style="font-size: 0.75rem;">
+                                                                    <i class="bi @iconeStatus me-1"></i> @item.Status
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    <tr>
+                                                        <td colspan="5" class="text-center text-muted py-4">
+                                                            <i class="bi bi-exclamation-triangle me-2 text-warning"></i> Nenhuma meta ou classe mapeada.
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-5">
+                                <div class="card border-0 bg-dark text-white rounded-4 shadow-sm h-100">
+                                    <div class="card-body p-4 d-flex flex-column justify-content-between">
+                                        <div>
+                                            <h6 class="text-uppercase small fw-bold text-success mb-2"><i class="bi bi-lightning-charge-fill me-1"></i>Aporte Inteligente</h6>
+                                            <h4 class="fw-bold mb-3">Sugestão de Rebalanceamento</h4>
+
+                                            <div class="p-3 bg-white bg-opacity-10 rounded-3 border border-secondary border-opacity-20 mb-3">
+                                                <h5 class="mb-1 text-warning fw-bold"><i class="bi bi-wallet2 me-2"></i>@Model.SugestaoAporteCategoria</h5>
+                                                <small class="d-block text-white-50">@Model.SugestaoAporteJustificativa</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    function abrirConfiguracaoMetasRapido() {
+        const modalDetalhes = bootstrap.Modal.getInstance(document.getElementById('modalRendimentosERebalanceamento'));
+        const modalDetalhes1 = bootstrap.Modal.getInstance(document.getElementById('modalDiagnosticoAlocacao'));
+        if(modalDetalhes) modalDetalhes.hide();
+        if(modalDetalhes1) modalDetalhes1.hide();
+
+        setTimeout(() => {
+            const modalConfigMetas = new bootstrap.Modal(document.getElementById('modalMetas'));
+            modalConfigMetas.show();
+        }, 400);
+    }
+    document.addEventListener("DOMContentLoaded", function () {
+        @{
+                var tickersNaCarteira = Model.Itens.Select(c => c.Ticker).ToList();
+
+                var acoesFiltradas = Model.ListaTickersAcoes
+                                .Where(x => tickersNaCarteira.Contains(x.Ticker))
+                                .ToList();
+
+                var fiisFiltrados = Model.ListaTickersFiis
+                                .Where(x => tickersNaCarteira.Contains(x.Ticker))
+                                .ToList();
+
+                var geraisFiltrados = Model.ListaTickersGerais
+                                .Where(x => tickersNaCarteira.Contains(x.Ticker))
+                                .ToList();
+
+                int totalAcoes = acoesFiltradas.Count;
+                int totalFiis = fiisFiltrados.Count;
+                int totalGerais = geraisFiltrados.Count;
+
+                var tickersAcoesPorSetor = acoesFiltradas
+                        .GroupBy(x => string.IsNullOrEmpty(x.TipoAcao) ? "Outros" : x.TipoAcao)
+                        .ToDictionary(g => g.Key, g => string.Join(", ", g.Select(x => x.Ticker)));
+
+                var tickersFiisPorSegmento = fiisFiltrados
+                        .GroupBy(x => string.IsNullOrEmpty(x.Segmento) ? "Outros" : x.Segmento)
+                        .ToDictionary(g => g.Key, g => string.Join(", ", g.Select(x => x.Ticker)));
+
+                var tickersGeraisPorClasse = geraisFiltrados
+                        .GroupBy(x => string.IsNullOrEmpty(x.ClasseAtivo) ? "Outros" : x.ClasseAtivo)
+                        .ToDictionary(g => g.Key, g => string.Join(", ", g.Select(x => x.Ticker)));
+        }
+
+        const mapAcoes = @Html.Raw(Json.Serialize(tickersAcoesPorSetor));
+        const ctxAcoes = document.getElementById('chartAcoesSetor').getContext('2d');
+        new Chart(ctxAcoes, {
+            type: 'doughnut',
+            data: {
+                labels: @Html.Raw(Json.Serialize(acoesFiltradas.GroupBy(x => string.IsNullOrEmpty(x.TipoAcao) ? "Outros" : x.TipoAcao).Select(g => g.Key))),
+                datasets: [{
+                    data: @Html.Raw(Json.Serialize(acoesFiltradas.GroupBy(x => string.IsNullOrEmpty(x.TipoAcao) ? "Outros" : x.TipoAcao).Select(g => g.Count()))),
+                    backgroundColor: ['#003366', '#336699', '#6699cc', '#99ccff', '#20c997', '#6f42c1', '#fd7e14']
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'bottom' },
+                    tooltip: {
+                        callbacks: {
+                            footer: function(context) {
+                                let label = context[0].label;
+                                return "Ativos: " + (mapAcoes[label] || "");
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        const mapFiis = @Html.Raw(Json.Serialize(tickersFiisPorSegmento));
+        const ctxFiis = document.getElementById('chartFiisSegmento').getContext('2d');
+        new Chart(ctxFiis, {
+            type: 'doughnut',
+            data: {
+                labels: @Html.Raw(Json.Serialize(fiisFiltrados.GroupBy(x => string.IsNullOrEmpty(x.Segmento) ? "Outros" : x.Segmento).Select(g => g.Key))),
+                datasets: [{
+                    data: @Html.Raw(Json.Serialize(fiisFiltrados.GroupBy(x => string.IsNullOrEmpty(x.Segmento) ? "Outros" : x.Segmento).Select(g => g.Count()))),
+                    backgroundColor: ['#fd7e14', '#ffc107', '#e83e8c', '#6f42c1', '#20c997']
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'bottom' },
+                    tooltip: {
+                        callbacks: {
+                            footer: function(context) {
+                                let label = context[0].label;
+                                return "Ativos: " + (mapFiis[label] || "");
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        const mapGerais = @Html.Raw(Json.Serialize(tickersGeraisPorClasse));
+        const ctxGerais = document.getElementById('chartGeraisClasse').getContext('2d');
+        new Chart(ctxGerais, {
+            type: 'doughnut',
+            data: {
+                labels: @Html.Raw(Json.Serialize(geraisFiltrados.GroupBy(x => string.IsNullOrEmpty(x.ClasseAtivo) ? "Outros" : x.ClasseAtivo).Select(g => g.Key))),
+                datasets: [{
+                    data: @Html.Raw(Json.Serialize(geraisFiltrados.GroupBy(x => string.IsNullOrEmpty(x.ClasseAtivo) ? "Outros" : x.ClasseAtivo).Select(g => g.Count()))),
+                    backgroundColor: ['#6c757d', '#17a2b8', '#28a745', '#ffc107']
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'bottom' },
+                    tooltip: {
+                        callbacks: {
+                            footer: function(context) {
+                                let label = context[0].label;
+                                return "Ativos: " + (mapGerais[label] || "");
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        const ctxConsolidado = document.getElementById('chartCarteiraConsolidado').getContext('2d');
+        new Chart(ctxConsolidado, {
+            type: 'doughnut',
+            data: {
+                labels: ['Ações Nacionais', 'Fundos Imobiliários', 'Mercado Global / Outros'],
+                datasets: [{
+                    data: [@totalAcoes, @totalFiis, @totalGerais],
+                    backgroundColor: ['#003366', '#fd7e14', '#28a745']
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.label || '';
+                                let value = context.raw || 0;
+                                let dataset = context.chart.data.datasets[0];
+                                let total = dataset.data.reduce((sum, val) => sum + val, 0);
+                                let percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+
+                                return `${label}: ${value} ativos (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    });
+</script>

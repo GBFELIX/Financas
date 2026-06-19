@@ -123,7 +123,10 @@
             <div class="card bg-dark text-white shadow border-0 h-100 rounded-4"
                  style="cursor: pointer;"
                  data-bs-toggle="modal"
-                 data-bs-target="#modalDetalhesPatrimonio">
+                 data-bs-target="#modalDetalhesPatrimonio"
+                 style="cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;"
+                 onmouseover="this.style.transform='scale(1.02)'; this.style.boxShadow='0 .5rem 1rem rgba(0,0,0,0.15)!important';"
+                 onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';">
                 <div class="card-body text-center p-4">
                     <h6 class="text-uppercase small fw-bold text-info opacity-75">Patrimônio Bruto Real</h6>
                     <h2 class="mb-1 fw-bold">R$ @((Model.PatrimonioTotalReal).ToString("N2"))</h2>
@@ -141,7 +144,12 @@
                  style="cursor: pointer;"
                  data-bs-toggle="modal"
                  data-bs-target="#modalRendimentosERebalanceamento"
-                 title="Clique para ver Detalhes e Rebalanceamento">
+                 title="Clique para ver Detalhes e Rebalanceamento"
+                 style="cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;"
+                 onmouseover="this.style.transform='scale(1.02)'; this.style.boxShadow='0 .5rem 1rem rgba(0,0,0,0.15)!important';"
+                 onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';">
+                
+
                 <div class="card-body text-center p-4">
                     <h6 class="text-uppercase small fw-bold opacity-75">Rendimentos do Mês</h6>
                     <h2 class="mb-1 fw-bold">R$ @Model.RendaMensalTotalConsolidada.ToString("N2")</h2>
@@ -159,9 +167,15 @@
             double percentualCobertura = (double)(proventoMensalEstimado / divisorSaidas) * 100;
         }
 
-        @* Card 3: Projeção e Despesas *@
+        @* Card 3: Projeção Anual (Gatilho para o Novo Diagnóstico de Alocação) *@
         <div class="col-md-3">
-            <div class="card bg-info text-dark shadow border-0 h-100 rounded-4">
+            <div class="card bg-info text-dark shadow border-0 h-100 rounded-4 position-relative"
+                 data-bs-toggle="modal"
+                 data-bs-target="#modalDiagnosticoAlocacao"
+                 style="cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;"
+                 onmouseover="this.style.transform='scale(1.02)'; this.style.boxShadow='0 .5rem 1rem rgba(0,0,0,0.15)!important';"
+                 onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';">
+
                 <div class="card-body text-center d-flex flex-column justify-content-between py-3">
                     <div>
                         <h6 class="text-uppercase small fw-bold opacity-75 mb-1">Projeção Anual (Proventos)</h6>
@@ -176,6 +190,10 @@
                             <i class="bi bi-lightning-charge-fill text-warning me-1"></i>Cobre @percentualCobertura.ToString("N0")% dos gastos
                         </span>
                     </div>
+
+                    <div class="w-100 text-center opacity-50 mt-1" style="font-size: 0.65rem;">
+                        <span class="text-uppercase fw-bold"><i class="bi bi-pie-chart me-1"></i>Ver Divisão Carteira</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -186,7 +204,9 @@
             <div class="card shadow border-0 h-100 rounded-4 @(Model.TotalLucro >= 0 ? "bg-success" : "bg-danger") text-white position-relative card-interativo"
                  data-bs-toggle="modal"
                  data-bs-target="#modalRadarAporte"
-                 style="cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
+                 style="cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;"
+                 onmouseover="this.style.transform='scale(1.02)'; this.style.boxShadow='0 .5rem 1rem rgba(0,0,0,0.15)!important';"
+                 onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';">
                 <div class="card-body text-center d-flex flex-column justify-content-center py-3">
                     <h6 class="text-uppercase small fw-bold opacity-75 mb-1">Resultado RV</h6>
                     <h3 class="mb-0 fw-bold">R$ @Model.TotalLucro.ToString("N2")</h3>
@@ -432,6 +452,7 @@
     @await Html.PartialAsync("_ModalBackup", Model)
     @await Html.PartialAsync("_ModalMetas", Model)
     @await Html.PartialAsync("_ModalRendimentosERebalanceamento", Model)
+    @await Html.PartialAsync("_ModalDiagnosticoAlocacao", Model)
 
     <div class="card shadow-sm border-0">
         <div class="card-header bg-light d-flex justify-content-between align-items-center">
@@ -512,26 +533,61 @@
                         <select id="selectModalTicker" name="ticker" class="form-select" required>
                             <option value="">Pesquise pelo ticker ou nome...</option>
 
-                            <optgroup label="Ações">
-                                @foreach (var t in Model.ListaTickersAcoes)
+                                @foreach (var grupoAcao in Model.ListaTickersAcoes.GroupBy(x => x.TipoAcao))
                                 {
-                                    <option value="@t">📈 @t</option>
+                                    <optgroup label="Ações - @grupoAcao.Key">
+                                        @foreach (var item in grupoAcao)
+                                        {
+                                            <option value="@item.Ticker">
+                                                @{
+                                                    string emojiTipo = item.TipoAtivo switch
+                                                    {
+                                                        "Setor Perene" => "🏦",
+                                                        "Dividendos" => "💰",
+                                                        "Crescimento" => "🚀",
+                                                        _ => "❓"
+                                                    };
+                                                }
+                                                @emojiTipo @item.Ticker.Replace(".SA", "")
+                                            </option>
+                                        }
+                                    </optgroup>
                                 }
-                            </optgroup>
 
-                            <optgroup label="FIIs">
-                                @foreach (var t in Model.ListaTickersFiis)
+                                @foreach (var grupoFii in Model.ListaTickersFiis.GroupBy(x => x.Segmento))
                                 {
-                                    <option value="@t">🏢 @t</option>
+                                    <optgroup label="FIIs - @grupoFii.Key">
+                                        @foreach (var item in grupoFii)
+                                        {
+                                            <option value="@item.Ticker">
+                                                @{
+                                                    string emojiTipoFii = item.TipoFii switch
+                                                    {
+                                                        "Tijolo" => "🧱",
+                                                        "Papel" => "📜",
+                                                        "Híbrido" => "🔄",
+                                                        _ => "❓"
+                                                    };
+                                                }
+                                                @emojiTipoFii @item.Ticker.Replace(".SA", "")
+                                            </option>
+                                        }
+                                    </optgroup>
                                 }
-                            </optgroup>
 
-                            <optgroup label="Outros (Cripto/BDR)">
-                                @foreach (var t in Model.ListaTickersGerais)
+                                @foreach (var grupoGeral in Model.ListaTickersGerais.GroupBy(x => x.ClasseAtivo))
                                 {
-                                    <option value="@t">🌐 @t</option>
+                                    string emoji = grupoGeral.Key.ToLower().Contains("cripto") ? "🪙" :
+                                    grupoGeral.Key.ToLower().Contains("bdr") ? "🇺🇸" : "🌐";
+
+                                    <optgroup label="@grupoGeral.Key">
+                                        @foreach (var item in grupoGeral)
+                                        {
+                                            var textoExibicao = item.Ticker.Replace(".SA", "").Replace("-USD", "").Replace("=X", "");
+                                            <option value="@item.Ticker">@emoji @textoExibicao - @item.Nome</option>
+                                        }
+                                    </optgroup>
                                 }
-                            </optgroup>
                         </select>
                     </div>
 
@@ -875,7 +931,9 @@
     // Função auxiliar para transição fluida entre modais
     function abrirConfiguracaoMetasRapido() {
         const modalDetalhes = bootstrap.Modal.getInstance(document.getElementById('modalRendimentosERebalanceamento'));
+        const modalDetalhes1 = bootstrap.Modal.getInstance(document.getElementById('modalDiagnosticoAlocacao'));
         if(modalDetalhes) modalDetalhes.hide();
+        if(modalDetalhes1) modalDetalhes1.hide();
 
         setTimeout(() => {
             const modalConfigMetas = new bootstrap.Modal(document.getElementById('modalMetas'));

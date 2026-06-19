@@ -42,6 +42,9 @@ namespace Acoes_Fiis.Models
         public decimal RendaFixaMensalLiquida { get; set; }
         public decimal RendaMensalTotalConsolidada { get; set; }
         public decimal ProventoAnualEstimado => RendaMensalTotalConsolidada * 12;
+        public double PercentualAtualAcoes { get; set; }
+        public double PercentualAtualFiis { get; set; }
+        public double PercentualAtualRendaFixa { get; set; }
 
         // --- Financiamento Imobiliário e Indicadores Estratégicos ---
         public decimal ValorImovel { get; set; }
@@ -59,9 +62,9 @@ namespace Acoes_Fiis.Models
             : 100;
 
         // --- Listas Auxiliares (Autocomplete) ---
-        public List<string> ListaTickersAcoes { get; set; } = new();
-        public List<string> ListaTickersFiis { get; set; } = new();
-        public List<string> ListaTickersGerais { get; set; } = new();
+        public List<Recomendacao> ListaTickersAcoes { get; set; } = new();
+        public List<RecomendacaoFii> ListaTickersFiis { get; set; } = new();
+        public List<AtivoGeral> ListaTickersGerais { get; set; } = new();
         public List<HistoricoAtivo> HistoricoTransacoes { get; set; } = new List<HistoricoAtivo>();
         public List<FolhaPagamento> HistoricoFolhas { get; set; } = new List<FolhaPagamento>();
 
@@ -69,6 +72,9 @@ namespace Acoes_Fiis.Models
 
         public ConfiguracaoBackup ConfiguracaoBackups { get; set; } = new ConfiguracaoBackup();
         public MetaAlocacao MetaAlocacao { get; set; } = new MetaAlocacao();
+
+        public string SugestaoAporteCategoria { get; set; } = string.Empty;
+        public string SugestaoAporteJustificativa { get; set; } = string.Empty;
 
 
 

@@ -96,6 +96,12 @@ namespace Acoes_Fiis.Controllers
             decimal totalProventosVariaveis = 0;
             decimal totalAcumuladoAcoes = 0;
             decimal totalAcumuladoFiis = 0;
+            decimal totalAcumuladoGerais = 0; // Acumulador para BDRs, Criptos, etc.
+
+            // Listas locais para guardar apenas os cadastros dos ativos que o usuário de fato TEM comprado
+            var acoesNaCarteira = new List<Recomendacao>();
+            var fiisNaCarteira = new List<RecomendacaoFii>();
+            var geraisNaCarteira = new List<AtivoGeral>();
 
             foreach (var item in itensBanco)
             {
@@ -133,7 +139,9 @@ namespace Acoes_Fiis.Controllers
                         else if (pl > 20 || pvp > 3.0m) { viewItem.Recomendacao = "Venda / Caro"; viewItem.CorBadge = "danger"; }
                         else { viewItem.Recomendacao = "Neutro / Manter"; viewItem.CorBadge = "secondary"; }
 
+                        // Calcula o peso financeiro real atual da ação na carteira
                         totalAcumuladoAcoes += (item.Quantidade * acao.PrecoAtual);
+                        acoesNaCarteira.Add(acao);
                     }
                 }
                 else if (item.TipoAtivo == "Fii")
@@ -148,7 +156,7 @@ namespace Acoes_Fiis.Controllers
                         {
                             < 0.95m => "Forte Compra",
                             < 1.00m => "Compra (Preço Justo)",
-                            <= 1.05m => "Neutro / Manter",
+                            < 1.05m => "Neutro / Manter",
                             < 1.10m => "Aguardar / Caro",
                             _ => "Venda / Realizar Lucro"
                         };
@@ -162,7 +170,9 @@ namespace Acoes_Fiis.Controllers
                             _ => "dark"
                         };
 
+                        // Calcula o peso financeiro real atual do FII na carteira
                         totalAcumuladoFiis += (item.Quantidade * fii.PrecoAtual);
+                        fiisNaCarteira.Add(fii);
                     }
                 }
                 else if (item.TipoAtivo == "Geral")
@@ -172,6 +182,10 @@ namespace Acoes_Fiis.Controllers
                     {
                         viewItem.PrecoAtual = ativoGeral.PrecoAtual;
                         viewItem.Recomendacao = "Não Avaliado";
+
+                        // Calcula o peso financeiro real atual do Ativo Geral na carteira
+                        totalAcumuladoGerais += (item.Quantidade * ativoGeral.PrecoAtual);
+                        geraisNaCarteira.Add(ativoGeral);
                     }
                 }
                 viewModel.Itens.Add(viewItem);
@@ -180,6 +194,62 @@ namespace Acoes_Fiis.Controllers
 
             ViewBag.TotalAcumuladoAcoesSalvo = totalAcumuladoAcoes;
             ViewBag.TotalAcumuladoFiisSalvo = totalAcumuladoFiis;
+
+            // ====================================================================
+            // CÁLCULO DAS METAS E RADAR DE APORTE (UTILIZANDO AS LINHAS DA TABELA)
+            // ====================================================================
+            decimal totalRendaVariavelGeral = totalAcumuladoAcoes + totalAcumuladoGerais;
+            decimal patrimonioTotal = viewModel.TotalInvestidoRendaFixa + totalAcumuladoFiis + totalRendaVariavelGeral;
+
+            // Recupera a lista de metas que salvamos na ViewBag
+            var listaMetas = ViewBag.MetasAlocacaoLista as List<MetaAlocacao>;
+
+            if (patrimonioTotal > 0 && listaMetas != null && listaMetas.Any())
+            {
+                // 1. Preenche as propriedades atuais da ViewModel
+                viewModel.PercentualAtualRendaFixa = (double)((viewModel.TotalInvestidoRendaFixa / patrimonioTotal) * 100);
+                viewModel.PercentualAtualFiis = (double)((totalAcumuladoFiis / patrimonioTotal) * 100);
+                viewModel.PercentualAtualAcoes = (double)((totalRendaVariavelGeral / patrimonioTotal) * 100);
+
+                // 2. CORRIGIDO: Busca nas linhas da lista da ViewBag pelos IDs corretos da tabela
+                // Substitua 'PercentualAlvo' pelo nome exato da sua coluna de % se for diferente
+                double alvoRF = (double)(listaMetas.FirstOrDefault(x => x.Id == 1)?.PercentualAlvo ?? 20.0m);
+                double alvoFiis = (double)(listaMetas.FirstOrDefault(x => x.Id == 2)?.PercentualAlvo ?? 40.0m);
+                double alvoAcoes = (double)(listaMetas.FirstOrDefault(x => x.Id == 3)?.PercentualAlvo ?? 40.0m);
+
+                // 3. Calcula o déficit em relação à meta
+                double desvioRF = alvoRF - viewModel.PercentualAtualRendaFixa;
+                double desvioFiis = alvoFiis - viewModel.PercentualAtualFiis;
+                double desvioAcoes = alvoAcoes - viewModel.PercentualAtualAcoes;
+
+                // 4. Decide a sugestão de aporte
+                if (desvioRF >= desvioFiis && desvioRF >= desvioAcoes)
+                {
+                    viewModel.SugestaoAporteCategoria = "Renda Fixa";
+                    viewModel.SugestaoAporteJustificativa = $"Sua alocação real está em {viewModel.PercentualAtualRendaFixa:N2}%. Como o seu alvo estipulado é {alvoRF:N2}%, direcione o seu aporte aqui para reequilibrar seu colchão de segurança.";
+                }
+                else if (desvioFiis >= desvioRF && desvioFiis >= desvioAcoes)
+                {
+                    viewModel.SugestaoAporteCategoria = "Fundos Imobiliários (FIIs)";
+                    viewModel.SugestaoAporteJustificativa = $"Seus FIIs representam {viewModel.PercentualAtualFiis:N2}% da carteira, abaixo do alvo desejado de {alvoFiis:N2}%. Foque em ativos deste segmento para aumentar o fluxo mensal de dividendos.";
+                }
+                else
+                {
+                    viewModel.SugestaoAporteCategoria = "Ações & Ativos Gerais";
+                    viewModel.SugestaoAporteJustificativa = $"Sua fatia de Renda Variável está em {viewModel.PercentualAtualAcoes:N2}%, abaixo da sua meta configurada de {alvoAcoes:N2}%. Foque em setores perenes ou boas geradoras de caixa.";
+                }
+            }
+            else
+            {
+                viewModel.SugestaoAporteCategoria = "Diversificar Carteira";
+                viewModel.SugestaoAporteJustificativa = "Adicione ativos e configure suas metas para ativar a inteligência de rebalanceamento automático.";
+            }
+
+            // 5. Salva na ViewModel APENAS as listas de ativos reais que existem na carteira.
+            // Assim, o Chart.js na Partial View montará os gráficos com base unicamente na carteira do usuário.
+            viewModel.ListaTickersAcoes = acoesNaCarteira.OrderBy(x => x.TipoAcao).ThenBy(x => x.Ticker).ToList();
+            viewModel.ListaTickersFiis = fiisNaCarteira.OrderBy(x => x.Segmento).ThenBy(x => x.Ticker).ToList();
+            viewModel.ListaTickersGerais = geraisNaCarteira.OrderBy(x => x.ClasseAtivo).ThenBy(x => x.Ticker).ToList();
 
             return (totalRFLiquido, totalProventosVariaveis);
         }
@@ -461,7 +531,14 @@ namespace Acoes_Fiis.Controllers
 
         private async Task CarregarDadosAuxiliares(CarteiraTotalViewModel viewModel, string visao)
         {
-            viewModel.MetaAlocacao = await _context.MetasAlocacao.FirstOrDefaultAsync();
+            //viewModel.MetaAlocacao = await _context.MetasAlocacao.FirstOrDefaultAsync();
+            var todasAsMetas = await _context.MetasAlocacao.ToListAsync();
+
+            // Salva na ViewBag para usarmos no método de processamento e na View
+            ViewBag.MetasAlocacaoLista = todasAsMetas;
+
+            // Deixa o objeto do Model quieto para não quebrar o resto do código
+            viewModel.MetaAlocacao = todasAsMetas.FirstOrDefault() ?? new MetaAlocacao();
 
             viewModel.ConfiguracaoBackups = await _context.ConfiguracaoBackups.FirstOrDefaultAsync();
 
@@ -476,9 +553,19 @@ namespace Acoes_Fiis.Controllers
                 .Where(f => f.Visao == visao)
                 .OrderByDescending(f => f.Ano).ThenByDescending(f => f.Mes).ToListAsync();
 
-            viewModel.ListaTickersAcoes = await _context.Recomendacao.Select(x => x.Ticker).ToListAsync();
-            viewModel.ListaTickersFiis = await _context.RecomendacaoFii.Select(x => x.Ticker).ToListAsync();
-            viewModel.ListaTickersGerais = await _context.AtivosGerais.Select(x => x.Ticker).ToListAsync();
+            //viewModel.ListaTickersAcoes = await _context.Recomendacao.Select(x => x.Ticker).ToListAsync();
+            //viewModel.ListaTickersFiis = await _context.RecomendacaoFii.Select(x => x.Ticker).ToListAsync();
+            //viewModel.ListaTickersGerais = await _context.AtivosGerais.Select(x => x.Ticker).ToListAsync();
+
+            viewModel.ListaTickersAcoes = await _context.Recomendacao
+                .OrderBy(x => x.TipoAcao).ThenBy(x => x.Ticker).ToListAsync();
+
+            viewModel.ListaTickersFiis = await _context.RecomendacaoFii
+                .OrderBy(x => x.Segmento).ThenBy(x => x.Ticker).ToListAsync();
+
+
+            viewModel.ListaTickersGerais = await _context.AtivosGerais
+                .OrderBy(x => x.ClasseAtivo).ThenBy(x => x.Ticker).ToListAsync();
         }
 
         [HttpPost]
