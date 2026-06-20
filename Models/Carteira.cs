@@ -96,6 +96,8 @@ namespace Acoes_Fiis.Models
         public int Quantidade { get; set; }
         public decimal PrecoMedio { get; set; }
         public decimal PrecoAtual { get; set; }
+
+        public decimal DividendYield { get; set; }
         public string? TipoAtivo { get; set; }
         public decimal? TaxaRentabilidade { get; set; }
 

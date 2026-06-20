@@ -68,7 +68,7 @@ namespace Acoes_Fiis.Controllers
             foreach (var item in listaParaAtualizar)
             {
                 // VERIFICAÇÃO: Se foi atualizado há menos de 30 minutos, pula este ativo
-                if (item.DataAtualizacao > DateTime.Now.AddMinutes(-30))
+                if (item.DataAtualizacao > DateTime.Now.AddMinutes(30))
                 {
                     pulados++;
                     continue;
@@ -78,11 +78,26 @@ namespace Acoes_Fiis.Controllers
                 {
                     var dadosAtualizados = await service.ObterDadosAtivo(item.Ticker);
 
+                    item.Nome = dadosAtualizados.Nome;
+                    item.Setor = dadosAtualizados.Setor;
+                    //item.TipoAcao = dadosAtualizados.TipoAcao;
                     item.PrecoAtual = dadosAtualizados.PrecoAtual;
                     item.VPA = dadosAtualizados.VPA;
                     item.LPA = dadosAtualizados.LPA;
                     item.Roe = dadosAtualizados.Roe;
                     item.DividendYield = dadosAtualizados.DividendYield;
+
+                    item.RegularMarketOpen = dadosAtualizados.RegularMarketOpen;
+                    item.RegularMarketPreviousClose = dadosAtualizados.RegularMarketPreviousClose;
+                    item.RegularMarketDayLow = dadosAtualizados.RegularMarketDayLow;
+                    item.RegularMarketDayHigh = dadosAtualizados.RegularMarketDayHigh;
+                    item.FiftyTwoWeekLow = dadosAtualizados.FiftyTwoWeekLow;
+                    item.FiftyTwoWeekHigh = dadosAtualizados.FiftyTwoWeekHigh;
+                    item.ForwardPE = dadosAtualizados.ForwardPE;
+                    item.PriceToBook = dadosAtualizados.PriceToBook;
+                    item.MarketCap = dadosAtualizados.MarketCap;
+                    item.RegularMarketVolume = dadosAtualizados.RegularMarketVolume;
+
                     item.DataAtualizacao = DateTime.Now;
 
                     _context.Update(item);
@@ -162,7 +177,7 @@ namespace Acoes_Fiis.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,Ticker,PrecoAtual,VPA,LPA,Roe,DividendYield,TipoAtivo")] Recomendacao recomendacao)
+        public async Task<IActionResult> Create(Recomendacao recomendacao)
         {
             if (ModelState.IsValid)
             {
@@ -190,28 +205,52 @@ namespace Acoes_Fiis.Controllers
             return View(recomendacao);
         }
 
-        // POST: Recomendacaos/Edit/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,Ticker,PrecoAtual,VPA,LPA,Roe,DividendYield,TipoAtivo")] Recomendacao recomendacao)
+        public async Task<IActionResult> Edit(int id, Recomendacao model)
         {
-            if (id != recomendacao.Id)
+            if (id != model.Id)
             {
                 return NotFound();
             }
+
+            ModelState.Remove("Nome");
+            ModelState.Remove("Setor");
+            ModelState.Remove("TipoAcao");
+            ModelState.Remove("RegularMarketOpen");
+            ModelState.Remove("RegularMarketPreviousClose");
+            ModelState.Remove("RegularMarketDayLow");
+            ModelState.Remove("RegularMarketDayHigh");
+            ModelState.Remove("FiftyTwoWeekLow");
+            ModelState.Remove("FiftyTwoWeekHigh");
+            ModelState.Remove("ForwardPE");
+            ModelState.Remove("PriceToBook");
+            ModelState.Remove("MarketCap");
+            ModelState.Remove("RegularMarketVolume");
 
             if (ModelState.IsValid)
             {
                 try
                 {
-                    _context.Update(recomendacao);
+                    var recomendacaoBanco = await _context.Recomendacao.FindAsync(id);
+                    if (recomendacaoBanco == null)
+                    {
+                        return NotFound();
+                    }
+
+                    recomendacaoBanco.PrecoAtual = model.PrecoAtual;
+                    recomendacaoBanco.VPA = model.VPA;
+                    recomendacaoBanco.LPA = model.LPA;
+                    recomendacaoBanco.Roe = model.Roe;
+                    recomendacaoBanco.DividendYield = model.DividendYield;
+                    recomendacaoBanco.DataAtualizacao = DateTime.Now;
+
+                    _context.Update(recomendacaoBanco);
                     await _context.SaveChangesAsync();
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    if (!RecomendacaoExists(recomendacao.Id))
+                    if (!RecomendacaoExists(model.Id))
                     {
                         return NotFound();
                     }
@@ -222,7 +261,8 @@ namespace Acoes_Fiis.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
-            return View(recomendacao);
+
+            return View(model);
         }
 
         // GET: Recomendacaos/Delete/5

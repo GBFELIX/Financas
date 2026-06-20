@@ -14,12 +14,13 @@
                 <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
                 <div class="row">
-                    <div class="col-md-6 mb-3">
+                    <div class="col-md-4 mb-3">
                         <label asp-for="Ticker" class="form-label fw-bold"></label>
                         <input asp-for="Ticker" class="form-control bg-light" readonly />
                         <span asp-validation-for="Ticker" class="text-danger"></span>
                     </div>
-                    <div class="col-md-6 mb-3">
+
+                    <div class="col-md-4 mb-3">
                         <label asp-for="PrecoAtual" class="form-label fw-bold">Cotação Atual (R$)</label>
                         <input asp-for="PrecoAtual" type="text" class="form-control" />
                         <span asp-validation-for="PrecoAtual" class="text-danger"></span>

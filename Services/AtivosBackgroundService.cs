@@ -35,11 +35,26 @@ public class AtivosBackgroundService : BackgroundService
                         try
                         {
                             var dados = await service.ObterDadosAtivo(item.Ticker);
+                            item.Nome = dados.Nome;
+                            item.Setor = dados.Setor;
+                            //item.TipoAcao = dados.TipoAcao;
                             item.PrecoAtual = dados.PrecoAtual;
                             item.VPA = dados.VPA;
                             item.LPA = dados.LPA;
                             item.Roe = dados.Roe;
                             item.DividendYield = dados.DividendYield;
+
+                            item.RegularMarketOpen = dados.RegularMarketOpen;
+                            item.RegularMarketPreviousClose = dados.RegularMarketPreviousClose;
+                            item.RegularMarketDayLow = dados.RegularMarketDayLow;
+                            item.RegularMarketDayHigh = dados.RegularMarketDayHigh;
+                            item.FiftyTwoWeekLow = dados.FiftyTwoWeekLow;
+                            item.FiftyTwoWeekHigh = dados.FiftyTwoWeekHigh;
+                            item.ForwardPE = dados.ForwardPE;
+                            item.PriceToBook = dados.PriceToBook;
+                            item.MarketCap = dados.MarketCap;
+                            item.RegularMarketVolume = dados.RegularMarketVolume;
+
                             item.DataAtualizacao = DateTime.Now;
 
                             context.Update(item);

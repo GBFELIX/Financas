@@ -131,6 +131,7 @@ namespace Acoes_Fiis.Controllers
                     if (acao != null)
                     {
                         viewItem.PrecoAtual = acao.PrecoAtual;
+                        viewItem.DividendYield = acao.DividendYield;
                         decimal pl = acao.LPA > 0 ? acao.PrecoAtual / acao.LPA : 0;
                         decimal pvp = acao.VPA > 0 ? acao.PrecoAtual / acao.VPA : 0;
 

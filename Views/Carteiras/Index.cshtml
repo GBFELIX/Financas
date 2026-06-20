@@ -371,16 +371,45 @@
                             <td class="fw-bold text-success" id="quantidade-@item.Id">@item.Quantidade.ToString("N0")</td>
                             <td>R$ @item.PrecoMedio.ToString("N2")</td>
                             <td>R$ @item.PrecoAtual.ToString("N2")</td>
-                            <td id="celula-rendimento-@item.Id"
-                                class="text-success small fw-semibold"
-                                style="cursor: pointer;"
-                                onclick="tornarRendimentoEditavel(@item.Id, @item.UltimoRendimento)">
+                                @if (item.TipoAtivo == "Acao")
+                                {
+                                <td id="celula-rendimento-@item.Id" class="text-success small fw-semibold">
+                                    <span id="texto-rendimento-@item.Id">
+                                        @(item.DividendYield > 0 ? item.DividendYield.ToString("N2") + "%" : "0,00%")
+                                    </span>
+                                </td>
+                                }
+                                else
+                                {
+                                <td id="celula-rendimento-@item.Id"
+                                    class="text-success small fw-semibold"
+                                    style="cursor: pointer;"
+                                    onclick="tornarRendimentoEditavel(@item.Id, @item.UltimoRendimento)">
+                                    <span id="texto-rendimento-@item.Id">
+                                        @(item.UltimoRendimento > 0 ? item.UltimoRendimento.ToString("C2") : "R$ 0,00")
+                                    </span>
+                                </td>
+                                }
+                                @{
+                                    decimal proventoEstimadoFinal = 0m;
 
-                                <span id="texto-rendimento-@item.Id">
-                                    @(item.UltimoRendimento > 0 ? item.UltimoRendimento.ToString("C2") : "R$ 0,00")
-                                </span>
-                            </td>
-                            <td class="fw-bold text-success" id="provento-estimado-@item.Id">@(item.ProventoMensalEstimado > 0 ? item.ProventoMensalEstimado.ToString("C2") : "-")</td>
+                                    if (item.TipoAtivo == "Acao")
+                                    {
+                                        if (item.DividendYield > 0 && item.DividendYield <= 20.0m)
+                                        {
+                                            decimal valorAtualTotal = item.PrecoAtual * item.Quantidade;
+                                            proventoEstimadoFinal = (valorAtualTotal * (item.DividendYield / 100m)) / 12m;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        proventoEstimadoFinal = item.ProventoMensalEstimado;
+                                    }
+                                }
+
+                                <td class="fw-bold text-success" id="provento-estimado-@item.Id">
+                                    @(proventoEstimadoFinal > 0 ? proventoEstimadoFinal.ToString("C2") : "-")
+                                </td>
                             <td class="fw-bold">R$ @item.ValorAtual.ToString("N2")</td>
                             <td class="@(item.LucroPrejuizo >= 0 ? "text-success" : "text-danger") fw-bold">
                                 R$ @item.LucroPrejuizo.ToString("N2")

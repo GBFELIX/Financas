@@ -208,6 +208,7 @@
                         <th>P/VP</th>
                         <th>P/L</th>
                         <th>ROE</th>
+                        <th>Dy</th>
                         <th>Preço Teto</th>
                         <th>Margem Subida</th>
                         <th>Justo (Graham)</th>
@@ -242,6 +243,7 @@
                                 <td class="text-muted">@item.PVP.ToString("N2")</td>
                                 <td class="text-muted">@(item.PL == 0 ? "N/A" : item.PL.ToString("N2"))</td>
                                 <td class="@(item.Roe > 15 ? "text-success fw-bold" : "")">@item.Roe.ToString("N1")%</td>
+                                <td class="text-muted">@item.DividendYield.ToString("N1")%</td>
                                 <td class="text-nowrap">R$ @item.PrecoTetoVenda.ToString("N2")</td>
                                 <td class="text-nowrap @(item.DistanciaParaVenda > 0 ? "text-success" : "text-danger")">
                                     @(item.DistanciaParaVenda > 0 ? "+" : "")@item.DistanciaParaVenda.ToString("N1")%

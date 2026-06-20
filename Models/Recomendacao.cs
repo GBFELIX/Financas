@@ -8,25 +8,63 @@ namespace Acoes_Fiis.Models
     public class Recomendacao
     {
         public int Id { get; set; }
+
+        public string Nome { get; set; }
+        public string Setor { get; set; }
         public string Ticker { get; set; }
+
         [Column(TypeName = "decimal(18,2)")]
         public decimal PrecoAtual { get; set; }
+
         [Column(TypeName = "decimal(18,2)")]
         public decimal VPA { get; set; }
-        [Column(TypeName = "decimal(18,2)")]// Valor Patrimonial por Ação
-        public decimal LPA { get; set; }// Lucro por Ação
+
         [Column(TypeName = "decimal(18,2)")]
-        public decimal Roe { get; set; } // Em porcentagem (ex: 15.0)
+        public decimal LPA { get; set; }
+
         [Column(TypeName = "decimal(18,2)")]
-        public decimal DividendYield { get; set; } // Em porcentagem
+        public decimal Roe { get; set; }
+
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal DividendYield { get; set; }
+
         public DateTime DataAtualizacao { get; set; }
-        public decimal PVP => PrecoAtual / VPA;
-        public decimal PL => LPA > 0 ? PrecoAtual / LPA : 0; // Preço/Lucro
+
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal RegularMarketOpen { get; set; }
+
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal RegularMarketPreviousClose { get; set; }
+
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal RegularMarketDayLow { get; set; }
+
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal RegularMarketDayHigh { get; set; }
+
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal FiftyTwoWeekLow { get; set; }
+
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal FiftyTwoWeekHigh { get; set; }
+
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal ForwardPE { get; set; }
+
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal PriceToBook { get; set; }
+
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal MarketCap { get; set; }
+
+        public long RegularMarketVolume { get; set; }
 
         [Display(Name = "Tipo de Ativo")]
-
         public string? TipoAtivo { get; set; }
         public string? TipoAcao { get; set; }
+
+        public decimal PVP => VPA > 0 ? PrecoAtual / VPA : 0;
+        public decimal PL => LPA > 0 ? PrecoAtual / LPA : 0;
         public string Status
         {
             get
