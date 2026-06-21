@@ -212,13 +212,10 @@ namespace Acoes_Fiis.Controllers
                 viewModel.PercentualAtualFiis = (double)((totalAcumuladoFiis / patrimonioTotal) * 100);
                 viewModel.PercentualAtualAcoes = (double)((totalRendaVariavelGeral / patrimonioTotal) * 100);
 
-                // 2. CORRIGIDO: Busca nas linhas da lista da ViewBag pelos IDs corretos da tabela
-                // Substitua 'PercentualAlvo' pelo nome exato da sua coluna de % se for diferente
                 double alvoRF = (double)(listaMetas.FirstOrDefault(x => x.Id == 1)?.PercentualAlvo ?? 20.0m);
                 double alvoFiis = (double)(listaMetas.FirstOrDefault(x => x.Id == 2)?.PercentualAlvo ?? 40.0m);
                 double alvoAcoes = (double)(listaMetas.FirstOrDefault(x => x.Id == 3)?.PercentualAlvo ?? 40.0m);
 
-                // 3. Calcula o déficit em relação à meta
                 double desvioRF = alvoRF - viewModel.PercentualAtualRendaFixa;
                 double desvioFiis = alvoFiis - viewModel.PercentualAtualFiis;
                 double desvioAcoes = alvoAcoes - viewModel.PercentualAtualAcoes;
@@ -329,7 +326,6 @@ namespace Acoes_Fiis.Controllers
                     MesAno = g.Key,
                     PatrimonioSomado = g.Sum(x => x.PatrimonioLiquido)
                 })
-                // Filtra registros com MesAno nulo, se houver
                 .ToListAsync();
 
                 var historicoOrdenado = historicoCasal
@@ -342,6 +338,43 @@ namespace Acoes_Fiis.Controllers
                 ViewBag.HistoricoEvolucaoLabels = historicoOrdenado.Select(x => x.MesAno).ToList();
                 ViewBag.HistoricoEvolucaoValores = historicoOrdenado.Select(x => x.PatrimonioSomado).ToList();
             }
+
+            List<string> labelsProjecao = new List<string>();
+            List<decimal> valoresProjecao = new List<decimal>();
+
+            decimal patrimonioAcumulado = patrimonioTotalReal;
+            DateTime dataBaseProjecao = DateTime.Now;
+
+            var transacoesFuturas = await _context.Financeiro
+                .Where(t => t.Data >= new DateTime(dataBaseProjecao.Year, dataBaseProjecao.Month, 1))
+                .ToListAsync();
+
+            if (visao != "Casal")
+            {
+                transacoesFuturas = transacoesFuturas.Where(t => t.Dono == visao).ToList();
+            }
+
+            for (int i = 1; i <= 12; i++)
+            {
+                DateTime mesAlvo = dataBaseProjecao.AddMonths(i);
+                string labelMesAno = mesAlvo.ToString("MM/yyyy");
+
+                var transacoesDoMes = transacoesFuturas
+                    .Where(t => t.Data.Month == mesAlvo.Month && t.Data.Year == mesAlvo.Year)
+                    .ToList();
+
+                decimal entradas = transacoesDoMes.Where(t => t.Tipo == "Entrada").Sum(t => t.Valor);
+                decimal despesas = transacoesDoMes.Where(t => t.Tipo == "Despesa").Sum(t => t.Valor);
+
+                decimal saldoMes = entradas - despesas;
+                patrimonioAcumulado += saldoMes;
+
+                labelsProjecao.Add(labelMesAno);
+                valoresProjecao.Add(patrimonioAcumulado);
+            }
+
+            ViewBag.ProjecaoFuturaLabels = labelsProjecao;
+            ViewBag.ProjecaoFuturaValores = valoresProjecao;
         }
 
         private ItemRebalanceamentoViewModel CalcularItemRebalanceamento(string categoria, decimal alvo, decimal valorAtual, decimal total)

@@ -15,6 +15,13 @@
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link text-white border-0 bg-transparent fw-bold pb-3 px-4 position-relative"
+                                id="tab-projecao" data-bs-toggle="tab" data-bs-target="#conteudo-projecao"
+                                type="button" role="tab" aria-selected="false">
+                            <i class="bi bi-crystal-ball text-info me-1"></i> Projeção Futura
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link text-white border-0 bg-transparent fw-bold pb-3 px-4 position-relative"
                                 id="tab-metas" data-bs-toggle="tab" data-bs-target="#conteudo-metas"
                                 type="button" role="tab" aria-selected="false">
                             <i class="bi bi-trophy text-warning me-1"></i> Metas & Múltiplos
@@ -27,6 +34,7 @@
             <div class="modal-body p-4">
                 <div class="tab-content" id="conteudoTabsModal">
 
+                    @* ABA 1: EVOLUÇÃO PATRIMONIAL *@
                     <div class="tab-pane fade show active" id="conteudo-rendimentos" role="tabpanel" aria-labelledby="tab-rendimentos">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h5 class="fw-bold text-dark m-0">Crescimento do Patrimônio Líquido</h5>
@@ -38,6 +46,19 @@
                         </div>
                     </div>
 
+                    @* ABA 2: PROJEÇÃO FUTURA *@
+                    <div class="tab-pane fade" id="conteudo-projecao" role="tabpanel" aria-labelledby="tab-projecao">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="fw-bold text-dark m-0">Previsão de Patrimônio (Próximos 12 Meses)</h5>
+                            <span class="badge bg-info rounded-pill px-3 py-2 fw-bold text-dark">Estimado</span>
+                        </div>
+
+                        <div style="height: 280px; position: relative;" class="mb-2">
+                            <canvas id="chartProjecaoFutura"></canvas>
+                        </div>
+                    </div>
+
+                    @* ABA 3: METAS E MÚLTIPLOS *@
                     <div class="tab-pane fade" id="conteudo-metas" role="tabpanel" aria-labelledby="tab-metas">
                         @{
                             decimal custoMensal = 3000.00m;
@@ -160,7 +181,6 @@
 </style>
 
 <script>
-    // 1. Função de Cálculo do Preço Médio Ponderado
     function calcularNovoPrecoMedio(id, qtdAtual, pmAtual, precoAtual) {
         const inputQtd = document.getElementById(`inputQtdCompra-${id}`);
         const txtAporte = document.getElementById(`txtNovoAporte-${id}`);
@@ -179,10 +199,6 @@
         const novoPrecoMedioEstimado = totalAcoesNovas > 0 ? (custoTotalAcumulado / totalAcoesNovas) : 0;
         txtNovoPM.innerText = novoPrecoMedioEstimado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
-
-    document.addEventListener("DOMContentLoaded", function() {
-
-    });
 
     document.addEventListener("DOMContentLoaded", function () {
         const modalSelect = document.getElementById('selectModalTicker');
@@ -239,7 +255,6 @@
                     spanTexto.style.display = '';
                     celula.setAttribute('onclick', `tornarRendimentoEditavel(${id}, ${novoValor})`);
 
-                    // RECALCULO DO PROVENTO MENSAL ESTIMADO EM TEMPO REAL
                     const campoProvento = document.getElementById(`provento-estimado-${id}`);
                     const campoQuantidade = document.getElementById(`quantidade-${id}`);
 
@@ -285,76 +300,138 @@
         });
     }
 
-
-    // NOVO MOTOR DO GRÁFICO DE EVOLUÇÃO PATRIMONIAL LÍQUIDA
+    // CONTROLE DOS GRÁFICOS (Evolução e Projeção)
     let chartEvolucao = null;
+    let chartProjecao = null;
 
     document.addEventListener("DOMContentLoaded", function () {
         const modalElement = document.getElementById('modalRendimentosERebalanceamento');
         if (!modalElement) return;
 
+        // Dispara a renderização e o resize correto dos Canvas ao abrir o Modal
         modalElement.addEventListener('shown.bs.modal', function () {
+
+            // --- GRÁFICO 1: EVOLUÇÃO PATRIMONIAL ---
             const canvasEvolucao = document.getElementById('chartEvolucaoPatrimonial');
-            if (!canvasEvolucao) return;
+            if (canvasEvolucao) {
+                let labelsEvolucao = @Html.Raw(Json.Serialize(ViewBag.HistoricoEvolucaoLabels)) || [];
+                let dadosEvolucao = @Html.Raw(Json.Serialize(ViewBag.HistoricoEvolucaoValores)) || [];
 
-            let labelsEvolucao = @Html.Raw(Json.Serialize(ViewBag.HistoricoEvolucaoLabels)) || [];
-            let dadosEvolucao = @Html.Raw(Json.Serialize(ViewBag.HistoricoEvolucaoValores)) || [];
+                labelsEvolucao.reverse();
+                dadosEvolucao.reverse();
 
-            labelsEvolucao.reverse();
-            dadosEvolucao.reverse();
+                if (labelsEvolucao.length === 1) {
+                    labelsEvolucao = ['Início', labelsEvolucao[0]];
+                    dadosEvolucao = [dadosEvolucao[0], dadosEvolucao[0]];
+                } else if (labelsEvolucao.length === 0) {
+                    labelsEvolucao = ['Início', new Date().toLocaleDateString('pt-BR', { month: '2-digit', year: 'numeric' })];
+                    dadosEvolucao = [@Model.PatrimonioTotalReal, @Model.PatrimonioTotalReal];
+                }
 
-            if (labelsEvolucao.length === 1) {
-                labelsEvolucao = ['Início', labelsEvolucao[0]];
-                dadosEvolucao = [dadosEvolucao[0], dadosEvolucao[0]];
-            }
-            else if (labelsEvolucao.length === 0) {
-                labelsEvolucao = ['Início', new Date().toLocaleDateString('pt-BR', { month: '2-digit', year: 'numeric' })];
-                dadosEvolucao = [@Model.PatrimonioTotalReal, @Model.PatrimonioTotalReal];
-            }
+                const ctxEvolucao = canvasEvolucao.getContext('2d');
+                if (chartEvolucao) chartEvolucao.destroy();
 
-            const ctxEvolucao = canvasEvolucao.getContext('2d');
-
-            if (chartEvolucao) {
-                chartEvolucao.destroy();
-            }
-
-            chartEvolucao = new Chart(ctxEvolucao, {
-                type: 'line',
-                data: {
-                    labels: labelsEvolucao,
-                    datasets: [{
-                        label: 'Patrimônio Líquido (R$)',
-                        data: dadosEvolucao,
-                        borderColor: '#0d6efd',
-                        backgroundColor: 'rgba(13, 110, 253, 0.1)',
-                        fill: true,
-                        tension: 0.3,
-                        borderWidth: 3,
-                        pointBackgroundColor: '#0d6efd',
-                        pointRadius: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                label: (context) => 'Saldo: ' + new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(context.raw)
+                chartEvolucao = new Chart(ctxEvolucao, {
+                    type: 'line',
+                    data: {
+                        labels: labelsEvolucao,
+                        datasets: [{
+                            label: 'Patrimônio Líquido (R$)',
+                            data: dadosEvolucao,
+                            borderColor: '#0d6efd',
+                            backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                            fill: true,
+                            tension: 0.3,
+                            borderWidth: 3,
+                            pointBackgroundColor: '#0d6efd',
+                            pointRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: (context) => 'Saldo: ' + new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(context.raw)
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: false,
+                                ticks: { callback: (v) => 'R$ ' + v.toLocaleString('pt-BR') }
                             }
                         }
+                    }
+                });
+            }
+
+            // --- GRÁFICO 2: PROJEÇÃO FUTURA ---
+            const canvasProjecao = document.getElementById('chartProjecaoFutura');
+            if (canvasProjecao) {
+                let labelsProjecao = @Html.Raw(Json.Serialize(ViewBag.ProjecaoFuturaLabels)) || [];
+                let dadosProjecao = @Html.Raw(Json.Serialize(ViewBag.ProjecaoFuturaValores)) || [];
+
+                // Fallback caso não haja dados de projeção mapeados
+                if (labelsProjecao.length === 0) {
+                    labelsProjecao = ['Sem Dados'];
+                    dadosProjecao = [@Model.PatrimonioTotalReal];
+                }
+
+                const ctxProjecao = canvasProjecao.getContext('2d');
+                if (chartProjecao) chartProjecao.destroy();
+
+                chartProjecao = new Chart(ctxProjecao, {
+                    type: 'line',
+                    data: {
+                        labels: labelsProjecao,
+                        datasets: [{
+                            label: 'Patrimônio Projetado (R$)',
+                            data: dadosProjecao,
+                            borderColor: '#0dcaf0',
+                            backgroundColor: 'rgba(13, 202, 240, 0.1)',
+                            fill: true,
+                            tension: 0.3,
+                            borderWidth: 3,
+                            pointBackgroundColor: '#0dcaf0',
+                            pointRadius: 4,
+                            borderDash: [5, 5] // Deixa a linha tracejada indicando que é uma projeção
+                        }]
                     },
-                    scales: {
-                        y: {
-                            beginAtZero: false,
-                            ticks: { callback: (v) => 'R$ ' + v.toLocaleString('pt-BR') }
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: (context) => 'Projeção: ' + new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(context.raw)
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: false,
+                                ticks: { callback: (v) => 'R$ ' + v.toLocaleString('pt-BR') }
+                            }
                         }
                     }
-                }
+                });
+            }
+        });
+
+        // Força o Chart.js a recalcular o tamanho correto ao transicionar entre abas invisíveis
+        const tabLinks = document.querySelectorAll('#tabsModalFinanceiro button');
+        tabLinks.forEach(tab => {
+            tab.addEventListener('shown.bs.tab', function () {
+                if (chartEvolucao) chartEvolucao.resize();
+                if (chartProjecao) chartProjecao.resize();
             });
         });
     });
+
     function abrirConfiguracaoMetasRapido() {
         const modalDetalhes = bootstrap.Modal.getInstance(document.getElementById('modalRendimentosERebalanceamento'));
         if(modalDetalhes) modalDetalhes.hide();

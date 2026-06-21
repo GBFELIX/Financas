@@ -42,7 +42,7 @@ public class AtivosBackgroundService : BackgroundService
                             item.VPA = dados.VPA;
                             item.LPA = dados.LPA;
                             item.Roe = dados.Roe;
-                            item.DividendYield = dados.DividendYield;
+                            //item.DividendYield = dados.DividendYield;
 
                             item.RegularMarketOpen = dados.RegularMarketOpen;
                             item.RegularMarketPreviousClose = dados.RegularMarketPreviousClose;
