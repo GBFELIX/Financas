@@ -72,6 +72,8 @@ namespace Acoes_Fiis.Models
 
         public ConfiguracaoBackup ConfiguracaoBackups { get; set; } = new ConfiguracaoBackup();
         public MetaAlocacao MetaAlocacao { get; set; } = new MetaAlocacao();
+        public List<Financeiro> Lancamentos { get; set; } = new List<Financeiro>();
+        public decimal InvestimentoMesCorrente => Lancamentos.Where(x => x.Categoria == "Investimento" && x.Tipo == "Entrada").Sum(x => x.Valor);
 
         public string SugestaoAporteCategoria { get; set; } = string.Empty;
         public string SugestaoAporteJustificativa { get; set; } = string.Empty;
@@ -106,6 +108,7 @@ namespace Acoes_Fiis.Models
         public string CorBadge { get; set; } = string.Empty;
         public decimal UltimoRendimento { get; set; }
         public decimal ProventoMensalEstimado => Quantidade * UltimoRendimento;
+
 
         public decimal ValorAtual
         {

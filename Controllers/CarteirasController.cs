@@ -255,9 +255,11 @@ namespace Acoes_Fiis.Controllers
         private async Task CarregarModulosPainelFinanceiro(decimal totalRF, decimal totalFIIs, decimal totalAcoes, decimal patrimonioTotalReal, string visao)
         {
             decimal patrimonioTotal = totalRF + totalFIIs + totalAcoes;
+            DateTime dataAtual = DateTime.Now;
+            string mesAnoAtual = dataAtual.ToString("MM/yyyy");
 
             // ==========================================
-            // METAS DE REBALANCEAMENTO
+            // 1. METAS DE REBALANCEAMENTO
             // ==========================================
             var metas = await _context.MetasAlocacao.ToListAsync();
             decimal alvoRF = metas.FirstOrDefault(m => m.Categoria == "Renda Fixa")?.PercentualAlvo ?? 40m;
@@ -273,108 +275,138 @@ namespace Acoes_Fiis.Controllers
             }
 
             ViewBag.PainelRebalanceamento = painelRebalanceamento;
-            ViewBag.MetaRFAtual = alvoRF;
-            ViewBag.MetaFIIsAtual = alvoFIIs;
-            ViewBag.MetaAcoesAtual = alvoAcoes;
+            ViewBag.MetaRFAtual = alvoRF; ViewBag.MetaFIIsAtual = alvoFIIs; ViewBag.MetaAcoesAtual = alvoAcoes;
 
             // ==========================================
-            // AGENDA HISTÓRICA DE PROVENTOS
+            // 2. ATUALIZAÇÃO DA EVOLUÇÃO PATRIMONIAL DO MÊS
             // ==========================================
-            string mesAnoAtual = DateTime.Now.ToString("MM/yyyy");
-
-            var registroMesAtual = await _context.EvolucaoPatrimonial
-                .FirstOrDefaultAsync(e => e.MesAno == mesAnoAtual && e.Dono == visao);
-
+            var registroMesAtual = await _context.EvolucaoPatrimonial.FirstOrDefaultAsync(e => e.MesAno == mesAnoAtual && e.Dono == visao);
             if (registroMesAtual == null)
             {
                 _context.EvolucaoPatrimonial.Add(new EvolucaoPatrimonial { MesAno = mesAnoAtual, PatrimonioLiquido = patrimonioTotalReal, Dono = visao });
             }
             else if (registroMesAtual.PatrimonioLiquido != patrimonioTotalReal)
             {
-                registroMesAtual.PatrimonioLiquido = patrimonioTotalReal; // Atualiza se o valor mudou ao longo do mês
+                registroMesAtual.PatrimonioLiquido = patrimonioTotalReal;
             }
             await _context.SaveChangesAsync();
 
-            // 2. Busca o histórico completo ordenado para o gráfico de linha
+            // ==========================================
+            // 3. GRÁFICO: EVOLUÇÃO PATRIMONIAL HISTÓRICA
+            // ==========================================
+            var queryEvolucao = _context.EvolucaoPatrimonial.AsQueryable();
             if (visao != "Casal")
             {
-                var historicoDoBanco = await _context.EvolucaoPatrimonial
-                .Where(e => e.Dono == visao)
-                .ToListAsync();
-
-                // 2. Ordena cronologicamente quebrando a string "MM/AAAA" (Ano primeiro, depois Mês)
-                var historicoOrdenado = historicoDoBanco
-                    .OrderByDescending(x => x.MesAno.Substring(3, 4))
-                    .ThenByDescending(x => x.MesAno.Substring(0, 2))
-                    .Take(12)
-                    .ToList();
-
-                // 3. Monta as listas para a View na ordem correta (Esquerda -> Direita)
-                List<string> labelsEvolucao = historicoOrdenado.Select(x => x.MesAno).ToList();
-                List<decimal> valoresEvolucao = historicoOrdenado.Select(x => x.PatrimonioLiquido).ToList();
-
-                ViewBag.HistoricoEvolucaoLabels = labelsEvolucao;
-                ViewBag.HistoricoEvolucaoValores = valoresEvolucao;
+                var historicoDoBanco = await queryEvolucao.Where(e => e.Dono == visao).ToListAsync();
+                var ordenado = historicoDoBanco.OrderByDescending(x => x.MesAno.Substring(3, 4)).ThenByDescending(x => x.MesAno.Substring(0, 2)).Take(12).ToList();
+                ViewBag.HistoricoEvolucaoLabels = ordenado.Select(x => x.MesAno).ToList();
+                ViewBag.HistoricoEvolucaoValores = ordenado.Select(x => x.PatrimonioLiquido).ToList();
             }
             else
             {
-                var historicoCasal = await _context.EvolucaoPatrimonial
-                .Where(x => x.Dono != "Casal")
-                .GroupBy(e => e.MesAno)
-                .Select(g => new
-                {
-                    MesAno = g.Key,
-                    PatrimonioSomado = g.Sum(x => x.PatrimonioLiquido)
-                })
-                .ToListAsync();
+                var historicoCasal = await queryEvolucao.Where(x => x.Dono != "Casal").GroupBy(e => e.MesAno)
+                    .Select(g => new { MesAno = g.Key, PatrimonioSomado = g.Sum(x => x.PatrimonioLiquido) }).ToListAsync();
+                var ordenado = historicoCasal.OrderByDescending(x => x.MesAno.Substring(3, 4)).ThenByDescending(x => x.MesAno.Substring(0, 2)).Take(12).ToList();
+                ViewBag.HistoricoEvolucaoLabels = ordenado.Select(x => x.MesAno).ToList();
+                ViewBag.HistoricoEvolucaoValores = ordenado.Select(x => x.PatrimonioSomado).ToList();
+            }
 
-                var historicoOrdenado = historicoCasal
-                    .OrderByDescending(x => x.MesAno.Substring(3, 4)) // Ordena pelo Ano (ex: "2026")
-                    .ThenByDescending(x => x.MesAno.Substring(0, 2))  // Ordena pelo Mês (ex: "01")
-                    .Take(12) // Pega os últimos 12 meses da linha do tempo cronológica
-                    .ToList();
+            // ==========================================
+            // 4. CONSULTA ÚNICA E CENTRALIZADA DO FLUXO FINANCEIRO
+            // ==========================================
+            var queryFinanceiro = _context.Financeiro.AsQueryable();
+            if (visao != "Casal") queryFinanceiro = queryFinanceiro.Where(t => t.Dono == visao);
+            var todasTransacoes = await queryFinanceiro.ToListAsync();
 
-                // Divide os dados ordenados para as ViewBags do Gráfico
-                ViewBag.HistoricoEvolucaoLabels = historicoOrdenado.Select(x => x.MesAno).ToList();
-                ViewBag.HistoricoEvolucaoValores = historicoOrdenado.Select(x => x.PatrimonioSomado).ToList();
+            // ==========================================
+            // 5. PROJEÇÃO DO PATRIMÔNIO GLOBAL (12 MESES)
+            // ==========================================
+            DateTime dataBaseProjecao = DateTime.Now;
+            var transacoesPassadas = todasTransacoes.Where(t => t.Data < new DateTime(dataBaseProjecao.Year, dataBaseProjecao.Month, 1)).ToList();
+
+            decimal mediaEntradasHistorica = 0m, mediaDespesasHistorica = 0m;
+            var mesesComDados = transacoesPassadas.GroupBy(t => new { t.Data.Year, t.Data.Month }).Count();
+
+            if (mesesComDados > 0)
+            {
+                mediaEntradasHistorica = transacoesPassadas.Where(t => t.Tipo == "Entrada").Sum(t => t.Valor) / mesesComDados;
+                mediaDespesasHistorica = transacoesPassadas.Where(t => t.Tipo == "Despesa").Sum(t => t.Valor) / mesesComDados;
             }
 
             List<string> labelsProjecao = new List<string>();
             List<decimal> valoresProjecao = new List<decimal>();
-
             decimal patrimonioAcumulado = patrimonioTotalReal;
-            DateTime dataBaseProjecao = DateTime.Now;
-
-            var transacoesFuturas = await _context.Financeiro
-                .Where(t => t.Data >= new DateTime(dataBaseProjecao.Year, dataBaseProjecao.Month, 1))
-                .ToListAsync();
-
-            if (visao != "Casal")
-            {
-                transacoesFuturas = transacoesFuturas.Where(t => t.Dono == visao).ToList();
-            }
+            var transacoesFuturas = todasTransacoes.Where(t => t.Data >= new DateTime(dataBaseProjecao.Year, dataBaseProjecao.Month, 1)).ToList();
 
             for (int i = 1; i <= 12; i++)
             {
                 DateTime mesAlvo = dataBaseProjecao.AddMonths(i);
-                string labelMesAno = mesAlvo.ToString("MM/yyyy");
+                var transacoesDoMes = transacoesFuturas.Where(t => t.Data.Month == mesAlvo.Month && t.Data.Year == mesAlvo.Year).ToList();
 
-                var transacoesDoMes = transacoesFuturas
-                    .Where(t => t.Data.Month == mesAlvo.Month && t.Data.Year == mesAlvo.Year)
-                    .ToList();
+                decimal entradas = !transacoesDoMes.Any() ? mediaEntradasHistorica : transacoesDoMes.Where(t => t.Tipo == "Entrada").Sum(t => t.Valor);
+                decimal despesas = !transacoesDoMes.Any() ? mediaDespesasHistorica : transacoesDoMes.Where(t => t.Tipo == "Despesa").Sum(t => t.Valor);
 
-                decimal entradas = transacoesDoMes.Where(t => t.Tipo == "Entrada").Sum(t => t.Valor);
-                decimal despesas = transacoesDoMes.Where(t => t.Tipo == "Despesa").Sum(t => t.Valor);
-
-                decimal saldoMes = entradas - despesas;
-                patrimonioAcumulado += saldoMes;
-
-                labelsProjecao.Add(labelMesAno);
+                patrimonioAcumulado += (entradas - despesas);
+                labelsProjecao.Add(mesAlvo.ToString("MM/yyyy"));
                 valoresProjecao.Add(patrimonioAcumulado);
             }
+            ViewBag.ProjecaoFuturaLabels = labelsProjecao; ViewBag.ProjecaoFuturaValores = valoresProjecao;
 
-            ViewBag.ProjecaoFuturaLabels = labelsProjecao;
-            ViewBag.ProjecaoFuturaValores = valoresProjecao;
+            // ==========================================
+            // 6. GRÁFICO: RENDIMENTOS (FIXA VS VARIÁVEL)
+            // ==========================================
+            DateTime inicioHistorico = new DateTime(dataAtual.Year, dataAtual.Month, 1).AddMonths(-11);
+            var todosRendimentos = todasTransacoes.Where(x => x.Categoria == "Investimento" && x.Tipo == "Entrada" && x.Descricao.Contains("Rendimento Automático")).ToList();
+
+            List<string> labelsRendimentosPassado = new List<string>();
+            List<decimal> valoresFixaPassado = new List<decimal>();
+            List<decimal> valoresVariavelPassado = new List<decimal>();
+
+            for (int i = 0; i < 12; i++)
+            {
+                DateTime mesAnalise = inicioHistorico.AddMonths(i);
+                var rendimentosMes = todosRendimentos.Where(x => x.Data.Month == mesAnalise.Month && x.Data.Year == mesAnalise.Year).ToList();
+
+                labelsRendimentosPassado.Add(mesAnalise.ToString("MM/yyyy"));
+                valoresFixaPassado.Add(rendimentosMes.Where(x => x.Descricao.Contains("Caixinhas")).Sum(x => x.Valor));
+                valoresVariavelPassado.Add(rendimentosMes.Where(x => x.Descricao.Contains("Renda Variável")).Sum(x => x.Valor));
+            }
+
+            // Médias de Rendimentos
+            decimal mediaFixaHistorica = 0m, mediaVariavelHistorica = 0m;
+            var transacoesPassadasrendimento = todosRendimentos.Where(x => x.Data < new DateTime(dataAtual.Year, dataAtual.Month, 1)).ToList();
+            var mesesComRendimento = transacoesPassadasrendimento.GroupBy(x => new { x.Data.Year, x.Data.Month }).Count();
+
+            if (mesesComRendimento > 0)
+            {
+                mediaFixaHistorica = transacoesPassadasrendimento.Where(x => x.Descricao.Contains("Caixinhas")).Sum(x => x.Valor) / mesesComRendimento;
+                mediaVariavelHistorica = transacoesPassadasrendimento.Where(x => x.Descricao.Contains("Renda Variável")).Sum(x => x.Valor) / mesesComRendimento;
+            }
+
+            // Projeção de Rendimentos (6 meses futuros aplicando a regra de emenda correta)
+            List<string> labelsRendimentosFuturo = new List<string>();
+            List<decimal> valoresFixaFuturo = new List<decimal>();
+            List<decimal> valoresVariavelFuturo = new List<decimal>();
+
+            for (int i = 1; i <= 6; i++)
+            {
+                DateTime mesAlvo = dataAtual.AddMonths(i);
+                var rendimentosFuturosMes = todosRendimentos.Where(x => x.Data.Month == mesAlvo.Month && x.Data.Year == mesAlvo.Year).ToList();
+
+                decimal fixaProjetada = !rendimentosFuturosMes.Any(x => x.Descricao.Contains("Caixinhas")) ? mediaFixaHistorica : rendimentosFuturosMes.Where(x => x.Descricao.Contains("Caixinhas")).Sum(x => x.Valor);
+                decimal variavelProjetada = !rendimentosFuturosMes.Any(x => x.Descricao.Contains("Renda Variável")) ? mediaVariavelHistorica : rendimentosFuturosMes.Where(x => x.Descricao.Contains("Renda Variável")).Sum(x => x.Valor);
+
+                labelsRendimentosFuturo.Add(mesAlvo.ToString("MM/yyyy"));
+                valoresFixaFuturo.Add(fixaProjetada);
+                valoresVariavelFuturo.Add(variavelProjetada);
+            }
+
+            ViewBag.RendimentosLabelsPassado = labelsRendimentosPassado;
+            ViewBag.RendimentosLabelsFuturo = labelsRendimentosFuturo;
+            ViewBag.FixaValoresPassado = valoresFixaPassado;
+            ViewBag.FixaValoresFuturo = valoresFixaFuturo;
+            ViewBag.VariavelValoresPassado = valoresVariavelPassado;
+            ViewBag.VariavelValoresFuturo = valoresVariavelFuturo;
         }
 
         private ItemRebalanceamentoViewModel CalcularItemRebalanceamento(string categoria, decimal alvo, decimal valorAtual, decimal total)
@@ -448,58 +480,81 @@ namespace Acoes_Fiis.Controllers
 
         private async Task ProcessarAutomacoesFechamento(List<Financeiro> financeiroData, decimal saldoFinanceiroAteHoje, decimal totalProventosVariaveis, DateTime agora, string visao)
         {
-            DateTime mesAnterior = agora.AddMonths(-1);
             bool mudouBanco = false;
 
+            // Define a data alvo como o último dia do mês ATUAL
+            DateTime ultimoDiaMesAtual = new DateTime(agora.Year, agora.Month, 1).AddMonths(1).AddDays(-1);
+            string sufixoMesAno = agora.ToString("MM/yyyy");
+
             // --- AUTOMAÇÃO A: CAIXINHAS / RENDA FIXA ---
-            string descricaoRendimentoNode = $"Rendimento Automático Caixinhas - {mesAnterior:MM/yyyy}";
-            if (!financeiroData.Any(x => x.Descricao == descricaoRendimentoNode))
+            string descricaoRendimentoNode = $"Rendimento Automático Caixinhas - {sufixoMesAno}";
+
+            // Calcula o rendimento com base no saldo acumulado até o momento
+            var parametro = await _context.Parametro.FirstOrDefaultAsync();
+            decimal cdiAnual = parametro?.CdiAnual ?? 14.75m;
+            decimal taxaMensalCaixinha = (cdiAnual / 12) / 100;
+            decimal rendimentoLiquido = (saldoFinanceiroAteHoje * taxaMensalCaixinha) * 0.825m;
+            decimal valorFixaFinal = Math.Round(rendimentoLiquido > 0.01m ? rendimentoLiquido : 0m, 2);
+
+            var lancamentoFixaExistente = financeiroData.FirstOrDefault(x => x.Descricao == descricaoRendimentoNode);
+
+            if (lancamentoFixaExistente == null)
             {
-                DateTime ultimoSegundoMesAnterior = new DateTime(agora.Year, agora.Month, 1).AddSeconds(-1);
-                decimal saldoFinalMesAnterior = financeiroData.Where(x => x.Data.Date <= ultimoSegundoMesAnterior.Date).Sum(x => x.Tipo == "Entrada" ? x.Valor : -x.Valor);
-
-                if (saldoFinalMesAnterior > 0)
+                if (valorFixaFinal > 0m)
                 {
-                    var parametro = await _context.Parametro.FirstOrDefaultAsync();
-                    decimal cdiAnual = parametro?.CdiAnual ?? 14.75m;
-                    decimal taxaMensalCaixinha = (cdiAnual / 12) / 100;
-                    decimal rendimentoLiquido = (saldoFinalMesAnterior * taxaMensalCaixinha) * 0.825m;
-
-                    if (rendimentoLiquido > 0.01m)
+                    var novoLancamento = new Financeiro
                     {
-                        var novoLancamento = new Financeiro
-                        {
-                            Descricao = descricaoRendimentoNode,
-                            Valor = Math.Round(rendimentoLiquido, 2),
-                            Data = new DateTime(agora.Year, agora.Month, 1).AddDays(-1),
-                            Tipo = "Entrada",
-                            Categoria = "Investimento",
-                            Pagamento = "Pix",
-                            Dono = visao == "Casal" ? "Casal" : visao
-                        };
-                        _context.Financeiro.Add(novoLancamento);
-                        financeiroData.Add(novoLancamento);
-                        mudouBanco = true;
-                    }
+                        Descricao = descricaoRendimentoNode,
+                        Valor = valorFixaFinal,
+                        Data = ultimoDiaMesAtual,
+                        Tipo = "Entrada",
+                        Categoria = "Investimento",
+                        Pagamento = "Pix",
+                        Dono = visao == "Casal" ? "Casal" : visao
+                    };
+                    _context.Financeiro.Add(novoLancamento);
+                    financeiroData.Add(novoLancamento);
+                    mudouBanco = true;
                 }
+            }
+            else if (lancamentoFixaExistente.Valor != valorFixaFinal)
+            {
+                lancamentoFixaExistente.Valor = valorFixaFinal;
+                lancamentoFixaExistente.Data = ultimoDiaMesAtual;
+                _context.Financeiro.Update(lancamentoFixaExistente);
+                mudouBanco = true;
             }
 
             // --- AUTOMAÇÃO B: DIVIDENDOS / RENDA VARIÁVEL ---
-            string descricaoRendimentoVariavel = $"Rendimento Automático Renda Variável - {mesAnterior:MM/yyyy}";
-            if (!financeiroData.Any(x => x.Descricao == descricaoRendimentoVariavel) && totalProventosVariaveis > 0.01m)
+            string descricaoRendimentoVariavel = $"Rendimento Automático Renda Variável - {sufixoMesAno}";
+            decimal valorVariavelFinal = Math.Round(totalProventosVariaveis > 0.01m ? totalProventosVariaveis : 0m, 2);
+
+            var lancamentoVariavelExistente = financeiroData.FirstOrDefault(x => x.Descricao == descricaoRendimentoVariavel);
+
+            if (lancamentoVariavelExistente == null)
             {
-                var novoLancamentoVariavel = new Financeiro
+                if (valorVariavelFinal > 0m)
                 {
-                    Descricao = descricaoRendimentoVariavel,
-                    Valor = Math.Round(totalProventosVariaveis, 2),
-                    Data = new DateTime(agora.Year, agora.Month, 1).AddDays(-1),
-                    Tipo = "Entrada",
-                    Categoria = "Investimento",
-                    Pagamento = "Pix",
-                    Dono = visao == "Casal" ? "Casal" : visao
-                };
-                _context.Financeiro.Add(novoLancamentoVariavel);
-                financeiroData.Add(novoLancamentoVariavel);
+                    var novoLancamentoVariavel = new Financeiro
+                    {
+                        Descricao = descricaoRendimentoVariavel,
+                        Valor = valorVariavelFinal,
+                        Data = ultimoDiaMesAtual,
+                        Tipo = "Entrada",
+                        Categoria = "Investimento",
+                        Pagamento = "Pix",
+                        Dono = visao == "Casal" ? "Casal" : visao
+                    };
+                    _context.Financeiro.Add(novoLancamentoVariavel);
+                    financeiroData.Add(novoLancamentoVariavel);
+                    mudouBanco = true;
+                }
+            }
+            else if (lancamentoVariavelExistente.Valor != valorVariavelFinal)
+            {
+                lancamentoVariavelExistente.Valor = valorVariavelFinal;
+                lancamentoVariavelExistente.Data = ultimoDiaMesAtual;
+                _context.Financeiro.Update(lancamentoVariavelExistente);
                 mudouBanco = true;
             }
 

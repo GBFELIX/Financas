@@ -22,6 +22,13 @@
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link text-white border-0 bg-transparent fw-bold pb-3 px-4 position-relative"
+                                id="tab-proventos" data-bs-toggle="tab" data-bs-target="#conteudo-proventos"
+                                type="button" role="tab" aria-selected="false">
+                            <i class="bi bi-trophy text-warning me-1"></i> Proventos
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link text-white border-0 bg-transparent fw-bold pb-3 px-4 position-relative"
                                 id="tab-metas" data-bs-toggle="tab" data-bs-target="#conteudo-metas"
                                 type="button" role="tab" aria-selected="false">
                             <i class="bi bi-trophy text-warning me-1"></i> Metas & Múltiplos
@@ -36,7 +43,7 @@
 
                     @* ABA 1: EVOLUÇÃO PATRIMONIAL *@
                     <div class="tab-pane fade show active" id="conteudo-rendimentos" role="tabpanel" aria-labelledby="tab-rendimentos">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
                             <h5 class="fw-bold text-dark m-0">Crescimento do Patrimônio Líquido</h5>
                             <span class="badge bg-success rounded-pill px-3 py-2 fw-bold">Atual: R$ @Model.PatrimonioTotalReal.ToString("N2")</span>
                         </div>
@@ -48,7 +55,7 @@
 
                     @* ABA 2: PROJEÇÃO FUTURA *@
                     <div class="tab-pane fade" id="conteudo-projecao" role="tabpanel" aria-labelledby="tab-projecao">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
                             <h5 class="fw-bold text-dark m-0">Previsão de Patrimônio (Próximos 12 Meses)</h5>
                             <span class="badge bg-info rounded-pill px-3 py-2 fw-bold text-dark">Estimado</span>
                         </div>
@@ -57,8 +64,19 @@
                             <canvas id="chartProjecaoFutura"></canvas>
                         </div>
                     </div>
+                    @* ABA 3: HISTÓRICO E PROJEÇÃO DE PROVENTOS RECEBIDOS *@
+                    <div class="tab-pane fade" id="conteudo-proventos" role="tabpanel" aria-labelledby="tab-proventos">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h5 class="fw-bold text-dark m-0">Proventos</h5>
+                            <span class="badge bg-info rounded-pill px-3 py-2 fw-bold text-dark">Inclui Caixinhas e Renda Variável</span>
+                        </div>
 
-                    @* ABA 3: METAS E MÚLTIPLOS *@
+                        <div style="height: 280px; position: relative;" class="mb-2">
+                            <canvas id="chartRendimentosInvestimentos"></canvas>
+                        </div>
+                    </div>
+
+                    @* ABA 4: METAS E MÚLTIPLOS *@
                     <div class="tab-pane fade" id="conteudo-metas" role="tabpanel" aria-labelledby="tab-metas">
                         @{
                             decimal custoMensal = 3000.00m;
@@ -300,15 +318,16 @@
         });
     }
 
-    // CONTROLE DOS GRÁFICOS (Evolução e Projeção)
+    // CONTROLE GLOBAL DOS GRÁFICOS DO MODAL
     let chartEvolucao = null;
     let chartProjecao = null;
+    let chartRendimentos = null;
 
     document.addEventListener("DOMContentLoaded", function () {
         const modalElement = document.getElementById('modalRendimentosERebalanceamento');
         if (!modalElement) return;
 
-        // Dispara a renderização e o resize correto dos Canvas ao abrir o Modal
+        // Dispara a renderização sincronizada quando o modal terminar de abrir na tela
         modalElement.addEventListener('shown.bs.modal', function () {
 
             // --- GRÁFICO 1: EVOLUÇÃO PATRIMONIAL ---
@@ -374,7 +393,6 @@
                 let labelsProjecao = @Html.Raw(Json.Serialize(ViewBag.ProjecaoFuturaLabels)) || [];
                 let dadosProjecao = @Html.Raw(Json.Serialize(ViewBag.ProjecaoFuturaValores)) || [];
 
-                // Fallback caso não haja dados de projeção mapeados
                 if (labelsProjecao.length === 0) {
                     labelsProjecao = ['Sem Dados'];
                     dadosProjecao = [@Model.PatrimonioTotalReal];
@@ -397,7 +415,7 @@
                             borderWidth: 3,
                             pointBackgroundColor: '#0dcaf0',
                             pointRadius: 4,
-                            borderDash: [5, 5] // Deixa a linha tracejada indicando que é uma projeção
+                            borderDash: [5, 5]
                         }]
                     },
                     options: {
@@ -420,14 +438,114 @@
                     }
                 });
             }
+
+            // --- GRÁFICO 3: RENDIMENTOS DE INVESTIMENTOS (REDA FIXA VS RENDA VARIÁVEL) ---
+            const canvasRendimentos = document.getElementById('chartRendimentosInvestimentos');
+            if (canvasRendimentos) {
+                const labelsPassado = @Html.Raw(Json.Serialize(ViewBag.RendimentosLabelsPassado)) || [];
+                const labelsFuturo = @Html.Raw(Json.Serialize(ViewBag.RendimentosLabelsFuturo)) || [];
+
+                const fixaPassado = @Html.Raw(Json.Serialize(ViewBag.FixaValoresPassado)) || [];
+                const fixaFuturo = @Html.Raw(Json.Serialize(ViewBag.FixaValoresFuturo)) || [];
+
+                const variavelPassado = @Html.Raw(Json.Serialize(ViewBag.VariavelValoresPassado)) || [];
+                const variavelFuturo = @Html.Raw(Json.Serialize(ViewBag.VariavelValoresFuturo)) || [];
+
+                const todasLabels = [...labelsPassado, ...labelsFuturo];
+
+                const dsFixaPassado = [...fixaPassado];
+                const dsFixaFuturo = Array(fixaPassado.length - 1).fill(null);
+                if(fixaPassado.length > 0) dsFixaFuturo.push(fixaPassado[fixaPassado.length - 1]);
+                dsFixaFuturo.push(...fixaFuturo);
+
+                const dsVariavelPassado = [...variavelPassado];
+                const dsVariavelFuturo = Array(variavelPassado.length - 1).fill(null);
+                if(variavelPassado.length > 0) dsVariavelFuturo.push(variavelPassado[variavelPassado.length - 1]);
+                dsVariavelFuturo.push(...variavelFuturo);
+
+                const ctxRendimentos = canvasRendimentos.getContext('2d');
+                if (chartRendimentos) chartRendimentos.destroy();
+
+                chartRendimentos = new Chart(ctxRendimentos, {
+                    type: 'line',
+                    data: {
+                        labels: todasLabels,
+                        datasets: [
+                            {
+                                label: 'Renda Fixa Real (Caixinhas)',
+                                data: dsFixaPassado,
+                                borderColor: '#0d6efd',
+                                backgroundColor: 'transparent',
+                                tension: 0.2,
+                                borderWidth: 3,
+                                pointBackgroundColor: '#0d6efd'
+                            },
+                            {
+                                label: 'Projeção Renda Fixa',
+                                data: dsFixaFuturo,
+                                borderColor: '#70a6ff',
+                                backgroundColor: 'transparent',
+                                tension: 0.2,
+                                borderWidth: 2,
+                                borderDash: [5, 5],
+                                pointBackgroundColor: '#70a6ff',
+                                pointRadius: 3
+                            },
+                            {
+                                label: 'Renda Variável Real',
+                                data: dsVariavelPassado,
+                                borderColor: '#198754',
+                                backgroundColor: 'transparent',
+                                tension: 0.2,
+                                borderWidth: 3,
+                                pointBackgroundColor: '#198754'
+                            },
+                            {
+                                label: 'Projeção Renda Variável',
+                                data: dsVariavelFuturo,
+                                borderColor: '#a3cfbb',
+                                backgroundColor: 'transparent',
+                                tension: 0.2,
+                                borderWidth: 2,
+                                borderDash: [5, 5],
+                                pointBackgroundColor: '#a3cfbb',
+                                pointRadius: 3
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top',
+                                labels: { boxWidth: 20, font: { weight: 'bold' } }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: (context) => context.dataset.label + ': ' + new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(context.raw)
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { callback: (v) => 'R$ ' + v.toLocaleString('pt-BR') }
+                            }
+                        }
+                    }
+                });
+            }
         });
 
-        // Força o Chart.js a recalcular o tamanho correto ao transicionar entre abas invisíveis
+        // Força todos os gráficos do Canvas a recalcular o tamanho real ao mudar de abas
         const tabLinks = document.querySelectorAll('#tabsModalFinanceiro button');
         tabLinks.forEach(tab => {
             tab.addEventListener('shown.bs.tab', function () {
                 if (chartEvolucao) chartEvolucao.resize();
                 if (chartProjecao) chartProjecao.resize();
+                if (chartRendimentos) chartRendimentos.resize();
             });
         });
     });

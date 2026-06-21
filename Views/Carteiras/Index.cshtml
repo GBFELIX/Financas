@@ -154,7 +154,7 @@
                     <h6 class="text-uppercase small fw-bold opacity-75">Rendimentos do Mês</h6>
                     <h2 class="mb-1 fw-bold">R$ @Model.RendaMensalTotalConsolidada.ToString("N2")</h2>
                     <div class="mt-2 pt-2 border-top border-white border-opacity-25">
-                        <small class="d-block">Ganhos (Mês): <span class="fw-bold">R$ @((Model.EntradasMesCorrente + Model.RendaMensalTotalConsolidada).ToString("N2"))</span></small>
+                        <small class="d-block">Ganhos (Mês): <span class="fw-bold">R$ @(Model.EntradasMesCorrente.ToString("N2"))</span></small>
                     </div>
                 </div>
             </div>
