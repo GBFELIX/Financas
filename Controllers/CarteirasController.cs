@@ -9,6 +9,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection.Metadata;
 using System.Threading.Tasks;
 
 namespace Acoes_Fiis.Controllers
@@ -46,12 +47,16 @@ namespace Acoes_Fiis.Controllers
 
             decimal saldoFinanceiroAteHoje = ProcessarFluxoFinanceiroSaldos(financeiroData, agora, viewModel);
 
-            decimal rendimentoLiquidoCaixinha = CalcularRendimentoCaixinhaCorrente(saldoFinanceiroAteHoje, parametroAtual, viewModel);
+            //decimal rendimentoLiquidoCaixinha = CalcularRendimentoCaixinhaCorrente(saldoFinanceiroAteHoje, parametroAtual, viewModel);
 
             await ProcessarAutomacoesFechamento(financeiroData, saldoFinanceiroAteHoje, totalProventosVariaveis, agora, visao, parametroAtual);
 
             ProcessarLancamentosFuturos(financeiroData, agora, viewModel);
-            viewModel.PatrimonioTotalReal = viewModel.TotalPatrimonio + viewModel.TotalInvestidoRendaFixa + saldoFinanceiroAteHoje + rendimentoLiquidoCaixinha;
+
+
+            decimal rendimentoCaixinha = CalcularRendimentoCaixinhaCorrente(saldoFinanceiroAteHoje, parametroAtual, viewModel, financeiroData, agora);
+
+            viewModel.PatrimonioTotalReal = viewModel.TotalPatrimonio + viewModel.TotalInvestidoRendaFixa + saldoFinanceiroAteHoje;
 
             await ProcessarRadarAportes(viewModel);
 
@@ -246,7 +251,27 @@ namespace Acoes_Fiis.Controllers
 
             return (totalRFLiquido, totalProventosVariaveis);
         }
+        private decimal CalcularRendimentoCaixinhaCorrente(decimal saldoFinanceiroAteHoje, Parametro? parametro, CarteiraTotalViewModel viewModel, List<Financeiro> financeiroData, DateTime agora)
+        {
+            // 1. Identifica o nome exato do nó de rendimento do mês atual
+            string sufixoMesAno = agora.ToString("MM/yyyy");
+            string descricaoRendimentoNode = $"Rendimento Automático Caixinhas - {sufixoMesAno}";
 
+            // 2. Busca na lista de lançamentos o valor real que a automação diária já calculou e acumulou até hoje
+            var lancamentoFixaExistente = financeiroData.FirstOrDefault(x => x.Descricao == descricaoRendimentoNode);
+
+            // Se achou, usa o valor do banco. Se for o dia 1º e não houver lançamento ainda, o padrão é 0.
+            decimal rendimentoAcumuladoAteHoje = lancamentoFixaExistente?.Valor ?? 0m;
+
+            // 3. Consolidação da Renda Mensal na ViewModel
+            // Agora o cálculo soma a Renda Mensal Estimada (Renda Variável) + Renda Fixa Manual + O ganho REAL acumulado da caixinha
+            viewModel.RendaMensalTotalConsolidada = viewModel.TotalRendaMensalEstimada
+                                                 + viewModel.RendaFixaMensalLiquida
+                                                 + rendimentoAcumuladoAteHoje;
+
+            // Retorna o valor acumulado para quem chamou o método
+            return rendimentoAcumuladoAteHoje;
+        }
         private async Task CarregarModulosPainelFinanceiro(decimal totalRF, decimal totalFIIs, decimal totalAcoes, decimal patrimonioTotalReal, string visao)
         {
             decimal patrimonioTotal = totalRF + totalFIIs + totalAcoes;
@@ -255,8 +280,8 @@ namespace Acoes_Fiis.Controllers
             var primeiroDiaMesAtual = new DateTime(dataAtual.Year, dataAtual.Month, 1);
 
             var dicionarioMetas = await _context.MetasAlocacao
-.Select(m => new { m.Categoria, m.PercentualAlvo })
-.ToDictionaryAsync(x => x.Categoria, x => x.PercentualAlvo);
+            .Select(m => new { m.Categoria, m.PercentualAlvo })
+            .ToDictionaryAsync(x => x.Categoria, x => x.PercentualAlvo);
 
             decimal alvoRF = dicionarioMetas.TryGetValue("Renda Fixa", out var rf) ? rf : 40m;
             decimal alvoFIIs = dicionarioMetas.TryGetValue("FIIs", out var fiis) ? fiis : 40m;
@@ -276,8 +301,7 @@ namespace Acoes_Fiis.Controllers
             ViewBag.MetaAcoesAtual = alvoAcoes;
 
             var registroMesAtual = await _context.EvolucaoPatrimonial
-
-.FirstOrDefaultAsync(e => e.MesAno == mesAnoAtual && e.Dono == visao);
+            .FirstOrDefaultAsync(e => e.MesAno == mesAnoAtual && e.Dono == visao);
 
             if (registroMesAtual == null)
             {
@@ -294,9 +318,9 @@ namespace Acoes_Fiis.Controllers
             if (visao != "Casal")
             {
                 var historicoDoBanco = await _context.EvolucaoPatrimonial
-    .Where(e => e.Dono == visao)
-    .Select(e => new EvolucaoPatrimonialDto { MesAno = e.MesAno, Patrimonio = e.PatrimonioLiquido })
-    .ToListAsync();
+                .Where(e => e.Dono == visao)
+                .Select(e => new EvolucaoPatrimonialDto { MesAno = e.MesAno, Patrimonio = e.PatrimonioLiquido })
+                .ToListAsync();
 
                 historicoOrdenado = historicoDoBanco
                     .OrderByDescending(x => x.Ano).ThenByDescending(x => x.Mes)
@@ -305,9 +329,9 @@ namespace Acoes_Fiis.Controllers
             else
             {
                 var historicoTodos = await _context.EvolucaoPatrimonial
-    .Where(e => e.Dono != "Casal")
-    .Select(e => new EvolucaoPatrimonialDto { MesAno = e.MesAno, Patrimonio = e.PatrimonioLiquido })
-    .ToListAsync();
+                .Where(e => e.Dono != "Casal")
+                .Select(e => new EvolucaoPatrimonialDto { MesAno = e.MesAno, Patrimonio = e.PatrimonioLiquido })
+                .ToListAsync();
 
                 historicoOrdenado = historicoTodos
                     .GroupBy(e => e.MesAno)
@@ -328,15 +352,15 @@ namespace Acoes_Fiis.Controllers
                 queryFinanceiro = queryFinanceiro.Where(t => t.Dono == visao);
 
             var todasTransacoes = await queryFinanceiro
-    .Select(t => new TransacaoDto
-    {
-        Data = t.Data,
-        Tipo = t.Tipo,
-        Valor = t.Valor,
-        Categoria = t.Categoria,
-        Descricao = t.Descricao
-    })
-    .ToListAsync();
+            .Select(t => new TransacaoDto
+            {
+                Data = t.Data,
+                Tipo = t.Tipo,
+                Valor = t.Valor,
+                Categoria = t.Categoria,
+                Descricao = t.Descricao
+            })
+            .ToListAsync();
 
             var transacoesPassadas = todasTransacoes.Where(t => t.Data < primeiroDiaMesAtual).ToList();
 
@@ -446,31 +470,31 @@ namespace Acoes_Fiis.Controllers
         private decimal ProcessarFluxoFinanceiroSaldos(List<Financeiro> financeiroData, DateTime agora, CarteiraTotalViewModel viewModel)
         {
             viewModel.ResumoMensal = financeiroData
-    .GroupBy(x => new { x.Data.Year, x.Data.Month })
-    .Select(g =>
-    {
-        decimal entradas = 0;
-        decimal despesas = 0;
+            .GroupBy(x => new { x.Data.Year, x.Data.Month })
+            .Select(g =>
+            {
+                decimal entradas = 0;
+                decimal despesas = 0;
 
-        foreach (var item in g)
-        {
-            if (item.Tipo == "Entrada") entradas += item.Valor;
-            else if (item.Tipo == "Despesa") despesas += item.Valor;
-        }
+                foreach (var item in g)
+                {
+                    if (item.Tipo == "Entrada") entradas += item.Valor;
+                    else if (item.Tipo == "Despesa") despesas += item.Valor;
+                }
 
-        return new ResumoMesViewModel
-        {
-            Ano = g.Key.Year,
-            Mes = g.Key.Month,
-            Entradas = entradas,
-            Saidas = despesas
-        };
-    })
-    .OrderBy(x => x.Ano).ThenBy(x => x.Mes)
-    .ToList();
+                return new ResumoMesViewModel
+                {
+                    Ano = g.Key.Year,
+                    Mes = g.Key.Month,
+                    Entradas = entradas,
+                    Saidas = despesas
+                };
+            })
+            .OrderBy(x => x.Ano).ThenBy(x => x.Mes)
+            .ToList();
 
             var resumoMesAtual = viewModel.ResumoMensal
-.FirstOrDefault(x => x.Ano == agora.Year && x.Mes == agora.Month);
+            .FirstOrDefault(x => x.Ano == agora.Year && x.Mes == agora.Month);
 
             viewModel.EntradasMesCorrente = resumoMesAtual?.Entradas ?? 0m;
             viewModel.SaidasMesCorrente = resumoMesAtual?.Saidas ?? 0m;
@@ -524,69 +548,83 @@ namespace Acoes_Fiis.Controllers
 
             return RedirectToAction("Index");
         }
-        private decimal CalcularRendimentoCaixinhaCorrente(decimal saldoFinanceiroAteHoje, Parametro? parametro, CarteiraTotalViewModel viewModel)
-        {
-            decimal taxaAnualCaixinhaAtual = parametro?.CdiAnual ?? 14.75m;
-
-            double taxaAnualDouble = (double)(taxaAnualCaixinhaAtual / 100m);
-            decimal taxaMensalCaixinhaAtual = (decimal)(Math.Pow(1.0 + taxaAnualDouble, 1.0 / 12.0) - 1.0);
-
-            decimal rendimentoLiquidoCaixinha = saldoFinanceiroAteHoje * taxaMensalCaixinhaAtual * 0.825m;
-
-            viewModel.RendaMensalTotalConsolidada = viewModel.TotalRendaMensalEstimada
-                                       + viewModel.RendaFixaMensalLiquida
-                                       + rendimentoLiquidoCaixinha;
-
-            return rendimentoLiquidoCaixinha;
-        }
-
         private async Task ProcessarAutomacoesFechamento(List<Financeiro> financeiroData, decimal saldoFinanceiroAteHoje, decimal totalProventosVariaveis, DateTime agora, string visao, Parametro? parametro)
         {
             bool mudouBanco = false;
 
+            // Definições de competência e destino
             DateTime ultimoDiaMesAtual = new DateTime(agora.Year, agora.Month, 1).AddMonths(1).AddDays(-1);
             string sufixoMesAno = agora.ToString("MM/yyyy");
             string donoDestino = visao == "Casal" ? "Casal" : visao;
 
+            // ====================================================================
+            // --- AUTOMAÇÃO A: CAIXINHAS / RENDA FIXA (CUMULATIVO DIÁRIO) ---
+            // ====================================================================
             string descricaoRendimentoNode = $"Rendimento Automático Caixinhas - {sufixoMesAno}";
 
             decimal cdiAnual = parametro?.CdiAnual ?? 14.75m;
-
             double taxaAnualDouble = (double)(cdiAnual / 100m);
-            decimal taxaMensalCaixinha = (decimal)(Math.Pow(1.0 + taxaAnualDouble, 1.0 / 12.0) - 1.0);
 
-            decimal rendimentoLiquido = saldoFinanceiroAteHoje * taxaMensalCaixinha * 0.825m;
-            decimal valorFixaFinal = Math.Round(rendimentoLiquido > 0.01m ? rendimentoLiquido : 0m, 2);
+            // Equivalência matemática para Taxa DIÁRIA (Base 365 dias)
+            decimal taxaDiariaCaixinha = (decimal)(Math.Pow(1.0 + taxaAnualDouble, 1.0 / 365.0) - 1.0);
 
             var lancamentoFixaExistente = financeiroData.FirstOrDefault(x => x.Descricao == descricaoRendimentoNode);
 
             if (lancamentoFixaExistente == null)
             {
-                if (valorFixaFinal > 0m)
+                // Primeiro acesso do mês: calcula o proporcional de 1 dia para inicializar a linha
+                decimal rendimentoDiarioLiquido = saldoFinanceiroAteHoje * taxaDiariaCaixinha * 0.825m;
+                decimal valorInicial = Math.Round(rendimentoDiarioLiquido > 0.01m ? rendimentoDiarioLiquido : 0m, 2);
+
+                if (valorInicial > 0m)
                 {
                     var novoLancamento = new Financeiro
                     {
                         Descricao = descricaoRendimentoNode,
-                        Valor = valorFixaFinal,
+                        Valor = valorInicial,
                         Data = ultimoDiaMesAtual,
                         Tipo = "Entrada",
                         Categoria = "Investimento",
                         Pagamento = "Pix",
-                        Dono = donoDestino
+                        Dono = donoDestino,
+                        DataRegistro = agora // INTEGRADO: Inicializa o marco zero temporal
                     };
                     _context.Financeiro.Add(novoLancamento);
                     financeiroData.Add(novoLancamento);
                     mudouBanco = true;
                 }
             }
-            else if (lancamentoFixaExistente.Valor != valorFixaFinal)
+            else
             {
-                lancamentoFixaExistente.Valor = valorFixaFinal;
-                lancamentoFixaExistente.Data = ultimoDiaMesAtual;
-                _context.Financeiro.Update(lancamentoFixaExistente);
-                mudouBanco = true;
+                // Captura a data do último processamento direto do objeto carregado do banco
+                DateTime dataUltimaAtualizacao = lancamentoFixaExistente.DataRegistro ?? agora.AddDays(-1);
+
+                double diasDecorridos = (agora - dataUltimaAtualizacao).TotalDays;
+
+                // Só incrementa se houver uma fração de tempo relevante (evita loops infinitos no mesmo request)
+                if (diasDecorridos > 0.01)
+                {
+                    decimal rendimentoPeriodo = saldoFinanceiroAteHoje * (taxaDiariaCaixinha * (decimal)diasDecorridos) * 0.825m;
+                    decimal incrementoFinal = Math.Round(rendimentoPeriodo, 4);
+
+                    if (incrementoFinal > 0m)
+                    {
+                        // PROTEÇÃO RETROATIVA: Soma o rendimento novo ao saldo cumulativo existente
+                        lancamentoFixaExistente.Valor = Math.Round(lancamentoFixaExistente.Valor + incrementoFinal, 2);
+                        lancamentoFixaExistente.Data = ultimoDiaMesAtual;
+
+                        // INTEGRADO: Atualiza o carimbo de tempo para que o próximo cálculo parta deste exato momento
+                        lancamentoFixaExistente.DataRegistro = agora;
+
+                        _context.Financeiro.Update(lancamentoFixaExistente);
+                        mudouBanco = true;
+                    }
+                }
             }
 
+            // ====================================================================
+            // --- AUTOMAÇÃO B: DIVIDENDOS / RENDA VARIÁVEL (ESTIMATIVA MENSAL) ---
+            // ====================================================================
             string descricaoRendimentoVariavel = $"Rendimento Automático Renda Variável - {sufixoMesAno}";
             decimal valorVariavelFinal = Math.Round(totalProventosVariaveis > 0.01m ? totalProventosVariaveis : 0m, 2);
 
@@ -604,20 +642,24 @@ namespace Acoes_Fiis.Controllers
                         Tipo = "Entrada",
                         Categoria = "Investimento",
                         Pagamento = "Pix",
-                        Dono = donoDestino
+                        Dono = donoDestino,
+                        DataRegistro = agora
                     };
                     _context.Financeiro.Add(novoLancamentoVariavel);
-                    financeiroData.Add(novoLancamentoVariavel); mudouBanco = true;
+                    financeiroData.Add(novoLancamentoVariavel);
+                    mudouBanco = true;
                 }
             }
             else if (lancamentoVariavelExistente.Valor != valorVariavelFinal)
             {
                 lancamentoVariavelExistente.Valor = valorVariavelFinal;
                 lancamentoVariavelExistente.Data = ultimoDiaMesAtual;
+                lancamentoVariavelExistente.DataRegistro = agora;
                 _context.Financeiro.Update(lancamentoVariavelExistente);
                 mudouBanco = true;
             }
 
+            // Persiste todas as alterações acumuladas do request de uma só vez
             if (mudouBanco)
             {
                 await _context.SaveChangesAsync();
@@ -731,10 +773,10 @@ namespace Acoes_Fiis.Controllers
             viewModel.HistoricoTransacoes = await queryHistorico.OrderByDescending(x => x.DataOperacao).ToListAsync();
 
             viewModel.HistoricoFolhas = await _context.FolhasPagamento.AsNoTracking()
-    .Where(f => f.Visao == visao)
-    .OrderByDescending(f => f.Ano)
-    .ThenByDescending(f => f.Mes)
-    .ToListAsync();
+            .Where(f => f.Visao == visao)
+            .OrderByDescending(f => f.Ano)
+            .ThenByDescending(f => f.Mes)
+            .ToListAsync();
 
         }
 
@@ -829,9 +871,9 @@ namespace Acoes_Fiis.Controllers
         public async Task<IActionResult> AtualizarRendimentoInline(int id, decimal novoValor)
         {
             var ticker = await _context.Carteira.AsNoTracking()
-    .Where(x => x.Id == id)
-    .Select(x => x.Ticker)
-    .FirstOrDefaultAsync();
+            .Where(x => x.Id == id)
+            .Select(x => x.Ticker)
+            .FirstOrDefaultAsync();
 
             if (string.IsNullOrEmpty(ticker))
             {
@@ -839,7 +881,7 @@ namespace Acoes_Fiis.Controllers
             }
 
             var recomendacaoFii = await _context.RecomendacaoFii
-    .FirstOrDefaultAsync(x => x.Ticker == ticker);
+            .FirstOrDefaultAsync(x => x.Ticker == ticker);
 
             if (recomendacaoFii == null)
             {
@@ -901,6 +943,7 @@ namespace Acoes_Fiis.Controllers
             }
             else
             {
+                _context.Update(ativo);
             }
 
             var registroHistorico = new HistoricoAtivo
@@ -1023,9 +1066,9 @@ namespace Acoes_Fiis.Controllers
             }
 
             var financiamentoData = await _context.Financiamentos.AsNoTracking()
-.Where(f => f.Id == priceId)
-.Select(f => new { f.DataInicio })
-.FirstOrDefaultAsync();
+            .Where(f => f.Id == priceId)
+            .Select(f => new { f.DataInicio })
+            .FirstOrDefaultAsync();
 
             if (financiamentoData != null)
             {
@@ -1187,7 +1230,7 @@ namespace Acoes_Fiis.Controllers
             string donoAlvo = visao == "Casal" ? "Casal" : visao;
 
             var ativoExistente = await _context.Carteira
-    .FirstOrDefaultAsync(x => x.Ticker == ticker && x.Dono == donoAlvo);
+            .FirstOrDefaultAsync(x => x.Ticker == ticker && x.Dono == donoAlvo);
 
             if (ativoExistente != null)
             {

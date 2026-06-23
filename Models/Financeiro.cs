@@ -23,6 +23,7 @@ namespace Acoes_Fiis.Models
         public string? Pagamento { get; set; }
 
         public string Dono { get; set; } = "Gabriel";
+        public DateTime? DataRegistro { get; set; } = DateTime.Now;
     }
 
     public class FluxoCaixaViewModel
