@@ -163,6 +163,7 @@ namespace Acoes_Fiis.Models
         public decimal Entradas { get; set; }
         public decimal Saidas { get; set; }
         public decimal Sobra => Entradas - Saidas;
+        public decimal TotalPendenteCasa { get; set; }
     }
 
     public class RadarAporteViewModel

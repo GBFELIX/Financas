@@ -144,6 +144,7 @@
             </div>
         </div>
     </div>
+
     <div class="position-relative d-none d-lg-block">
         <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
         <input type="text" id="filtroTexto" class="form-control form-control-sm ps-5 rounded-pill border shadow-sm"
@@ -163,10 +164,18 @@
     <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-3 border-bottom">
             <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-receipt-cutoff me-2"></i>Extrato Mensal</h5>
-            <button class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNovoLancamento">
-                <i class="bi bi-plus-lg me-1"></i> Lançar Gasto
-            </button>
+
+            <div class="d-flex gap-2">
+                <button class="btn btn-secondary btn-sm rounded-pill px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalSimularGasto">
+                    <i class="bi bi-plus-lg me-1"></i> Simular gasto
+                </button>
+
+                <button class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNovoLancamento">
+                    <i class="bi bi-plus-lg me-1"></i> Lançar Gasto
+                </button>
+            </div>
         </div>
+
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light text-secondary small text-uppercase">
@@ -370,6 +379,7 @@
 @await Html.PartialAsync("_ModalDespesasCasa", Model)
 @await Html.PartialAsync("_ModalSimuladorAporte", Model)
 @await Html.PartialAsync("_ModalResumoDespesas", Model)
+@await Html.PartialAsync("_ModalSimularGasto", Model)
 
 <div class="modal fade" id="modalNovoLancamento" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
