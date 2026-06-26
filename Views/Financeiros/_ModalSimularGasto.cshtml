@@ -221,7 +221,7 @@
         const opcoesMes = { month: 'long', year: 'numeric' };
         const dataAtual = new Date();
 
-        for (let i = 0; i < 12; i++) {
+        for (let i = 0; i < 8; i++) {
             let dataFutura = new Date(dataAtual.getFullYear(), dataAtual.getMonth() + i, 1);
             let nomeMes = dataFutura.toLocaleDateString('pt-BR', opcoesMes);
             nomeMes = nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1);

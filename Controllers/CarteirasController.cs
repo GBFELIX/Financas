@@ -97,23 +97,20 @@ namespace Acoes_Fiis.Controllers
             decimal totalAcumuladoFiis = 0;
             decimal totalAcumuladoGerais = 0;
 
-            var acoesNaCarteira = new List<Recomendacao>();
-            var fiisNaCarteira = new List<RecomendacaoFii>();
-            var geraisNaCarteira = new List<AtivoGeral>();
-
             var tickersCarteira = itensBanco.Select(x => x.Ticker).Distinct().ToList();
 
             var dicAcoes = await _context.Recomendacao.AsNoTracking()
-                .Where(x => tickersCarteira.Contains(x.Ticker))
                 .ToDictionaryAsync(x => x.Ticker);
 
             var dicFiis = await _context.RecomendacaoFii.AsNoTracking()
-                .Where(x => tickersCarteira.Contains(x.Ticker))
                 .ToDictionaryAsync(x => x.Ticker);
 
             var dicGerais = await _context.AtivosGerais.AsNoTracking()
-                .Where(x => tickersCarteira.Contains(x.Ticker))
                 .ToDictionaryAsync(x => x.Ticker);
+
+            var acoesNaCarteira = dicAcoes.Values.ToList();
+            var fiisNaCarteira = dicFiis.Values.ToList();
+            var geraisNaCarteira = dicGerais.Values.ToList();
 
             foreach (var item in itensBanco)
             {
@@ -245,6 +242,9 @@ namespace Acoes_Fiis.Controllers
                 viewModel.SugestaoAporteJustificativa = "Adicione ativos e configure suas metas para ativar a inteligência de rebalanceamento automático.";
             }
 
+
+
+            // O resto do código que popula o ViewModel continua igual:
             viewModel.ListaTickersAcoes = acoesNaCarteira.OrderBy(x => x.TipoAcao).ThenBy(x => x.Ticker).ToList();
             viewModel.ListaTickersFiis = fiisNaCarteira.OrderBy(x => x.Segmento).ThenBy(x => x.Ticker).ToList();
             viewModel.ListaTickersGerais = geraisNaCarteira.OrderBy(x => x.ClasseAtivo).ThenBy(x => x.Ticker).ToList();
@@ -552,28 +552,28 @@ namespace Acoes_Fiis.Controllers
         {
             bool mudouBanco = false;
 
-            // Definições de competência e destino
             DateTime ultimoDiaMesAtual = new DateTime(agora.Year, agora.Month, 1).AddMonths(1).AddDays(-1);
             string sufixoMesAno = agora.ToString("MM/yyyy");
             string donoDestino = visao == "Casal" ? "Casal" : visao;
 
             // ====================================================================
-            // --- AUTOMAÇÃO A: CAIXINHAS / RENDA FIXA (CUMULATIVO DIÁRIO) ---
+            // --- AUTOMAÇÃO A: CAIXINHAS / RENDA FIXA (DIAS ÚTEIS - BASE 252) ---
             // ====================================================================
             string descricaoRendimentoNode = $"Rendimento Automático Caixinhas - {sufixoMesAno}";
 
             decimal cdiAnual = parametro?.CdiAnual ?? 14.75m;
             double taxaAnualDouble = (double)(cdiAnual / 100m);
 
-            // Equivalência matemática para Taxa DIÁRIA (Base 365 dias)
-            decimal taxaDiariaCaixinha = (decimal)(Math.Pow(1.0 + taxaAnualDouble, 1.0 / 365.0) - 1.0);
+            // 1. AJUSTE DE MERCADO: Equivalência para Taxa DIÁRIA baseada em 252 DIAS ÚTEIS por ano
+            decimal taxaDiariaCaixinha = (decimal)(Math.Pow(1.0 + taxaAnualDouble, 1.0 / 252.0) - 1.0);
 
             var lancamentoFixaExistente = financeiroData.FirstOrDefault(x => x.Descricao == descricaoRendimentoNode);
 
             if (lancamentoFixaExistente == null)
             {
-                // Primeiro acesso do mês: calcula o proporcional de 1 dia para inicializar a linha
-                decimal rendimentoDiarioLiquido = saldoFinanceiroAteHoje * taxaDiariaCaixinha * 0.825m;
+                // Primeiro acesso: Se hoje for dia útil, calcula 1 dia normal. Se for fim de semana, inicializa com 0.
+                bool hojeEhDiaUtil = agora.DayOfWeek != DayOfWeek.Saturday && agora.DayOfWeek != DayOfWeek.Sunday;
+                decimal rendimentoDiarioLiquido = hojeEhDiaUtil ? (saldoFinanceiroAteHoje * taxaDiariaCaixinha * 0.825m) : 0m;
                 decimal valorInicial = Math.Round(rendimentoDiarioLiquido > 0.01m ? rendimentoDiarioLiquido : 0m, 2);
 
                 if (valorInicial > 0m)
@@ -587,7 +587,7 @@ namespace Acoes_Fiis.Controllers
                         Categoria = "Investimento",
                         Pagamento = "Pix",
                         Dono = donoDestino,
-                        DataRegistro = agora // INTEGRADO: Inicializa o marco zero temporal
+                        DataRegistro = agora
                     };
                     _context.Financeiro.Add(novoLancamento);
                     financeiroData.Add(novoLancamento);
@@ -596,25 +596,41 @@ namespace Acoes_Fiis.Controllers
             }
             else
             {
-                // Captura a data do último processamento direto do objeto carregado do banco
                 DateTime dataUltimaAtualizacao = lancamentoFixaExistente.DataRegistro ?? agora.AddDays(-1);
 
-                double diasDecorridos = (agora - dataUltimaAtualizacao).TotalDays;
+                // 2. AJUSTE DE CONTEXTO: Conta quantos DIAS ÚTEIS de fato se passaram entre os acessos
+                int diasUteisDecorridos = 0;
+                DateTime dataChecagem = dataUltimaAtualizacao.Date.AddDays(1); // Começa a contar a partir do dia seguinte da última atualização
 
-                // Só incrementa se houver uma fração de tempo relevante (evita loops infinitos no mesmo request)
-                if (diasDecorridos > 0.01)
+                while (dataChecagem <= agora.Date)
                 {
-                    decimal rendimentoPeriodo = saldoFinanceiroAteHoje * (taxaDiariaCaixinha * (decimal)diasDecorridos) * 0.825m;
+                    if (dataChecagem.DayOfWeek != DayOfWeek.Saturday && dataChecagem.DayOfWeek != DayOfWeek.Sunday)
+                    {
+                        diasUteisDecorridos++;
+                    }
+                    dataChecagem = dataChecagem.AddDays(1);
+                }
+
+                // Se o usuário acessar várias vezes no MESMO dia útil, tratamos a fração de horas útil proporcional (regra de segurança)
+                double fracaoHorasExtra = 0;
+                if (dataUltimaAtualizacao.Date == agora.Date && agora.DayOfWeek != DayOfWeek.Saturday && agora.DayOfWeek != DayOfWeek.Sunday)
+                {
+                    fracaoHorasExtra = (agora - dataUltimaAtualizacao).TotalDays; // Se for no mesmo dia, calcula a fração decimal dele
+                }
+
+                double multiplicadorDiasFinais = diasUteisDecorridos + fracaoHorasExtra;
+
+                // Só processa se de fato houve tempo útil decorrido
+                if (multiplicadorDiasFinais > 0.01)
+                {
+                    decimal rendimentoPeriodo = saldoFinanceiroAteHoje * (taxaDiariaCaixinha * (decimal)multiplicadorDiasFinais) * 0.825m;
                     decimal incrementoFinal = Math.Round(rendimentoPeriodo, 4);
 
                     if (incrementoFinal > 0m)
                     {
-                        // PROTEÇÃO RETROATIVA: Soma o rendimento novo ao saldo cumulativo existente
                         lancamentoFixaExistente.Valor = Math.Round(lancamentoFixaExistente.Valor + incrementoFinal, 2);
                         lancamentoFixaExistente.Data = ultimoDiaMesAtual;
-
-                        // INTEGRADO: Atualiza o carimbo de tempo para que o próximo cálculo parta deste exato momento
-                        lancamentoFixaExistente.DataRegistro = agora;
+                        lancamentoFixaExistente.DataRegistro = agora; // Atualiza o marco temporal
 
                         _context.Financeiro.Update(lancamentoFixaExistente);
                         mudouBanco = true;

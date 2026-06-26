@@ -549,121 +549,137 @@
 </div>
 
 
-<div class="modal fade" id="modalAdicionarAtivo" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg rounded-4">
-            <div class="modal-header bg-success text-white border-0 py-3">
-                <h5 class="modal-title fw-bold">
-                    <i class="bi bi-plus-circle me-2"></i>Novo Lançamento na Carteira
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+    <div class="modal fade" id="modalAdicionarAtivo" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header bg-success text-white border-0 py-3">
+                    <h5 class="modal-title fw-bold">
+                        <i class="bi bi-plus-circle me-2"></i>Novo Lançamento na Carteira
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <form asp-action="AdicionarAtivo" method="post" asp-route-visao="@ViewBag.VisaoAtual">
+                    <div class="modal-body p-4">
+
+                        <div class="mb-3">
+                            <label for="inputFiltroTicker" class="form-label fw-bold small text-muted text-uppercase mb-2">
+                                <i class="bi bi-search me-1"></i>Digitar/Filtrar Ticker
+                            </label>
+                            <input type="text" id="inputFiltroTicker" class="form-control" placeholder="Digita o ticker... (Ex: PETR4, VALE3, IVVB11)" onkeyup="filtrarTickersModal()" />
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="selectModalTicker" class="form-label fw-bold small text-muted text-uppercase mb-2">
+                                Selecione o Ativo
+                            </label>
+                            <select id="selectModalTicker" name="ticker" class="form-select" size="6" required>
+
+                                @if (Model.ListaTickersAcoes != null)
+                                {
+                                    @foreach (var grupoAcao in Model.ListaTickersAcoes.DistinctBy(x => x.Ticker).GroupBy(x => x.TipoAcao))
+                                    {
+                                        <optgroup label="Ações - @grupoAcao.Key">
+                                            @foreach (var item in grupoAcao)
+                                            {
+                                                <option value="@item.Ticker" data-search="@item.Ticker.ToUpper()">
+                                                    @{
+                                                        string emojiTipo = item.TipoAtivo switch
+                                                        {
+                                                            "Setor Perene" => "🏦",
+                                                            "Dividendos" => "💰",
+                                                            "Crescimento" => "🚀",
+                                                            _ => "❓"
+                                                        };
+                                                    }
+                                                    @emojiTipo @item.Ticker.Replace(".SA", "")
+                                                </option>
+                                            }
+                                        </optgroup>
+                                    }
+                                }
+
+                                @if (Model.ListaTickersFiis != null)
+                                {
+                                    @foreach (var grupoFii in Model.ListaTickersFiis.DistinctBy(x => x.Ticker).GroupBy(x => x.Segmento))
+                                    {
+                                        <optgroup label="FIIs - @grupoFii.Key">
+                                            @foreach (var item in grupoFii)
+                                            {
+                                                <option value="@item.Ticker" data-search="@item.Ticker.ToUpper()">
+                                                    @{
+                                                        string emojiTipoFii = item.TipoFii switch
+                                                        {
+                                                            "Tijolo" => "🧱",
+                                                            "Papel" => "📜",
+                                                            "Híbrido" => "🔄",
+                                                            _ => "❓"
+                                                        };
+                                                    }
+                                                    @emojiTipoFii @item.Ticker.Replace(".SA", "")
+                                                </option>
+                                            }
+                                        </optgroup>
+                                    }
+                                }
+
+                                @if (Model.ListaTickersGerais != null)
+                                {
+                                    @foreach (var grupoGeral in Model.ListaTickersGerais.DistinctBy(x => x.Ticker).GroupBy(x => x.ClasseAtivo))
+                                    {
+                                        string emoji = grupoGeral.Key.ToLower().Contains("cripto") ? "🪙" :
+                                        grupoGeral.Key.ToLower().Contains("bdr") ? "🇺🇸" : "🌐";
+
+                                        <optgroup label="@grupoGeral.Key">
+                                            @foreach (var item in grupoGeral)
+                                            {
+                                                var textoExibicao = item.Ticker.Replace(".SA", "").Replace("-USD", "").Replace("=X", "");
+                                                <option value="@item.Ticker" data-search="@item.Ticker.ToUpper() @item.Nome.ToUpper()">
+                                                    @emoji @textoExibicao - @item.Nome
+                                                </option>
+                                            }
+                                        </optgroup>
+                                    }
+                                }
+                            </select>
+                        </div>
+
+                        <input type="hidden" name="Dono" value="@ViewBag.VisaoAtual" />
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-muted text-uppercase">Quantidade</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-secondary-subtle text-secondary"><i class="bi bi-hash"></i></span>
+                                    <input type="number" name="quantidade" class="form-control border-secondary-subtle fw-semibold" placeholder="0" min="1" required />
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-muted text-uppercase">Preço Médio de Execução</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-secondary-subtle text-success fw-bold">R$</span>
+                                    <input type="number" name="precoMedio" step="0.01" min="0.01" class="form-control border-secondary-subtle fw-semibold" placeholder="0,00" required />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info border-0 bg-info bg-opacity-10 text-info-emphasis rounded-3 small d-flex align-items-center mb-0 mt-3">
+                            <i class="bi bi-info-circle-fill me-2 fs-5"></i>
+                            <span><strong>Dica:</strong> O sistema identificará automaticamente a categoria do ativo e gerará o lançamento correspondente como despesa no seu fluxo financeiro.</span>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer border-top-0 bg-light rounded-bottom-4 p-3">
+                        <button type="button" class="btn btn-secondary rounded-pill px-3 opacity-75" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-success rounded-pill px-4 fw-bold shadow-sm">
+                            <i class="bi bi-save me-1"></i>Salvar na Carteira
+                        </button>
+                    </div>
+                </form>
             </div>
-
-            <form asp-action="AdicionarAtivo" method="post" asp-route-visao="@ViewBag.VisaoAtual">
-                <div class="modal-body p-4">
-
-                    <div class="mb-4">
-                        <label for="selectModalTicker" class="form-label fw-bold small text-muted text-uppercase mb-2">
-                            Selecione o Ativo (Ações, FIIs ou Gerais)
-                        </label>
-                        <select id="selectModalTicker" name="ticker" class="form-select" required>
-                            <option value="">Pesquise pelo ticker ou nome...</option>
-
-                                @foreach (var grupoAcao in Model.ListaTickersAcoes.GroupBy(x => x.TipoAcao))
-                                {
-                                    <optgroup label="Ações - @grupoAcao.Key">
-                                        @foreach (var item in grupoAcao)
-                                        {
-                                            <option value="@item.Ticker">
-                                                @{
-                                                    string emojiTipo = item.TipoAtivo switch
-                                                    {
-                                                        "Setor Perene" => "🏦",
-                                                        "Dividendos" => "💰",
-                                                        "Crescimento" => "🚀",
-                                                        _ => "❓"
-                                                    };
-                                                }
-                                                @emojiTipo @item.Ticker.Replace(".SA", "")
-                                            </option>
-                                        }
-                                    </optgroup>
-                                }
-
-                                @foreach (var grupoFii in Model.ListaTickersFiis.GroupBy(x => x.Segmento))
-                                {
-                                    <optgroup label="FIIs - @grupoFii.Key">
-                                        @foreach (var item in grupoFii)
-                                        {
-                                            <option value="@item.Ticker">
-                                                @{
-                                                    string emojiTipoFii = item.TipoFii switch
-                                                    {
-                                                        "Tijolo" => "🧱",
-                                                        "Papel" => "📜",
-                                                        "Híbrido" => "🔄",
-                                                        _ => "❓"
-                                                    };
-                                                }
-                                                @emojiTipoFii @item.Ticker.Replace(".SA", "")
-                                            </option>
-                                        }
-                                    </optgroup>
-                                }
-
-                                @foreach (var grupoGeral in Model.ListaTickersGerais.GroupBy(x => x.ClasseAtivo))
-                                {
-                                    string emoji = grupoGeral.Key.ToLower().Contains("cripto") ? "🪙" :
-                                    grupoGeral.Key.ToLower().Contains("bdr") ? "🇺🇸" : "🌐";
-
-                                    <optgroup label="@grupoGeral.Key">
-                                        @foreach (var item in grupoGeral)
-                                        {
-                                            var textoExibicao = item.Ticker.Replace(".SA", "").Replace("-USD", "").Replace("=X", "");
-                                            <option value="@item.Ticker">@emoji @textoExibicao - @item.Nome</option>
-                                        }
-                                    </optgroup>
-                                }
-                        </select>
-                    </div>
-
-                    <input type="hidden" name="Dono" value="@ViewBag.VisaoAtual" />
-
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold small text-muted text-uppercase">Quantidade</label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-light border-secondary-subtle text-secondary"><i class="bi bi-hash"></i></span>
-                                <input type="number" name="quantidade" class="form-control border-secondary-subtle fw-semibold" placeholder="0" min="1" required />
-                            </div>
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold small text-muted text-uppercase">Preço Médio de Execução</label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-light border-secondary-subtle text-success fw-bold">R$</span>
-                                <input type="number" name="precoMedio" step="0.01" min="0.01" class="form-control border-secondary-subtle fw-semibold" placeholder="0,00" required />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="alert alert-info border-0 bg-info bg-opacity-10 text-info-emphasis rounded-3 small d-flex align-items-center mb-0 mt-3">
-                        <i class="bi bi-info-circle-fill me-2 fs-5"></i>
-                        <span><strong>Dica:</strong> O sistema identificará automaticamente a categoria do ativo e gerará o lançamento correspondente como despesa no seu fluxo financeiro.</span>
-                    </div>
-                </div>
-
-                <div class="modal-footer border-top-0 bg-light rounded-bottom-4 p-3">
-                    <button type="button" class="btn btn-secondary rounded-pill px-3 opacity-75" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-success rounded-pill px-4 fw-bold shadow-sm">
-                        <i class="bi bi-save me-1"></i>Salvar na Carteira
-                    </button>
-                </div>
-            </form>
         </div>
     </div>
-</div>
-
 
 <div class="modal fade" id="modalNovoRF" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
@@ -963,6 +979,53 @@
             });
         });
     });
+
+        function filtrarTickersModal() {
+            const input = document.getElementById('inputFiltroTicker');
+            const filtro = input.value.toUpperCase();
+            const select = document.getElementById('selectModalTicker');
+            const opcoes = select.getElementsByTagName('option');
+            const grupos = select.getElementsByTagName('optgroup');
+
+            // Loop por todas as opções para esconder as que não batem com o texto digitado
+            for (let i = 0; i < opcoes.length; i++) {
+                // Ignora o placeholder inicial
+                if (opcoes[i].id === 'optPlaceholderSelecione') continue;
+
+                const textoBusca = opcoes[i].getAttribute('data-search') || '';
+
+                if (textoBusca.includes(filtro)) {
+                    opcoes[i].style.display = ""; // Mostra
+                } else {
+                    opcoes[i].style.display = "none"; // Esconde
+                }
+            }
+
+            // Ajuste visual extra: Esconde grupos inteiros se todas as opções de dentro dele sumirem
+            for (let g = 0; g < grupos.length; g++) {
+                const opcoesDoGrupo = grupos[g].getElementsByTagName('option');
+                let algumaOpcaoVisivel = false;
+
+                for (let j = 0; j < opcoesDoGrupo.length; j++) {
+                    if (opcoesDoGrupo[j].style.display !== "none") {
+                        algumaOpcaoVisivel = true;
+                        break;
+                    }
+                }
+
+                if (algumaOpcaoVisivel) {
+                    grupos[g].style.display = "";
+                } else {
+                    grupos[g].style.display = "none";
+                }
+            }
+        }
+
+        // Limpa o campo de busca automaticamente quando o utilizador fechar e abrir o modal de novo
+        document.getElementById('modalAdicionarAtivo').addEventListener('hidden.bs.modal', function () {
+            document.getElementById('inputFiltroTicker').value = '';
+            filtrarTickersModal();
+        });
 
     // Função auxiliar para transição fluida entre modais
     function abrirConfiguracaoMetasRapido() {
