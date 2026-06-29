@@ -32,5 +32,7 @@ namespace Acoes_Fiis.Data
         public DbSet<Acoes_Fiis.Models.ConfiguracaoBackup> ConfiguracaoBackups { get; set; } = default!;
         public DbSet<Acoes_Fiis.Models.MetaAlocacao> MetasAlocacao { get; set; }
         public DbSet<Acoes_Fiis.Models.EvolucaoPatrimonial> EvolucaoPatrimonial { get; set; }
+        public DbSet<Acoes_Fiis.Models.ItemCompra> ItemCompra { get; set; } = default!;
+        public DbSet<ItemCompra> ItensCompras { get; set; }
     }
 }

@@ -341,7 +341,7 @@ namespace Acoes_Fiis.Controllers
                         Patrimonio = g.Sum(x => x.Patrimonio)
                     })
                     .OrderByDescending(x => x.Ano).ThenByDescending(x => x.Mes)
-                    .Take(12).Reverse().ToList();
+                    .Take(12).ToList();
             }
 
             ViewBag.HistoricoEvolucaoLabels = historicoOrdenado.Select(x => x.MesAno).ToList();

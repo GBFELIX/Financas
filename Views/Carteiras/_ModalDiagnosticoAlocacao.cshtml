@@ -198,48 +198,87 @@
             modalConfigMetas.show();
         }, 400);
     }
+
     document.addEventListener("DOMContentLoaded", function () {
         @{
-                var tickersNaCarteira = Model.Itens.Select(c => c.Ticker).ToList();
+                // 1. Criamos dicionários rápidos para descobrir a Categoria, Setor/Segmento e Nome real olhando o catálogo global do banco
+                var mapaAcoesBanco = (Model.ListaTickersAcoes ?? new List<Recomendacao>())
+                        .DistinctBy(x => x.Ticker.ToUpper())
+                        .ToDictionary(x => x.Ticker.ToUpper(), x => string.IsNullOrEmpty(x.TipoAcao) ? "Outros" : x.TipoAcao);
 
-                var acoesFiltradas = Model.ListaTickersAcoes
-                                .Where(x => tickersNaCarteira.Contains(x.Ticker))
-                                .ToList();
+                var mapaFiisBanco = (Model.ListaTickersFiis ?? new List<RecomendacaoFii>())
+                        .DistinctBy(x => x.Ticker.ToUpper())
+                        .ToDictionary(x => x.Ticker.ToUpper(), x => string.IsNullOrEmpty(x.Segmento) ? "Outros" : x.Segmento);
 
-                var fiisFiltrados = Model.ListaTickersFiis
-                                .Where(x => tickersNaCarteira.Contains(x.Ticker))
-                                .ToList();
+                var mapaGeraisBanco = (Model.ListaTickersGerais ?? new List<AtivoGeral>())
+                        .DistinctBy(x => x.Ticker.ToUpper())
+                        .ToDictionary(x => x.Ticker.ToUpper(), x => new
+                        {
+                                Classe = string.IsNullOrEmpty(x.ClasseAtivo) ? "Outros" : x.ClasseAtivo,
+                                Nome = x.Nome
+                        });
 
-                var geraisFiltrados = Model.ListaTickersGerais
-                                .Where(x => tickersNaCarteira.Contains(x.Ticker))
-                                .ToList();
+                // 2. Processamos os itens REAIS da carteira (Agrupados por Ticker para matar qualquer duplicação física no banco)
+                var itensCarteiraConsolidados = Model.Itens
+                        .Where(x => !string.IsNullOrEmpty(x.Ticker))
+                        .GroupBy(x => x.Ticker.ToUpper())
+                        .Select(g => new
+                        {
+                                Ticker = g.Key,
+                                TickerExibicao = g.Key.Replace(".SA", "").Replace("-USD", "").Replace("=X", ""),
+                                ValorTotal = g.Sum(x => (decimal)x.Quantidade * x.PrecoMedio)
+                        })
+                        .Where(x => x.ValorTotal > 0) // Só exibe no gráfico se tiver saldo financeiro real
+                        .ToList();
 
-                int totalAcoes = acoesFiltradas.Count;
-                int totalFiis = fiisFiltrados.Count;
-                int totalGerais = geraisFiltrados.Count;
+                // 3. SEPARAMOS OS ATIVOS DA CARTEIRA POR CATEGORIA REAL CONFORME O MAPEAMENTO DO CADASTRO
+                var acoesGrafico = itensCarteiraConsolidados
+                        .Where(x => mapaAcoesBanco.ContainsKey(x.Ticker))
+                        .Select(x => new
+                        {
+                                x.TickerExibicao,
+                                x.ValorTotal,
+                                Setor = mapaAcoesBanco[x.Ticker]
+                        }).ToList();
 
-                var tickersAcoesPorSetor = acoesFiltradas
-                        .GroupBy(x => string.IsNullOrEmpty(x.TipoAcao) ? "Outros" : x.TipoAcao)
-                        .ToDictionary(g => g.Key, g => string.Join(", ", g.Select(x => x.Ticker)));
+                var fiisGrafico = itensCarteiraConsolidados
+                        .Where(x => mapaFiisBanco.ContainsKey(x.Ticker))
+                        .Select(x => new
+                        {
+                                x.TickerExibicao,
+                                x.ValorTotal,
+                                Segmento = mapaFiisBanco[x.Ticker]
+                        }).ToList();
 
-                var tickersFiisPorSegmento = fiisFiltrados
-                        .GroupBy(x => string.IsNullOrEmpty(x.Segmento) ? "Outros" : x.Segmento)
-                        .ToDictionary(g => g.Key, g => string.Join(", ", g.Select(x => x.Ticker)));
+                var geraisGrafico = itensCarteiraConsolidados
+                        .Where(x => mapaGeraisBanco.ContainsKey(x.Ticker))
+                        .Select(x => new
+                        {
+                                x.TickerExibicao,
+                                x.ValorTotal,
+                                Classe = mapaGeraisBanco[x.Ticker].Classe,
+                                Nome = mapaGeraisBanco[x.Ticker].Nome
+                        }).ToList();
 
-                var tickersGeraisPorClasse = geraisFiltrados
-                        .GroupBy(x => string.IsNullOrEmpty(x.ClasseAtivo) ? "Outros" : x.ClasseAtivo)
-                        .ToDictionary(g => g.Key, g => string.Join(", ", g.Select(x => x.Ticker)));
+                // Totais macro calculados por soma financeira pura das fatias reais
+                decimal totalFinanceiroAcoes = acoesGrafico.Sum(x => x.ValorTotal);
+                decimal totalFinanceiroFiis = fiisGrafico.Sum(x => x.ValorTotal);
+                decimal totalFinanceiroGerais = geraisGrafico.Sum(x => x.ValorTotal);
         }
 
-        const mapAcoes = @Html.Raw(Json.Serialize(tickersAcoesPorSetor));
+        // Paleta de cores estendida para evitar repetições excessivas de cores vizinhas
+        const CORES_PALETA = ['#003366', '#fd7e14', '#20c997', '#6f42c1', '#336699', '#ffc107', '#e83e8c', '#6699cc', '#28a745', '#99ccff', '#dc3545', '#17a2b8', '#6c757d'];
+
+        // --- CHART 1: AÇÕES REAIS (SEM DUPLICADOS) ---
         const ctxAcoes = document.getElementById('chartAcoesSetor').getContext('2d');
         new Chart(ctxAcoes, {
             type: 'doughnut',
             data: {
-                labels: @Html.Raw(Json.Serialize(acoesFiltradas.GroupBy(x => string.IsNullOrEmpty(x.TipoAcao) ? "Outros" : x.TipoAcao).Select(g => g.Key))),
+                labels: @Html.Raw(Json.Serialize(acoesGrafico.Select(x => x.TickerExibicao))),
                 datasets: [{
-                    data: @Html.Raw(Json.Serialize(acoesFiltradas.GroupBy(x => string.IsNullOrEmpty(x.TipoAcao) ? "Outros" : x.TipoAcao).Select(g => g.Count()))),
-                    backgroundColor: ['#003366', '#336699', '#6699cc', '#99ccff', '#20c997', '#6f42c1', '#fd7e14']
+                    data: @Html.Raw(Json.Serialize(acoesGrafico.Select(x => x.ValorTotal.ToString(System.Globalization.CultureInfo.InvariantCulture)))),
+                    backgroundColor: CORES_PALETA,
+                    setores: @Html.Raw(Json.Serialize(acoesGrafico.Select(x => x.Setor)))
                 }]
             },
             options: {
@@ -248,9 +287,16 @@
                     legend: { position: 'bottom' },
                     tooltip: {
                         callbacks: {
-                            footer: function(context) {
-                                let label = context[0].label;
-                                return "Ativos: " + (mapAcoes[label] || "");
+                            label: function(context) {
+                                let ticker = context.label;
+                                let valor = parseFloat(context.raw) || 0;
+                                let dataset = context.dataset;
+                                let setor = dataset.setores[context.dataIndex];
+
+                                let totalAcoes = dataset.data.reduce((sum, val) => sum + parseFloat(val), 0);
+                                let percentual = totalAcoes > 0 ? ((valor / totalAcoes) * 100).toFixed(1) : 0;
+
+                                return ` [${setor}] ${ticker}: R$ ${valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})} (${percentual}%)`;
                             }
                         }
                     }
@@ -258,15 +304,16 @@
             }
         });
 
-        const mapFiis = @Html.Raw(Json.Serialize(tickersFiisPorSegmento));
+        // --- CHART 2: FIIS REAIS (SEM DUPLICADOS) ---
         const ctxFiis = document.getElementById('chartFiisSegmento').getContext('2d');
         new Chart(ctxFiis, {
             type: 'doughnut',
             data: {
-                labels: @Html.Raw(Json.Serialize(fiisFiltrados.GroupBy(x => string.IsNullOrEmpty(x.Segmento) ? "Outros" : x.Segmento).Select(g => g.Key))),
+                labels: @Html.Raw(Json.Serialize(fiisGrafico.Select(x => x.TickerExibicao))),
                 datasets: [{
-                    data: @Html.Raw(Json.Serialize(fiisFiltrados.GroupBy(x => string.IsNullOrEmpty(x.Segmento) ? "Outros" : x.Segmento).Select(g => g.Count()))),
-                    backgroundColor: ['#fd7e14', '#ffc107', '#e83e8c', '#6f42c1', '#20c997']
+                    data: @Html.Raw(Json.Serialize(fiisGrafico.Select(x => x.ValorTotal.ToString(System.Globalization.CultureInfo.InvariantCulture)))),
+                    backgroundColor: [...CORES_PALETA].reverse(), // Inverte a paleta para dar contraste visual
+                    segmentos: @Html.Raw(Json.Serialize(fiisGrafico.Select(x => x.Segmento)))
                 }]
             },
             options: {
@@ -275,9 +322,16 @@
                     legend: { position: 'bottom' },
                     tooltip: {
                         callbacks: {
-                            footer: function(context) {
-                                let label = context[0].label;
-                                return "Ativos: " + (mapFiis[label] || "");
+                            label: function(context) {
+                                let ticker = context.label;
+                                let valor = parseFloat(context.raw) || 0;
+                                let dataset = context.dataset;
+                                let segmento = dataset.segmentos[context.dataIndex];
+
+                                let totalFiis = dataset.data.reduce((sum, val) => sum + parseFloat(val), 0);
+                                let percentual = totalFiis > 0 ? ((valor / totalFiis) * 100).toFixed(1) : 0;
+
+                                return ` [${segmento}] ${ticker}: R$ ${valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})} (${percentual}%)`;
                             }
                         }
                     }
@@ -285,15 +339,17 @@
             }
         });
 
-        const mapGerais = @Html.Raw(Json.Serialize(tickersGeraisPorClasse));
+        // --- CHART 3: ATIVOS GERAIS REAIS (SEM DUPLICADOS) ---
         const ctxGerais = document.getElementById('chartGeraisClasse').getContext('2d');
         new Chart(ctxGerais, {
             type: 'doughnut',
             data: {
-                labels: @Html.Raw(Json.Serialize(geraisFiltrados.GroupBy(x => string.IsNullOrEmpty(x.ClasseAtivo) ? "Outros" : x.ClasseAtivo).Select(g => g.Key))),
+                labels: @Html.Raw(Json.Serialize(geraisGrafico.Select(x => x.TickerExibicao))),
                 datasets: [{
-                    data: @Html.Raw(Json.Serialize(geraisFiltrados.GroupBy(x => string.IsNullOrEmpty(x.ClasseAtivo) ? "Outros" : x.ClasseAtivo).Select(g => g.Count()))),
-                    backgroundColor: ['#6c757d', '#17a2b8', '#28a745', '#ffc107']
+                    data: @Html.Raw(Json.Serialize(geraisGrafico.Select(x => x.ValorTotal.ToString(System.Globalization.CultureInfo.InvariantCulture)))),
+                    backgroundColor: CORES_PALETA.slice(3),
+                    classes: @Html.Raw(Json.Serialize(geraisGrafico.Select(x => x.Classe))),
+                    nomes: @Html.Raw(Json.Serialize(geraisGrafico.Select(x => x.Nome)))
                 }]
             },
             options: {
@@ -302,9 +358,17 @@
                     legend: { position: 'bottom' },
                     tooltip: {
                         callbacks: {
-                            footer: function(context) {
-                                let label = context[0].label;
-                                return "Ativos: " + (mapGerais[label] || "");
+                            label: function(context) {
+                                let ticker = context.label;
+                                let valor = parseFloat(context.raw) || 0;
+                                let dataset = context.dataset;
+                                let classe = dataset.classes[context.dataIndex];
+                                let nomeCompleto = dataset.nomes[context.dataIndex];
+
+                                let totalGerais = dataset.data.reduce((sum, val) => sum + parseFloat(val), 0);
+                                let percentual = totalGerais > 0 ? ((valor / totalGerais) * 100).toFixed(1) : 0;
+
+                                return ` [${classe}] ${ticker} - ${nomeCompleto}: R$ ${valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})} (${percentual}%)`;
                             }
                         }
                     }
@@ -312,32 +376,35 @@
             }
         });
 
+        // --- CHART 4: CONSOLIDADO MACRO FINANCEIRO ---
         const ctxConsolidado = document.getElementById('chartCarteiraConsolidado').getContext('2d');
         new Chart(ctxConsolidado, {
             type: 'doughnut',
             data: {
                 labels: ['Ações Nacionais', 'Fundos Imobiliários', 'Mercado Global / Outros'],
                 datasets: [{
-                    data: [@totalAcoes, @totalFiis, @totalGerais],
+                    data: [
+                        @totalFinanceiroAcoes.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                        @totalFinanceiroFiis.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                        @totalFinanceiroGerais.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                    ],
                     backgroundColor: ['#003366', '#fd7e14', '#28a745']
                 }]
             },
             options: {
                 responsive: true,
                 plugins: {
-                    legend: {
-                        position: 'bottom'
-                    },
+                    legend: { position: 'bottom' },
                     tooltip: {
                         callbacks: {
                             label: function(context) {
                                 let label = context.label || '';
-                                let value = context.raw || 0;
+                                let value = parseFloat(context.raw) || 0;
                                 let dataset = context.chart.data.datasets[0];
-                                let total = dataset.data.reduce((sum, val) => sum + val, 0);
+                                let total = dataset.data.reduce((sum, val) => sum + parseFloat(val), 0);
                                 let percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
 
-                                return `${label}: ${value} ativos (${percentage}%)`;
+                                return `${label}: R$ ${value.toLocaleString('pt-BR', {minimumFractionDigits: 2})} (${percentage}%)`;
                             }
                         }
                     }

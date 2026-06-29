@@ -121,13 +121,17 @@ namespace Acoes_Fiis.Models
         {
             get
             {
-                // Correção Conceitual: Se for FII, a fórmula de Graham não se aplica
-                // Caso você tenha a propriedade TipoAtivo na classe (como visto na imagem_c42d10.png)
-                if (TipoAtivo == "FII" || TipoAtivo == "FundoImobiliario") return 0;
+
+                if (string.Equals(TipoAtivo, "FII", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(TipoAtivo, "FundoImobiliario", StringComparison.OrdinalIgnoreCase))
+                {
+                    return 0;
+                }
 
                 if (LPA <= 0 || VPA <= 0) return 0;
 
                 double resultado = Math.Sqrt(22.5 * (double)LPA * (double)VPA);
+
                 return (decimal)resultado;
             }
         }

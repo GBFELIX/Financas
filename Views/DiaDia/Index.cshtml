@@ -1,0 +1,255 @@
+﻿@model IEnumerable<Acoes_Fiis.Models.ItemCompra>
+
+@{
+    ViewData["Title"] = "Central de Compras";
+    var visaoAtual = ViewBag.VisaoAtual ?? "Casal";
+}
+
+<div class="container py-4" style="max-width: 800px;">
+
+    <div class="card shadow-sm border-0 rounded-4 mb-4 bg-white text-dark">
+        <div class="card-body p-4">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">
+                <div>
+                    <h4 class="fw-bold mb-1 text-dark">
+                        <i class="bi bi-recipe text-success me-2"></i>Montar Lista de Compras
+                    </h4>
+                    <p class="text-muted small mb-0">Monte a lista rapidamente no computador e dispare para o celular antes de ir ao mercado.</p>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="button" onclick="dispararWhatsapp('Gabriel')" class="btn btn-outline-success btn-sm rounded-pill px-3 fw-bold shadow-sm">
+                        <i class="bi bi-whatsapp me-1"></i> Enviar p/ Gabriel
+                    </button>
+                    <button type="button" onclick="dispararWhatsapp('Ela')" class="btn btn-success btn-sm rounded-pill px-3 fw-bold shadow-sm">
+                        <i class="bi bi-whatsapp me-1"></i> Enviar p/ Ela
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0 rounded-4 mb-4">
+        <div class="card-body p-4">
+            <h6 class="fw-bold text-secondary mb-3"><i class="bi bi-keyboard me-2"></i>Digitação Rápida (Aperte Enter para salvar)</h6>
+
+            <form id="formAdicionarItem" onsubmit="adicionarItemLote(event)">
+                @Html.AntiForgeryToken()
+                <input type="hidden" id="visaoAtual" value="@visaoAtual" />
+
+                <div class="row g-2">
+                    <div class="col-12 col-md-5">
+                        <input type="text" id="nomeItem" class="form-control" list="historicoItens" placeholder="Nome do item... (Ex: Café, Arroz)" required autocomplete="off" autofocus />
+                        <datalist id="historicoItens">
+                            @if (ViewBag.HistoricoItens != null)
+                            {
+                                foreach (string nomeItem in ViewBag.HistoricoItens)
+                                {
+                                    <option value="@nomeItem"></option>
+                                }
+                            }
+                        </datalist>
+                    </div>
+                    <div class="col-5 col-md-3">
+                        <select id="categoriaItem" class="form-select" required>
+                            <option value="Mercearia" selected>📦 Mercearia</option>
+                            <option value="Hortifrúti">🥦 Hortifrúti</option>
+                            <option value="Açougue">🥩 Açougue</option>
+                            <option value="Laticínios">🧀 Laticínios</option>
+                            <option value="Bebidas">🥤 Bebidas</option>
+                            <option value="Limpeza">🧼 Limpeza</option>
+                            <option value="Higiene">🪥 Higiene</option>
+                            <option value="Outros">❓ Outros</option>
+                        </select>
+                    </div>
+                    <div class="col-3 col-md-2">
+                        <input type="number" id="quantidadeItem" class="form-control text-center" value="1" min="1" required />
+                    </div>
+                    <div class="col-4 col-md-2 d-grid">
+                        <button type="submit" class="btn btn-primary rounded-3 fw-bold">
+                            <i class="bi bi-plus-lg"></i>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0 rounded-4">
+        <div class="card-body p-0" id="cardCorpoLista">
+
+            @if (Model == null || !Model.Any())
+            {
+                <div class="text-center py-5 text-muted" id="msgListaVazia">
+                    <i class="bi bi-basket fs-1 text-secondary opacity-50 mb-2 d-block"></i>
+                    <p class="mb-0 small fw-bold">Nenhum item adicionado ainda.</p>
+                    <span class="text-muted small" style="font-size: 0.75rem;">Vá digitando acima para povoar a lista.</span>
+                </div>
+            }
+            else
+            {
+                <div class="list-group list-group-flush rounded-4 overflow-hidden" id="containerListaGrupo">
+                    @foreach (var item in Model)
+                    {
+                        var classeRiscado = item.Comprado ? "text-decoration-line-through text-muted bg-light-subtle" : "text-dark";
+                        var iconeCheck = item.Comprado ? "bi-check-circle-fill text-success" : "bi-circle text-secondary";
+
+                        <div class="list-group-item d-flex justify-content-between align-items-center p-3 transition-all @classeRiscado" id="item-row-@item.Id">
+                            <div class="d-flex align-items-center flex-grow-1">
+                                <i class="bi @iconeCheck fs-5 me-3" style="cursor: pointer;" onclick="alternarEstadoComprado(@item.Id)" id="check-icon-@item.Id"></i>
+                                <div>
+                                    <span class="fw-bold fs-6 d-block" id="nome-item-@item.Id">@item.Nome</span>
+                                    <span class="badge bg-light text-secondary border border-secondary-subtle" style="font-size: 0.65rem;">
+                                        @item.Categoria
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="d-flex align-items-center gap-2">
+                                <input type="number" class="form-control form-control-sm text-center fw-bold"
+                                       value="@item.Quantidade" min="1" style="width: 60px; border-radius: 6px;"
+                                       onchange="atualizarQuantidadeItem(@item.Id, this.value)" />
+
+                                <button type="button" class="btn btn-link btn-sm text-danger p-0 ms-2 opacity-75 opacity-100-hover" onclick="deletarItemLista(@item.Id)">
+                                    <i class="bi bi-trash3-fill fs-6"></i>
+                                </button>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .transition-all {
+        transition: all 0.2s ease-in-out;
+    }
+
+    .opacity-100-hover:hover {
+        opacity: 1 !important;
+    }
+</style>
+
+<script>
+    // 1. ADIÇÃO EM LOTE ULTRA RÁPIDA
+    function adicionarItemLote(event) {
+        event.preventDefault();
+
+        const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+        const nome = document.getElementById('nomeItem').value;
+        const categoria = document.getElementById('categoriaItem').value;
+        const quantidade = document.getElementById('quantidadeItem').value;
+        const visao = document.getElementById('visaoAtual').value;
+
+        fetch('/DiaDia/AdicionarItem', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                '__RequestVerificationToken': token,
+                'nome': nome,
+                'categoria': categoria,
+                'quantidade': quantidade,
+                'visao': visao
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.id) {
+                const msgVazia = document.getElementById('msgListaVazia');
+                if (msgVazia) {
+                    document.getElementById('cardCorpoLista').innerHTML = '<div class="list-group list-group-flush rounded-4 overflow-hidden" id="containerListaGrupo"></div>';
+                }
+
+                const novoItemHtml = `
+                    <div class="list-group-item d-flex justify-content-between align-items-center p-3 transition-all text-dark" id="item-row-${data.id}">
+                        <div class="d-flex align-items-center flex-grow-1">
+                            <i class="bi bi-circle text-secondary fs-5 me-3" style="cursor: pointer;" onclick="alternarEstadoComprado(${data.id})" id="check-icon-${data.id}"></i>
+                            <div>
+                                <span class="fw-bold fs-6 d-block" id="nome-item-${data.id}">${data.nome}</span>
+                                <span class="badge bg-light text-secondary border border-secondary-subtle" style="font-size: 0.65rem;">${data.categoria}</span>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <input type="number" class="form-control form-control-sm text-center fw-bold"
+                                   value="${data.quantidade}" min="1" style="width: 60px; border-radius: 6px;"
+                                   onchange="atualizarQuantidadeItem(${data.id}, this.value)" />
+                            <button type="button" class="btn btn-link btn-sm text-danger p-0 ms-2 opacity-75 opacity-100-hover" onclick="deletarItemLista(${data.id})">
+                                <i class="bi bi-trash3-fill fs-6"></i>
+                            </button>
+                        </div>
+                    </div>`;
+
+                document.getElementById('containerListaGrupo').insertAdjacentHTML('afterbegin', novoItemHtml);
+
+                document.getElementById('nomeItem').value = '';
+                document.getElementById('quantidadeItem').value = '1';
+                document.getElementById('nomeItem').focus();
+            }
+        });
+    }
+
+    // 2. ALTERAR QUANTIDADE VIA AJAX (NOVO!)
+    function atualizarQuantidadeItem(id, novaQuantidade) {
+        if (novaQuantidade < 1) return;
+
+        fetch(`/DiaDia/AtualizarQuantidade?id=${id}&quantidade=${novaQuantidade}`, {
+            method: 'POST'
+        });
+    }
+
+    // 3. ALTERNAR COMPRADO VIA AJAX
+    function alternarEstadoComprado(id) {
+        fetch(`/DiaDia/AlternarComprado?id=${id}`, { method: 'POST' })
+        .then(response => {
+            if (response.ok) {
+                const linha = document.getElementById(`item-row-${id}`);
+                const icone = document.getElementById(`check-icon-${id}`);
+
+                if (linha.classList.contains('text-decoration-line-through')) {
+                    linha.classList.remove('text-decoration-line-through', 'text-muted', 'bg-light-subtle');
+                    linha.classList.add('text-dark');
+                    icone.classList.remove('bi-check-circle-fill', 'text-success');
+                    icone.classList.add('bi-circle', 'text-secondary');
+                } else {
+                    linha.classList.remove('text-dark');
+                    linha.classList.add('text-decoration-line-through', 'text-muted', 'bg-light-subtle');
+                    icone.classList.remove('bi-circle', 'text-secondary');
+                    icone.classList.add('bi-check-circle-fill', 'text-success');
+                }
+            }
+        });
+    }
+
+    // 4. DELETAR ITEM VIA AJAX
+    function deletarItemLista(id) {
+        fetch(`/DiaDia/DeletarItem?id=${id}`, { method: 'POST' })
+        .then(response => {
+            if (response.ok) {
+                const linha = document.getElementById(`item-row-${id}`);
+                linha.style.opacity = '0';
+                setTimeout(() => { linha.remove(); }, 200);
+            }
+        });
+    }
+
+    // 5. ATUALIZAÇÃO SÍNCRONA CRÍTICA AO CLICAR NO WHATSAPP (NOVO!)
+    function dispararWhatsapp(destino) {
+        const visao = document.getElementById('visaoAtual').value;
+
+        // Busca o link atualizado em tempo de clique direto na Controller
+        fetch(`/DiaDia/ObterLinksWhatsapp?visao=${visao}`)
+        .then(response => response.json())
+        .then(data => {
+            let linkFinal = (destino === 'Gabriel') ? data.linkUm : data.linkDois;
+
+            if (linkFinal) {
+                // Abre o WhatsApp Web em uma nova aba com a lista garantida e 100% atualizada
+                window.open(linkFinal, '_blank');
+            } else {
+                alert("Não há itens pendentes para enviar na lista!");
+            }
+        });
+    }
+</script>
