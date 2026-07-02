@@ -1,4 +1,4 @@
-﻿@model Acoes_Fiis.Models.CarteiraTotalViewModel
+﻿@model CarteiraTotalViewModel
 
 <div class="modal fade" id="modalSimuladorDividendos" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-xl">
@@ -29,32 +29,104 @@
 
                     <div class="tab-pane fade show active" id="carteira" role="tabpanel">
                         <p class="small text-muted mb-3">
-                            Simule sua carteira de FIIs atual ou adicione novos ativos para projetar seu capital e renda.
+                            Simule sua carteira de FIIs atual ou busque novos ativos da base para projetar seu capital e renda.
                         </p>
 
-                        <div class="row g-2 mb-3 pb-3 border-bottom align-items-end">
-                            <div class="col-md-3">
-                                <label class="small fw-semibold text-muted mb-1">Ativo</label>
-                                <input type="text" id="novoTicker" class="form-control form-control-sm border-secondary-subtle" placeholder="Ex: MXRF11">
+                        <div class="row g-3 mb-3 pb-3 border-bottom">
+                            <div class="col-lg-5 border-end pe-3">
+                                <div class="mb-2">
+                                    <label for="inputFiltroTickerSim" class="form-label fw-bold small text-muted text-uppercase mb-1">
+                                        <i class="bi bi-search me-1"></i>Filtrar Ativo da Base
+                                    </label>
+                                    <input type="text" id="inputFiltroTickerSim" class="form-control form-control-sm shadow-sm" placeholder="Buscar por ticker ou nome..." onkeyup="filtrarTickersSimulador()" />
+                                </div>
+                                <div>
+                                    <select id="selectModalTickerSim" class="form-select form-select-sm shadow-sm" size="5">
+                                        @if (Model.ListaTickersFiis != null)
+                                        {
+                                            @foreach (var grupoFii in Model.ListaTickersFiis.DistinctBy(x => x.Ticker).GroupBy(x => x.Segmento))
+                                            {
+                                                <optgroup label="FIIs - @grupoFii.Key">
+                                                    @foreach (var item in grupoFii)
+                                                    {
+                                                        <option value="@item.Ticker.Replace(".SA", "")"
+                                                                data-search="@item.Ticker.ToUpper()"
+                                                                data-preco="@(item.PrecoAtual.ToString("F2", System.Globalization.CultureInfo.InvariantCulture))"
+                                                                data-div="@(item.UltimoRendimento.ToString("F2", System.Globalization.CultureInfo.InvariantCulture))">
+                                                            @{
+                                                                string emojiTipoFii = item.TipoFii switch { "Tijolo" => "🧱", "Papel" => "📜", "Híbrido" => "🔄", _ => "❓" };
+                                                            }
+                                                            @emojiTipoFii @item.Ticker.Replace(".SA", "")
+                                                        </option>
+                                                    }
+                                                </optgroup>
+                                            }
+                                        }
+                                        @if (Model.ListaTickersAcoes != null)
+                                        {
+                                            @foreach (var grupoAcao in Model.ListaTickersAcoes.DistinctBy(x => x.Ticker).GroupBy(x => x.TipoAcao))
+                                            {
+                                                <optgroup label="Ações - @grupoAcao.Key">
+                                                    @foreach (var item in grupoAcao)
+                                                    {
+                                                        <option value="@item.Ticker.Replace(".SA", "")" data-search="@item.Ticker.ToUpper()">
+                                                            @{
+                                                                string emojiTipo = item.TipoAtivo switch { "Setor Perene" => "🏦", "Dividendos" => "💰", "Crescimento" => "🚀", _ => "❓" };
+                                                            }
+                                                            @emojiTipo @item.Ticker.Replace(".SA", "")
+                                                        </option>
+                                                    }
+                                                </optgroup>
+                                            }
+                                        }
+                                        @if (Model.ListaTickersGerais != null)
+                                        {
+                                            @foreach (var grupoGeral in Model.ListaTickersGerais.DistinctBy(x => x.Ticker).GroupBy(x => x.ClasseAtivo))
+                                            {
+                                                string emoji = grupoGeral.Key.ToLower().Contains("cripto") ? "🪙" : grupoGeral.Key.ToLower().Contains("bdr") ? "🇺🇸" : "🌐";
+                                                <optgroup label="@grupoGeral.Key">
+                                                    @foreach (var item in grupoGeral)
+                                                    {
+                                                        var textoExibicao = item.Ticker.Replace(".SA", "").Replace("-USD", "").Replace("=X", "");
+                                                        <option value="@textoExibicao" data-search="@item.Ticker.ToUpper() @item.Nome.ToUpper()">
+                                                            @emoji @textoExibicao - @item.Nome
+                                                        </option>
+                                                    }
+                                                </optgroup>
+                                            }
+                                        }
+                                    </select>
+                                </div>
                             </div>
-                            <div class="col-md-2">
-                                <label class="small fw-semibold text-muted mb-1">Qtd</label>
-                                <input type="number" id="novaQtd" class="form-control form-control-sm border-secondary-subtle" placeholder="Qtd" min="1">
-                            </div>
-                            <div class="col-md-2">
-                                <label class="small fw-semibold text-muted mb-1">Preço (R$)</label>
-                                <input type="number" id="novoPreco" class="form-control form-control-sm border-secondary-subtle" placeholder="Preço" step="0.01">
-                            </div>
-                            <div class="col-md-3">
-                                <label class="small fw-semibold text-muted mb-1">Div/Cota (R$)</label>
-                                <input type="number" id="novoDiv" class="form-control form-control-sm border-secondary-subtle" placeholder="Dividendo" step="0.01">
-                            </div>
-                            <div class="col-md-2">
-                                <button type="button" id="btnAdicionarFii" class="btn btn-sm btn-success w-100 fw-bold">Adicionar</button>
+
+                            <div class="col-lg-7 d-flex flex-column justify-content-end">
+                                <div class="row g-2 align-items-end">
+                                    <div class="col-sm-3">
+                                        <label class="small fw-semibold text-muted mb-1">Ticker</label>
+                                        <input type="text" id="novoTicker" class="form-control form-control-sm border-secondary-subtle fw-bold text-uppercase" placeholder="Ex: MXRF11">
+                                    </div>
+                                    <div class="col-sm-2">
+                                        <label class="small fw-semibold text-muted mb-1">Qtd</label>
+                                        <input type="number" id="novaQtd" class="form-control form-control-sm border-secondary-subtle" placeholder="0" min="1">
+                                    </div>
+                                    <div class="col-sm-3">
+                                        <label class="small fw-semibold text-muted mb-1">Preço (R$)</label>
+                                        <input type="number" id="novoPreco" class="form-control form-control-sm border-secondary-subtle" placeholder="0,00" step="0.01">
+                                    </div>
+                                    <div class="col-sm-4">
+                                        <label class="small fw-semibold text-muted mb-1">Div/Cota (R$)</label>
+                                        <input type="number" id="novoDiv" class="form-control form-control-sm border-secondary-subtle text-success" placeholder="0,00" step="0.01">
+                                    </div>
+                                    <div class="col-12 mt-2">
+                                        <button type="button" id="btnAdicionarFii" class="btn btn-sm btn-success w-100 fw-bold shadow-sm">
+                                            <i class="bi bi-plus-circle-fill me-1"></i>Adicionar Ativo ao Simulador
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="table-responsive mb-3" style="max-height: 300px; overflow-y: auto;">
+                        <div class="table-responsive mb-3" style="max-height: 250px; overflow-y: auto;">
                             <table class="table table-hover table-sm align-middle" id="tabelaFiisSimulador">
                                 <thead class="table-light sticky-top">
                                     <tr>
@@ -63,7 +135,7 @@
                                         <th style="width: 110px;">Preço (R$)</th>
                                         <th style="width: 110px;">Div/Cota (R$)</th>
                                         <th>Capital Investido</th>
-                                        <th>Rendimento</th>
+                                        <th>Rendimento Mensal</th>
                                         <th class="text-center">Ação</th>
                                     </tr>
                                 </thead>
@@ -71,7 +143,7 @@
                                     @if (Model != null)
                                     {
                                         // O StringComparison.OrdinalIgnoreCase garante que pegue FII, Fii, fii, etc.
-                                        foreach (var item in Model.Itens.Where(x => x.TipoAtivo != null && x.TipoAtivo.Equals("Fii", StringComparison.OrdinalIgnoreCase)))
+                                        foreach (var item in Model.Itens.Where(x => x.TipoAtivo != null && x.TipoAtivo.Equals("Fii", StringComparison.OrdinalIgnoreCase)))  
                                         {
                                             <tr>
                                                 <td class="fw-bold text-uppercase">@item.Ticker</td>
@@ -149,9 +221,6 @@
                                 <span id="resCapital" class="fw-bold text-success fs-5">R$ 0,00</span>
                             </div>
                         </div>
-                        <small class="text-muted fst-italic d-block text-center" style="font-size: 0.75rem;">
-                            *Cálculo baseado em distribuição constante de proventos.
-                        </small>
                     </div>
 
                 </div>
@@ -165,14 +234,75 @@
 </div>
 
 <script>
+    // ==========================================
+    // FUNÇÃO GLOBAL (Chamada pelo onkeyup do HTML)
+    // ==========================================
+    function filtrarTickersSimulador() {
+        const input = document.getElementById('inputFiltroTickerSim');
+        const filter = input.value.toUpperCase();
+        const select = document.getElementById('selectModalTickerSim');
+        const options = select.getElementsByTagName('option');
+        const optgroups = select.getElementsByTagName('optgroup');
+
+        // Filtra as opções
+        for (let i = 0; i < options.length; i++) {
+            const searchData = options[i].getAttribute('data-search') || '';
+            if (searchData.toUpperCase().indexOf(filter) > -1) {
+                options[i].style.display = "";
+            } else {
+                options[i].style.display = "none";
+            }
+        }
+
+        // Esconde subgrupos vazios
+        for (let i = 0; i < optgroups.length; i++) {
+            const subOptions = optgroups[i].getElementsByTagName('option');
+            let algumVisivel = false;
+            for (let j = 0; j < subOptions.length; j++) {
+                if (subOptions[j].style.display !== "none") {
+                    algumVisivel = true;
+                    break;
+                }
+            }
+            optgroups[i].style.display = algumVisivel ? "" : "none";
+        }
+    }
+
+    // ==========================================
+    // INICIALIZAÇÃO E EVENTOS DA TELA
+    // ==========================================
     document.addEventListener("DOMContentLoaded", function () {
 
-        // ==========================================
-        // LÓGICA DA ABA 1: CARTEIRA TOTAL
-        // ==========================================
         const tbodyFiis = document.querySelector("#tabelaFiisSimulador tbody");
         const resRendimentoTotal = document.getElementById("resRendimentoTotal");
         const resCapitalTotalCarteira = document.getElementById("resCapitalTotalCarteira");
+
+        // Referências dos inputs do formulário de adição
+        const selectAtivo = document.getElementById("selectModalTickerSim");
+        const inputTicker = document.getElementById("novoTicker");
+        const inputPreco = document.getElementById("novoPreco");
+        const inputDiv = document.getElementById("novoDiv");
+        const inputQtd = document.getElementById("novaQtd");
+
+        // Evento: Quando clica em um ativo da lista cadastrada, joga os dados nos inputs
+        selectAtivo.addEventListener("change", function() {
+            // Pega a opção que o usuário acabou de clicar
+            const opcaoSelecionada = selectAtivo.options[selectAtivo.selectedIndex];
+
+            if(opcaoSelecionada && opcaoSelecionada.value) {
+                // 1. Preenche o Ticker
+                inputTicker.value = opcaoSelecionada.value;
+
+                // 2. Preenche o Preço e o Dividendo lendo os atributos data-*
+                inputPreco.value = opcaoSelecionada.getAttribute("data-preco") || "";
+                inputDiv.value = opcaoSelecionada.getAttribute("data-div") || "";
+
+                // 3. Sugere 1 de quantidade automaticamente para agilizar a simulação
+                if(!inputQtd.value) {
+                    inputQtd.value = 1;
+                }
+            }
+        });
 
         function calcularCarteira() {
             let totalMensalRendimento = 0;
@@ -180,30 +310,27 @@
             const linhas = tbodyFiis.querySelectorAll("tr");
 
             linhas.forEach(linha => {
-                const inputQtd = linha.querySelector(".sim-qtd");
-                const inputPreco = linha.querySelector(".sim-preco");
-                const inputDiv = linha.querySelector(".sim-div");
+                const qtdInput = linha.querySelector(".sim-qtd");
+                const precoInput = linha.querySelector(".sim-preco");
+                const divInput = linha.querySelector(".sim-div");
 
                 const spanSubtotalCapital = linha.querySelector(".sim-subtotal-capital");
                 const spanSubtotalRend = linha.querySelector(".sim-subtotal-rendimento");
 
-                const qtd = parseFloat(inputQtd.value) || 0;
-                const preco = parseFloat(inputPreco.value) || 0;
-                const div = parseFloat(inputDiv.value) || 0;
+                const qtd = parseFloat(qtdInput.value) || 0;
+                const preco = parseFloat(precoInput.value) || 0;
+                const div = parseFloat(divInput.value) || 0;
 
                 const subtotalCapital = qtd * preco;
                 const subtotalRend = qtd * div;
 
-                // Atualiza as células da linha
                 spanSubtotalCapital.innerText = subtotalCapital.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
                 spanSubtotalRend.innerText = subtotalRend.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-                // Soma nos totais
                 totalCapital += subtotalCapital;
                 totalMensalRendimento += subtotalRend;
             });
 
-            // Atualiza os cards de resultado
             resCapitalTotalCarteira.innerText = totalCapital.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
             resRendimentoTotal.innerText = totalMensalRendimento.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         }
@@ -220,12 +347,12 @@
             });
         }
 
-        // Adicionar novo FII via botão
+        // Adicionar novo FII na simulação
         document.getElementById("btnAdicionarFii").addEventListener("click", function() {
-            const ticker = document.getElementById("novoTicker").value.toUpperCase() || "NOVO FII";
-            const qtd = document.getElementById("novaQtd").value || 1;
-            const preco = document.getElementById("novoPreco").value || 0;
-            const div = document.getElementById("novoDiv").value || 0;
+            const ticker = inputTicker.value.toUpperCase() || "NOVO ATIVO";
+            const qtd = inputQtd.value || 1;
+            const preco = inputPreco.value || 0;
+            const div = inputDiv.value || 0;
 
             const tr = document.createElement("tr");
             tr.innerHTML = `
@@ -244,17 +371,17 @@
             anexarEventosLinha(tr);
             calcularCarteira();
 
-            // Limpa os campos após adicionar
-            document.getElementById("novoTicker").value = "";
-            document.getElementById("novaQtd").value = "";
-            document.getElementById("novoPreco").value = "";
-            document.getElementById("novoDiv").value = "";
+            // Limpa os campos após a inserção
+            inputTicker.value = "";
+            inputQtd.value = "";
+            inputPreco.value = "";
+            inputDiv.value = "";
+            selectAtivo.value = "";
         });
 
-        // Inicializa eventos nas linhas carregadas via C#/Razor
+        // Inicializa eventos e cálculos nas linhas injetadas via C#
         tbodyFiis.querySelectorAll("tr").forEach(anexarEventosLinha);
-        calcularCarteira(); // Calcula os totais iniciais
-
+        calcularCarteira();
 
         // ==========================================
         // LÓGICA DA ABA 2: CALCULADORA DE META
@@ -262,7 +389,6 @@
         const metaInput = document.getElementById("simMetaRenda");
         const precoInputCalc = document.getElementById("simPrecoCotaCalc");
         const divCotaInputCalc = document.getElementById("simDividendoCotaCalc");
-
         const resCotas = document.getElementById("resCotas");
         const resCapital = document.getElementById("resCapital");
 
@@ -274,7 +400,6 @@
             if (dividendo > 0 && preco > 0) {
                 const cotas = Math.ceil(meta / dividendo);
                 const capital = cotas * preco;
-
                 resCotas.innerText = cotas.toLocaleString('pt-BR');
                 resCapital.innerText = capital.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
             } else {
@@ -286,10 +411,9 @@
         metaInput.addEventListener("input", calcularMeta);
         precoInputCalc.addEventListener("input", calcularMeta);
         divCotaInputCalc.addEventListener("input", calcularMeta);
-
         calcularMeta();
 
-        // Alternar cores das abas
+        // Alternador de css ativo nas abas
         const tabs = document.querySelectorAll('#simuladorTabs .nav-link');
         tabs.forEach(tab => {
             tab.addEventListener('show.bs.tab', function(event) {
