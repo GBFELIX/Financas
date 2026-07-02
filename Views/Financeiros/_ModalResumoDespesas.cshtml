@@ -3,56 +3,126 @@
 <div class="modal fade" id="modalResumoDespesas" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg rounded-4">
-            <div class="modal-header border-0 py-3">
+            <div class="modal-header border-0 py-3 pb-0">
                 <h5 class="modal-title fw-bold text-dark">
-                    <i class="bi bi-pie-chart-fill me-2 text-danger"></i>Resumo por Categoria
+                    <i class="bi bi-pie-chart-fill me-2 text-danger"></i>Diagnóstico de Gastos
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
+
             <div class="modal-body p-4">
-                @{
-                    var resumo = Model.Lancamentos
-                    .Where(x => x.Tipo == "Despesa")
-                    .GroupBy(x => x.Categoria)
-                    .Select(g => new
-                    {
-                        Categoria = g.Key,
-                        Total = g.Sum(v => v.Valor),
-                        Percentual = Model.TotalDespesas > 0 ? (g.Sum(v => v.Valor) / Model.TotalDespesas) * 100 : 0
-                    })
-                    .OrderByDescending(x => x.Total);
-                }
+                <ul class="nav nav-pills mb-4 bg-light p-1 rounded-pill justify-content-center" id="pills-tabResumo" role="tablist">
+                    <li class="nav-item w-50" role="presentation">
+                        <button class="nav-link active rounded-pill fw-bold text-center w-100 py-2 small text-uppercase"
+                                id="pills-categoria-tab" data-bs-toggle="pill" data-bs-target="#pills-categoria" type="button" role="tab">
+                            <i class="bi bi-tags-fill me-1"></i> Por Categoria
+                        </button>
+                    </li>
+                    <li class="nav-item w-50" role="presentation">
+                        <button class="nav-link rounded-pill fw-bold text-center w-100 py-2 small text-uppercase"
+                                id="pills-pagamento-tab" data-bs-toggle="pill" data-bs-target="#pills-pagamento" type="button" role="tab">
+                            <i class="bi bi-credit-card-2-back-fill me-1"></i> Pagamento
+                        </button>
+                    </li>
+                </ul>
 
-                @foreach (var cat in resumo)
-                {
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <span class="fw-bold text-dark">@cat.Categoria</span>
-                            <span class="text-muted small">@cat.Total.ToString("C2") (@cat.Percentual.ToString("N1")%)</span>
-                        </div>
-                        <div class="progress rounded-pill" style="height: 8px;">
-                            <div class="progress-bar bg-danger opacity-75"
-                                 role="progressbar"
-                                 style="width: @cat.Percentual.ToString().Replace(",", ".")%"
-                                 aria-valuenow="@cat.Percentual"
-                                 aria-valuemin="0"
-                                 aria-valuemax="100">
+                <div class="tab-content" id="pills-tabContentResumo">
+
+                    <div class="tab-pane fade show active" id="pills-categoria" role="tabpanel">
+                        @{
+                            var resumoCategoria = Model.Lancamentos
+                            .Where(x => x.Tipo == "Despesa")
+                            .GroupBy(x => x.Categoria)
+                            .Select(g => new
+                            {
+                                Categoria = g.Key,
+                                Total = g.Sum(v => v.Valor),
+                                Percentual = Model.TotalDespesas > 0 ? (g.Sum(v => v.Valor) / Model.TotalDespesas) * 100 : 0
+                            })
+                            .OrderByDescending(x => x.Total)
+                            .ToList();
+                        }
+
+                        @foreach (var cat in resumoCategoria)
+                        {
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="fw-bold text-dark small text-uppercase">@cat.Categoria</span>
+                                    <span class="text-muted small fw-semibold">@cat.Total.ToString("C2") (@cat.Percentual.ToString("N1")%)</span>
+                                </div>
+                                <div class="progress rounded-pill" style="height: 8px;">
+                                    <div class="progress-bar bg-danger opacity-75"
+                                         role="progressbar"
+                                         style="width: @cat.Percentual.ToString(System.Globalization.CultureInfo.InvariantCulture)%"
+                                         aria-valuenow="@cat.Percentual"
+                                         aria-valuemin="0"
+                                         aria-valuemax="100">
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    </div>
-                }
+                        }
 
-                @if (!resumo.Any())
-                {
-                    <div class="text-center py-3 text-muted">
-                        <i class="bi bi-inbox fs-1 d-block mb-2"></i>
-                        Nenhuma despesa lançada neste mês.
+                        @if (!resumoCategoria.Any())
+                        {
+                            <div class="text-center py-4 text-muted">
+                                <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+                                Nenhuma despesa por categoria cadastrada.
+                            </div>
+                        }
                     </div>
-                }
+
+                    <div class="tab-pane fade" id="pills-pagamento" role="tabpanel">
+                        @{
+                            var resumoPagamento = Model.Lancamentos
+                            .Where(x => x.Tipo == "Despesa" && !string.IsNullOrEmpty(x.Pagamento))
+                            .GroupBy(x => x.Pagamento)
+                            .Select(g => new
+                            {
+                                FormaPagamento = g.Key,
+                                Total = g.Sum(v => v.Valor),
+                                Percentual = Model.TotalDespesas > 0 ? (g.Sum(v => v.Valor) / Model.TotalDespesas) * 100 : 0
+                            })
+                            .OrderByDescending(x => x.Total)
+                            .ToList();
+                        }
+
+                        @foreach (var pag in resumoPagamento)
+                        {
+                            string emoji = pag.FormaPagamento.ToLower().Contains("pix") || pag.FormaPagamento.ToLower().Contains("dinheiro") ? "🪙" :
+                            pag.FormaPagamento.ToLower().Contains("crédito") || pag.FormaPagamento.ToLower().Contains("credito") ? "💳" : "📱";
+
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="fw-bold text-dark small text-uppercase">@emoji @pag.FormaPagamento</span>
+                                    <span class="text-muted small fw-semibold">@pag.Total.ToString("C2") (@pag.Percentual.ToString("N1")%)</span>
+                                </div>
+                                <div class="progress rounded-pill" style="height: 8px;">
+                                    <div class="progress-bar bg-primary opacity-75"
+                                         role="progressbar"
+                                         style="width: @pag.Percentual.ToString(System.Globalization.CultureInfo.InvariantCulture)%"
+                                         aria-valuenow="@pag.Percentual"
+                                         aria-valuemin="0"
+                                         aria-valuemax="100">
+                                    </div>
+                                </div>
+                            </div>
+                        }
+
+                        @if (!resumoPagamento.Any())
+                        {
+                            <div class="text-center py-4 text-muted">
+                                <i class="bi bi-credit-card fs-2 d-block mb-2"></i>
+                                Nenhuma forma de pagamento mapeada nas despesas.
+                            </div>
+                        }
+                    </div>
+
+                </div>
             </div>
-            <div class="modal-footer border-0">
+
+            <div class="modal-footer border-0 pt-0">
                 <div class="w-100 d-flex justify-content-between align-items-center bg-light p-3 rounded-4">
-                    <span class="fw-bold text-dark">Total Geral</span>
+                    <span class="fw-bold text-dark">Total de Saídas</span>
                     <h5 class="mb-0 fw-bold text-danger">@Model.TotalDespesas.ToString("C2")</h5>
                 </div>
             </div>

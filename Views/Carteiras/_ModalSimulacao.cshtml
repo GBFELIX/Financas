@@ -1,80 +1,278 @@
-﻿@model CarteiraTotalViewModel
+﻿@model Acoes_Fiis.Models.CarteiraTotalViewModel
 
-<!-- MODAL: SIMULADOR DE DIVIDENDOS RÁPIDO -->
 <div class="modal fade" id="modalSimuladorDividendos" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
         <div class="modal-content border-0 shadow-lg rounded-4">
+
             <div class="modal-header bg-success text-white border-0 py-3">
                 <h5 class="modal-title fw-bold">
-                    <i class="bi bi-calculator-fill me-2"></i>Meta de Renda Passiva
+                    <i class="bi bi-calculator-fill me-2"></i>Simulador de Renda Passiva
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body p-4">
-                <p class="small text-muted mb-4">
-                    Descubra quanto você precisa investir ou quantas cotas precisa adquirir para alcançar sua meta de rendimento mensal.
-                </p>
 
-                <!-- Inputs de Simulação -->
-                <div class="row g-3 mb-4">
-                    <div class="col-12">
-                        <label class="form-label small text-muted text-uppercase fw-bold">Meta de Renda Mensal Desejada</label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-white border-secondary-subtle text-success fw-bold">R$</span>
-                            <input type="number" id="simMetaRenda" class="form-control border-secondary-subtle fw-bold text-success" value="500" min="1" step="50">
+            <div class="modal-body p-0">
+                <ul class="nav nav-tabs nav-fill bg-light border-bottom-0" id="simuladorTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active fw-bold text-success py-3" id="carteira-tab" data-bs-toggle="tab" data-bs-target="#carteira" type="button" role="tab">
+                            <i class="bi bi-wallet2 me-1"></i> Minha Carteira
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link fw-bold text-secondary py-3" id="meta-tab" data-bs-toggle="tab" data-bs-target="#meta" type="button" role="tab">
+                            <i class="bi bi-bullseye me-1"></i> Calculadora de Meta
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content p-4" id="simuladorTabsContent">
+
+                    <div class="tab-pane fade show active" id="carteira" role="tabpanel">
+                        <p class="small text-muted mb-3">
+                            Simule sua carteira de FIIs atual ou adicione novos ativos para projetar seu capital e renda.
+                        </p>
+
+                        <div class="row g-2 mb-3 pb-3 border-bottom align-items-end">
+                            <div class="col-md-3">
+                                <label class="small fw-semibold text-muted mb-1">Ativo</label>
+                                <input type="text" id="novoTicker" class="form-control form-control-sm border-secondary-subtle" placeholder="Ex: MXRF11">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="small fw-semibold text-muted mb-1">Qtd</label>
+                                <input type="number" id="novaQtd" class="form-control form-control-sm border-secondary-subtle" placeholder="Qtd" min="1">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="small fw-semibold text-muted mb-1">Preço (R$)</label>
+                                <input type="number" id="novoPreco" class="form-control form-control-sm border-secondary-subtle" placeholder="Preço" step="0.01">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="small fw-semibold text-muted mb-1">Div/Cota (R$)</label>
+                                <input type="number" id="novoDiv" class="form-control form-control-sm border-secondary-subtle" placeholder="Dividendo" step="0.01">
+                            </div>
+                            <div class="col-md-2">
+                                <button type="button" id="btnAdicionarFii" class="btn btn-sm btn-success w-100 fw-bold">Adicionar</button>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive mb-3" style="max-height: 300px; overflow-y: auto;">
+                            <table class="table table-hover table-sm align-middle" id="tabelaFiisSimulador">
+                                <thead class="table-light sticky-top">
+                                    <tr>
+                                        <th>Ativo</th>
+                                        <th style="width: 90px;">Qtd</th>
+                                        <th style="width: 110px;">Preço (R$)</th>
+                                        <th style="width: 110px;">Div/Cota (R$)</th>
+                                        <th>Capital Investido</th>
+                                        <th>Rendimento</th>
+                                        <th class="text-center">Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (Model != null)
+                                    {
+                                        // O StringComparison.OrdinalIgnoreCase garante que pegue FII, Fii, fii, etc.
+                                        foreach (var item in Model.Itens.Where(x => x.TipoAtivo != null && x.TipoAtivo.Equals("Fii", StringComparison.OrdinalIgnoreCase)))
+                                        {
+                                            <tr>
+                                                <td class="fw-bold text-uppercase">@item.Ticker</td>
+                                                <td>
+                                                    <input type="number" class="form-control form-control-sm sim-qtd border-secondary-subtle" value="@item.Quantidade" min="1">
+                                                </td>
+                                                <td>
+                                                    <input type="number" class="form-control form-control-sm sim-preco border-secondary-subtle" value="@item.PrecoAtual.ToString(System.Globalization.CultureInfo.InvariantCulture)" step="0.01">
+                                                </td>
+                                                <td>
+                                                    <input type="number" class="form-control form-control-sm sim-div border-secondary-subtle text-success" value="@item.UltimoRendimento.ToString(System.Globalization.CultureInfo.InvariantCulture)" step="0.01">
+                                                </td>
+                                                <td class="fw-bold sim-subtotal-capital">R$ 0,00</td>
+                                                <td class="fw-bold text-success sim-subtotal-rendimento">R$ 0,00</td>
+                                                <td class="text-center">
+                                                    <button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remover-fii"><i class="bi bi-trash"></i></button>
+                                                </td>
+                                            </tr>
+                                        }
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <div class="p-3 rounded-4 bg-light border border-secondary-subtle h-100">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="small text-secondary fw-semibold"><i class="bi bi-piggy-bank me-2"></i>Capital Total Projetado:</span>
+                                        <span id="resCapitalTotalCarteira" class="fw-bold text-dark fs-5">R$ 0,00</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="p-3 rounded-4 bg-light border border-success-subtle h-100">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="small text-secondary fw-semibold"><i class="bi bi-cash-stack me-2"></i>Renda Mensal Projetada:</span>
+                                        <span id="resRendimentoTotal" class="fw-bold text-success fs-5">R$ 0,00</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div class="col-6">
-                        <label class="form-label small text-muted text-uppercase fw-bold">Preço da Cota (R$)</label>
-                        <input type="number" id="simPrecoCota" class="form-control border-secondary-subtle fw-semibold" value="10.00" min="0.01" step="0.50">
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label small text-muted text-uppercase fw-bold">DY ou Dividend/Cota (R$)</label>
-                        <input type="number" id="simDividendoCota" class="form-control border-secondary-subtle fw-semibold text-success" value="0.08" min="0.001" step="0.01">
-                    </div>
-                </div>
 
-                <!-- Painel de Resultados Dinâmicos -->
-                <div class="p-3 rounded-4 bg-light border border-success-subtle mb-2">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="small text-secondary fw-semibold"><i class="bi bi-layers-half me-2"></i>Cotas Necessárias:</span>
-                        <span id="resCotas" class="fw-bold text-dark fs-5">0</span>
+                    <div class="tab-pane fade" id="meta" role="tabpanel">
+                        <p class="small text-muted mb-4">
+                            Descubra quanto você precisa investir ou quantas cotas precisa adquirir para alcançar sua meta de rendimento.
+                        </p>
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-12">
+                                <label class="form-label small text-muted text-uppercase fw-bold">Meta de Renda Mensal Desejada</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white border-secondary-subtle text-success fw-bold">R$</span>
+                                    <input type="number" id="simMetaRenda" class="form-control border-secondary-subtle fw-bold text-success" value="500" min="1" step="50">
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small text-muted text-uppercase fw-bold">Preço da Cota (R$)</label>
+                                <input type="number" id="simPrecoCotaCalc" class="form-control border-secondary-subtle fw-semibold" value="10.00" min="0.01" step="0.50">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small text-muted text-uppercase fw-bold">DY ou Div/Cota (R$)</label>
+                                <input type="number" id="simDividendoCotaCalc" class="form-control border-secondary-subtle fw-semibold text-success" value="0.08" min="0.001" step="0.01">
+                            </div>
+                        </div>
+
+                        <div class="p-3 rounded-4 bg-light border border-success-subtle mb-2">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="small text-secondary fw-semibold"><i class="bi bi-layers-half me-2"></i>Cotas Necessárias:</span>
+                                <span id="resCotas" class="fw-bold text-dark fs-5">0</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mb-0">
+                                <span class="small text-secondary fw-semibold"><i class="bi bi-cash-coin me-2"></i>Capital Total Estimado:</span>
+                                <span id="resCapital" class="fw-bold text-success fs-5">R$ 0,00</span>
+                            </div>
+                        </div>
+                        <small class="text-muted fst-italic d-block text-center" style="font-size: 0.75rem;">
+                            *Cálculo baseado em distribuição constante de proventos.
+                        </small>
                     </div>
-                    <div class="d-flex justify-content-between align-items-center mb-0">
-                        <span class="small text-secondary fw-semibold"><i class="bi bi-cash-coin me-2"></i>Capital Total Estimado:</span>
-                        <span id="resCapital" class="fw-bold text-success fs-5">R$ 0,00</span>
-                    </div>
+
                 </div>
-                <small class="text-muted italic d-block text-center" style="font-size: 0.75rem;">
-                    *Cálculo baseado em distribuição constante de proventos.
-                </small>
             </div>
-            <div class="modal-footer border-0">
+
+            <div class="modal-footer border-0 p-3 pt-0 mt-2">
                 <button type="button" class="btn btn-dark w-100 rounded-pill fw-bold" data-bs-dismiss="modal">Fechar Simulador</button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- SCRIPT DE CÁLCULO EM TEMPO REAL -->
 <script>
     document.addEventListener("DOMContentLoaded", function () {
+
+        // ==========================================
+        // LÓGICA DA ABA 1: CARTEIRA TOTAL
+        // ==========================================
+        const tbodyFiis = document.querySelector("#tabelaFiisSimulador tbody");
+        const resRendimentoTotal = document.getElementById("resRendimentoTotal");
+        const resCapitalTotalCarteira = document.getElementById("resCapitalTotalCarteira");
+
+        function calcularCarteira() {
+            let totalMensalRendimento = 0;
+            let totalCapital = 0;
+            const linhas = tbodyFiis.querySelectorAll("tr");
+
+            linhas.forEach(linha => {
+                const inputQtd = linha.querySelector(".sim-qtd");
+                const inputPreco = linha.querySelector(".sim-preco");
+                const inputDiv = linha.querySelector(".sim-div");
+
+                const spanSubtotalCapital = linha.querySelector(".sim-subtotal-capital");
+                const spanSubtotalRend = linha.querySelector(".sim-subtotal-rendimento");
+
+                const qtd = parseFloat(inputQtd.value) || 0;
+                const preco = parseFloat(inputPreco.value) || 0;
+                const div = parseFloat(inputDiv.value) || 0;
+
+                const subtotalCapital = qtd * preco;
+                const subtotalRend = qtd * div;
+
+                // Atualiza as células da linha
+                spanSubtotalCapital.innerText = subtotalCapital.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                spanSubtotalRend.innerText = subtotalRend.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+                // Soma nos totais
+                totalCapital += subtotalCapital;
+                totalMensalRendimento += subtotalRend;
+            });
+
+            // Atualiza os cards de resultado
+            resCapitalTotalCarteira.innerText = totalCapital.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            resRendimentoTotal.innerText = totalMensalRendimento.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+
+        function anexarEventosLinha(linha) {
+            const inputs = linha.querySelectorAll("input[type='number']");
+            const btnRemover = linha.querySelector(".btn-remover-fii");
+
+            inputs.forEach(input => input.addEventListener("input", calcularCarteira));
+
+            btnRemover.addEventListener("click", function() {
+                linha.remove();
+                calcularCarteira();
+            });
+        }
+
+        // Adicionar novo FII via botão
+        document.getElementById("btnAdicionarFii").addEventListener("click", function() {
+            const ticker = document.getElementById("novoTicker").value.toUpperCase() || "NOVO FII";
+            const qtd = document.getElementById("novaQtd").value || 1;
+            const preco = document.getElementById("novoPreco").value || 0;
+            const div = document.getElementById("novoDiv").value || 0;
+
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td class="fw-bold text-uppercase">${ticker}</td>
+                <td><input type="number" class="form-control form-control-sm sim-qtd border-secondary-subtle" value="${qtd}" min="1"></td>
+                <td><input type="number" class="form-control form-control-sm sim-preco border-secondary-subtle" value="${preco}" step="0.01"></td>
+                <td><input type="number" class="form-control form-control-sm sim-div border-secondary-subtle text-success" value="${div}" step="0.01"></td>
+                <td class="fw-bold sim-subtotal-capital">R$ 0,00</td>
+                <td class="fw-bold text-success sim-subtotal-rendimento">R$ 0,00</td>
+                <td class="text-center">
+                    <button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remover-fii"><i class="bi bi-trash"></i></button>
+                </td>
+            `;
+
+            tbodyFiis.appendChild(tr);
+            anexarEventosLinha(tr);
+            calcularCarteira();
+
+            // Limpa os campos após adicionar
+            document.getElementById("novoTicker").value = "";
+            document.getElementById("novaQtd").value = "";
+            document.getElementById("novoPreco").value = "";
+            document.getElementById("novoDiv").value = "";
+        });
+
+        // Inicializa eventos nas linhas carregadas via C#/Razor
+        tbodyFiis.querySelectorAll("tr").forEach(anexarEventosLinha);
+        calcularCarteira(); // Calcula os totais iniciais
+
+
+        // ==========================================
+        // LÓGICA DA ABA 2: CALCULADORA DE META
+        // ==========================================
         const metaInput = document.getElementById("simMetaRenda");
-        const precoInput = document.getElementById("simPrecoCota");
-        const divInput = document.getElementById("simDividendoCota");
+        const precoInputCalc = document.getElementById("simPrecoCotaCalc");
+        const divCotaInputCalc = document.getElementById("simDividendoCotaCalc");
 
         const resCotas = document.getElementById("resCotas");
         const resCapital = document.getElementById("resCapital");
 
-        function calcularSimulacao() {
+        function calcularMeta() {
             const meta = parseFloat(metaInput.value) || 0;
-            const preco = parseFloat(precoInput.value) || 0;
-            const dividendo = parseFloat(divInput.value) || 0;
+            const preco = parseFloat(precoInputCalc.value) || 0;
+            const dividendo = parseFloat(divCotaInputCalc.value) || 0;
 
             if (dividendo > 0 && preco > 0) {
-                // Cotas necessárias = Meta / Dividendo por cota
                 const cotas = Math.ceil(meta / dividendo);
-                // Capital total = Cotas * Preço da cota
                 const capital = cotas * preco;
 
                 resCotas.innerText = cotas.toLocaleString('pt-BR');
@@ -85,12 +283,23 @@
             }
         }
 
-        // Escuta as alterações nos inputs para atualizar o resultado na hora
-        metaInput.addEventListener("input", calcularSimulacao);
-        precoInput.addEventListener("input", calcularSimulacao);
-        divInput.addEventListener("input", calcularSimulacao);
+        metaInput.addEventListener("input", calcularMeta);
+        precoInputCalc.addEventListener("input", calcularMeta);
+        divCotaInputCalc.addEventListener("input", calcularMeta);
 
-        // Executa o primeiro cálculo com os valores padrão ao abrir
-        calcularSimulacao();
+        calcularMeta();
+
+        // Alternar cores das abas
+        const tabs = document.querySelectorAll('#simuladorTabs .nav-link');
+        tabs.forEach(tab => {
+            tab.addEventListener('show.bs.tab', function(event) {
+                tabs.forEach(t => {
+                    t.classList.remove('text-success');
+                    t.classList.add('text-secondary');
+                });
+                event.target.classList.remove('text-secondary');
+                event.target.classList.add('text-success');
+            });
+        });
     });
 </script>

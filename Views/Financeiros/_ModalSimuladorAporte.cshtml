@@ -22,22 +22,21 @@
     }
     else if (visao == "Ela")
     {
-        corPrincipalHex = "#dc3545"; // Suely (Vermelho)
+        corPrincipalHex = "#dc3545"; 
         bgSubtleClasse = "bg-danger bg-opacity-10 border-danger";
         txtClasse = "text-danger";
         tituloVisao = "Histórico Individual (Suely)";
 
-        aporteSugerido = Model.SobraEstimada; // Sobra atual da Suely no mês
-        historicoSugerido = mediaRealSuely;   // Média real dos últimos 12 meses da Suely
+        aporteSugerido = Model.SobraEstimada; 
+        historicoSugerido = mediaRealSuely;   
     }
     else if (visao == "Casal")
     {
-        corPrincipalHex = "#198754"; // Casal (Verde)
+        corPrincipalHex = "#198754"; 
         bgSubtleClasse = "bg-success bg-opacity-10 border-success";
         txtClasse = "text-success";
         tituloVisao = "Visão Consolidada (Soma do Casal)";
 
-        // No mmodo casal, soma-se o histórico real de cada um
         aporteSugerido = Model.SobraEstimada;
         historicoSugerido = mediaRealGabriel + mediaRealSuely; 
     }
@@ -108,7 +107,6 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-    // Passa a cor principal do C# de forma nativa para o JavaScript
     const corTemaAtivo = '@corPrincipalHex';
     let meuGrafico = null;
 
@@ -132,7 +130,7 @@
 
     function atualizarGrafico() {
         const canvas = document.getElementById('chartSimulacao');
-        if (!canvas) return; // Proteção para não quebrar se o canvas não sumir da árvore DOM
+        if (!canvas) return; 
 
         const aporte = parseFloat(document.getElementById('simAporte').value) || 0;
         const taxaAnual = parseFloat(document.getElementById('simTaxa').value) / 100;
@@ -147,7 +145,6 @@
         let acumulado = 0;
         let totalAportado = 0;
 
-        // CORREÇÃO: Mudado de 'int i' para 'let i' (C# vs JavaScript)
         for (let i = 1; i <= meses; i++) {
             acumulado = (acumulado + aporte) * (1 + taxaMensal);
             totalAportado += aporte;
@@ -213,13 +210,11 @@
         });
     }
 
-    // SOLUÇÃO DO SUMIÇO: Aguarda o modal terminar a animação de abertura (shown.bs.modal)
-    // para só então disparar o cálculo do Chart.js com os tamanhos de tela corretos.
     document.addEventListener("DOMContentLoaded", function () {
         const meuModalEl = document.getElementById('modalSimuladorAporte');
         if (meuModalEl) {
             meuModalEl.addEventListener('shown.bs.modal', function () {
-                // Força um redimensionamento rápido antes de desenhar
+
                 const canvas = document.getElementById('chartSimulacao');
                 if (canvas) {
                     canvas.style.width = '100%';
