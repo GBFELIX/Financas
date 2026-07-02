@@ -20,7 +20,7 @@
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link fw-bold text-secondary py-3" id="meta-tab" data-bs-toggle="tab" data-bs-target="#meta" type="button" role="tab">
-                            <i class="bi bi-bullseye me-1"></i> Calculadora de Meta
+                            <i class="bi bi-graph-up-arrow me-1"></i> Projeção de Crescimento (12 Meses)
                         </button>
                     </li>
                 </ul>
@@ -140,10 +140,9 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @if (Model != null)
+                                    @if (Model.Itens != null)
                                     {
-                                        // O StringComparison.OrdinalIgnoreCase garante que pegue FII, Fii, fii, etc.
-                                        foreach (var item in Model.Itens.Where(x => x.TipoAtivo != null && x.TipoAtivo.Equals("Fii", StringComparison.OrdinalIgnoreCase)))  
+                                        foreach (var item in Model.Itens.Where(x => x.TipoAtivo != null && x.TipoAtivo.Equals("Fii", StringComparison.OrdinalIgnoreCase)))
                                         {
                                             <tr>
                                                 <td class="fw-bold text-uppercase">@item.Ticker</td>
@@ -151,10 +150,10 @@
                                                     <input type="number" class="form-control form-control-sm sim-qtd border-secondary-subtle" value="@item.Quantidade" min="1">
                                                 </td>
                                                 <td>
-                                                    <input type="number" class="form-control form-control-sm sim-preco border-secondary-subtle" value="@item.PrecoAtual.ToString(System.Globalization.CultureInfo.InvariantCulture)" step="0.01">
+                                                    <input type="number" class="form-control form-control-sm sim-preco border-secondary-subtle" value="@item.PrecoAtual.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)" step="0.01">
                                                 </td>
                                                 <td>
-                                                    <input type="number" class="form-control form-control-sm sim-div border-secondary-subtle text-success" value="@item.UltimoRendimento.ToString(System.Globalization.CultureInfo.InvariantCulture)" step="0.01">
+                                                    <input type="number" class="form-control form-control-sm sim-div border-secondary-subtle text-success" value="@item.UltimoRendimento.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)" step="0.01">
                                                 </td>
                                                 <td class="fw-bold sim-subtotal-capital">R$ 0,00</td>
                                                 <td class="fw-bold text-success sim-subtotal-rendimento">R$ 0,00</td>
@@ -189,37 +188,41 @@
                     </div>
 
                     <div class="tab-pane fade" id="meta" role="tabpanel">
-                        <p class="small text-muted mb-4">
-                            Descubra quanto você precisa investir ou quantas cotas precisa adquirir para alcançar sua meta de rendimento.
+                        <p class="small text-muted mb-3">
+                            Projete o crescimento do seu patrimônio e da sua renda passiva mês a mês com base nos seus aportes diários/mensais e no Dividend Yield médio da sua simulação atual.
                         </p>
 
-                        <div class="row g-3 mb-4">
-                            <div class="col-12">
-                                <label class="form-label small text-muted text-uppercase fw-bold">Meta de Renda Mensal Desejada</label>
-                                <div class="input-group">
+                        <div class="row g-3 mb-3 align-items-center">
+                            <div class="col-md-5">
+                                <label class="form-label small text-muted text-uppercase fw-bold mb-1">Aporte Mensal Desejado</label>
+                                <div class="input-group input-group-sm">
                                     <span class="input-group-text bg-white border-secondary-subtle text-success fw-bold">R$</span>
-                                    <input type="number" id="simMetaRenda" class="form-control border-secondary-subtle fw-bold text-success" value="500" min="1" step="50">
+                                    <input type="number" id="simAporteMensal" class="form-control border-secondary-subtle fw-bold text-success" value="200" min="0" step="50">
                                 </div>
                             </div>
-                            <div class="col-6">
-                                <label class="form-label small text-muted text-uppercase fw-bold">Preço da Cota (R$)</label>
-                                <input type="number" id="simPrecoCotaCalc" class="form-control border-secondary-subtle fw-semibold" value="10.00" min="0.01" step="0.50">
-                            </div>
-                            <div class="col-6">
-                                <label class="form-label small text-muted text-uppercase fw-bold">DY ou Div/Cota (R$)</label>
-                                <input type="number" id="simDividendoCotaCalc" class="form-control border-secondary-subtle fw-semibold text-success" value="0.08" min="0.001" step="0.01">
+                            <div class="col-md-7">
+                                <div class="p-2 rounded bg-light border border-secondary-subtle d-flex justify-content-around small text-secondary">
+                                    <div>Capital Inicial Base: <span id="lblCapitalInicialBase" class="fw-bold text-dark">R$ 0,00</span></div>
+                                    <div class="border-start ps-3">DY Médio Mensal da Carteira: <span id="lblTaxaMedia" class="fw-bold text-success">0,00%</span></div>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="p-3 rounded-4 bg-light border border-success-subtle mb-2">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="small text-secondary fw-semibold"><i class="bi bi-layers-half me-2"></i>Cotas Necessárias:</span>
-                                <span id="resCotas" class="fw-bold text-dark fs-5">0</span>
-                            </div>
-                            <div class="d-flex justify-content-between align-items-center mb-0">
-                                <span class="small text-secondary fw-semibold"><i class="bi bi-cash-coin me-2"></i>Capital Total Estimado:</span>
-                                <span id="resCapital" class="fw-bold text-success fs-5">R$ 0,00</span>
-                            </div>
+                        <div class="table-responsive shadow-sm rounded-3" style="max-height: 320px; overflow-y: auto;">
+                            <table class="table table-sm table-hover align-middle mb-0" id="tabelaProjecaoCrescimento">
+                                <thead class="table-dark sticky-top small">
+                                    <tr>
+                                        <th class="py-2">Mês</th>
+                                        <th>Capital Inicial</th>
+                                        <th>Aporte do Mês</th>
+                                        <th>Dividendos Recebidos</th>
+                                        <th>Capital Final (Reinvestido)</th>
+                                        <th>Nova Renda Mensal</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="small">
+                                </tbody>
+                            </table>
                         </div>
                     </div>
 
@@ -234,9 +237,7 @@
 </div>
 
 <script>
-    // ==========================================
-    // FUNÇÃO GLOBAL (Chamada pelo onkeyup do HTML)
-    // ==========================================
+    // Função global de filtro para o select interno do simulador
     function filtrarTickersSimulador() {
         const input = document.getElementById('inputFiltroTickerSim');
         const filter = input.value.toUpperCase();
@@ -244,7 +245,6 @@
         const options = select.getElementsByTagName('option');
         const optgroups = select.getElementsByTagName('optgroup');
 
-        // Filtra as opções
         for (let i = 0; i < options.length; i++) {
             const searchData = options[i].getAttribute('data-search') || '';
             if (searchData.toUpperCase().indexOf(filter) > -1) {
@@ -254,7 +254,6 @@
             }
         }
 
-        // Esconde subgrupos vazios
         for (let i = 0; i < optgroups.length; i++) {
             const subOptions = optgroups[i].getElementsByTagName('option');
             let algumVisivel = false;
@@ -268,41 +267,76 @@
         }
     }
 
-    // ==========================================
-    // INICIALIZAÇÃO E EVENTOS DA TELA
-    // ==========================================
     document.addEventListener("DOMContentLoaded", function () {
 
         const tbodyFiis = document.querySelector("#tabelaFiisSimulador tbody");
         const resRendimentoTotal = document.getElementById("resRendimentoTotal");
         const resCapitalTotalCarteira = document.getElementById("resCapitalTotalCarteira");
 
-        // Referências dos inputs do formulário de adição
         const selectAtivo = document.getElementById("selectModalTickerSim");
         const inputTicker = document.getElementById("novoTicker");
         const inputPreco = document.getElementById("novoPreco");
         const inputDiv = document.getElementById("novoDiv");
         const inputQtd = document.getElementById("novaQtd");
 
-        // Evento: Quando clica em um ativo da lista cadastrada, joga os dados nos inputs
+        // Elementos da Aba de Projeção
+        const inputAporte = document.getElementById("simAporteMensal");
+        const lblCapitalBase = document.getElementById("lblCapitalInicialBase");
+        const lblTaxaMedia = document.getElementById("lblTaxaMedia");
+        const tbodyProjecao = document.querySelector("#tabelaProjecaoCrescimento tbody");
+
+        // Variáveis globais de controle de cálculo entre abas
+        let atualCapitalTotal = 0;
+        let atualRendimentoTotal = 0;
+
         selectAtivo.addEventListener("change", function() {
-            // Pega a opção que o usuário acabou de clicar
             const opcaoSelecionada = selectAtivo.options[selectAtivo.selectedIndex];
-
             if(opcaoSelecionada && opcaoSelecionada.value) {
-                // 1. Preenche o Ticker
                 inputTicker.value = opcaoSelecionada.value;
-
-                // 2. Preenche o Preço e o Dividendo lendo os atributos data-*
                 inputPreco.value = opcaoSelecionada.getAttribute("data-preco") || "";
                 inputDiv.value = opcaoSelecionada.getAttribute("data-div") || "";
-
-                // 3. Sugere 1 de quantidade automaticamente para agilizar a simulação
                 if(!inputQtd.value) {
                     inputQtd.value = 1;
                 }
             }
         });
+
+        // Executa a projeção com base nos dados gerados na Aba 1
+        function calcularProjecao12Meses() {
+            const aporteMensal = parseFloat(inputAporte.value) || 0;
+            tbodyProjecao.innerHTML = "";
+
+            // Calcula a taxa média da carteira (Rendimento Total / Capital Total)
+            let taxaMediaMensal = atualCapitalTotal > 0 ? (atualRendimentoTotal / atualCapitalTotal) : 0;
+
+            // Atualiza os labels informativos da Aba 2
+            lblCapitalBase.innerText = atualCapitalTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            lblTaxaMedia.innerText = (taxaMediaMensal * 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "%";
+
+            let capitalAcumulado = atualCapitalTotal;
+
+            for (let mes = 1; mes <= 12; mes++) {
+                let capInicialMes = capitalAcumulado;
+                let dividendosMes = capInicialMes * taxaMediaMensal;
+
+                // O capital final do mês considera: Capital Inicial + Aporte + Dividendos reinvestidos
+                capitalAcumulado = capInicialMes + aporteMensal + dividendosMes;
+
+                // Renda passiva estimada gerada para o próximo mês com o novo patrimônio
+                let proximaRendaMensal = capitalAcumulado * taxaMediaMensal;
+
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td class="fw-bold text-secondary">Mês ${mes}</td>
+                    <td>${capInicialMes.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                    <td>${aporteMensal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                    <td class="text-success fw-semibold">+ ${dividendosMes.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                    <td class="fw-bold text-dark">${capitalAcumulado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                    <td class="text-success fw-bold">${proximaRendaMensal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                `;
+                tbodyProjecao.appendChild(tr);
+            }
+        }
 
         function calcularCarteira() {
             let totalMensalRendimento = 0;
@@ -333,6 +367,12 @@
 
             resCapitalTotalCarteira.innerText = totalCapital.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
             resRendimentoTotal.innerText = totalMensalRendimento.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+            // Alimenta as variáveis globais e dispara a projeção da outra aba em cadeia
+            atualCapitalTotal = totalCapital;
+            atualRendimentoTotal = totalMensalRendimento;
+
+            calcularProjecao12Meses();
         }
 
         function anexarEventosLinha(linha) {
@@ -379,41 +419,14 @@
             selectAtivo.value = "";
         });
 
+        // Escuta modificações no campo de Aporte Mensal na Aba 2 para recalcular a projeção na hora
+        inputAporte.addEventListener("input", calcularProjecao12Meses);
+
         // Inicializa eventos e cálculos nas linhas injetadas via C#
         tbodyFiis.querySelectorAll("tr").forEach(anexarEventosLinha);
         calcularCarteira();
 
-        // ==========================================
-        // LÓGICA DA ABA 2: CALCULADORA DE META
-        // ==========================================
-        const metaInput = document.getElementById("simMetaRenda");
-        const precoInputCalc = document.getElementById("simPrecoCotaCalc");
-        const divCotaInputCalc = document.getElementById("simDividendoCotaCalc");
-        const resCotas = document.getElementById("resCotas");
-        const resCapital = document.getElementById("resCapital");
-
-        function calcularMeta() {
-            const meta = parseFloat(metaInput.value) || 0;
-            const preco = parseFloat(precoInputCalc.value) || 0;
-            const dividendo = parseFloat(divCotaInputCalc.value) || 0;
-
-            if (dividendo > 0 && preco > 0) {
-                const cotas = Math.ceil(meta / dividendo);
-                const capital = cotas * preco;
-                resCotas.innerText = cotas.toLocaleString('pt-BR');
-                resCapital.innerText = capital.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-            } else {
-                resCotas.innerText = "0";
-                resCapital.innerText = "R$ 0,00";
-            }
-        }
-
-        metaInput.addEventListener("input", calcularMeta);
-        precoInputCalc.addEventListener("input", calcularMeta);
-        divCotaInputCalc.addEventListener("input", calcularMeta);
-        calcularMeta();
-
-        // Alternador de css ativo nas abas
+        // Estilização das Abas
         const tabs = document.querySelectorAll('#simuladorTabs .nav-link');
         tabs.forEach(tab => {
             tab.addEventListener('show.bs.tab', function(event) {
