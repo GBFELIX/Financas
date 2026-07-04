@@ -10,7 +10,7 @@ namespace Acoes_Fiis.Models
         public int Id { get; set; }
 
         public string Nome { get; set; }
-        public string Setor { get; set; }
+        public string? Setor { get; set; } = "padrao";
         public string Ticker { get; set; }
 
         [Column(TypeName = "decimal(18,2)")]
@@ -28,7 +28,7 @@ namespace Acoes_Fiis.Models
         [Column(TypeName = "decimal(18,2)")]
         public decimal DividendYield { get; set; }
 
-        public DateTime DataAtualizacao { get; set; }
+        public DateTime? DataAtualizacao { get; set; }
 
         [Column(TypeName = "decimal(18,2)")]
         public decimal RegularMarketOpen { get; set; }
@@ -109,7 +109,6 @@ namespace Acoes_Fiis.Models
             get
             {
                 if (PrecoAtual <= 0 || PrecoTetoVenda <= 0) return 0;
-                // Se o preço atual já passou o teto de venda, a distância é zero (já deveria vender)
                 if (PrecoAtual >= PrecoTetoVenda) return 0;
 
                 return ((PrecoTetoVenda / PrecoAtual) - 1) * 100;
@@ -143,10 +142,8 @@ namespace Acoes_Fiis.Models
             {
                 if (PrecoAtual <= 0 || ValorJustoGraham <= 0) return 0;
 
-                // Se o preço atual for maior ou igual ao preço justo, não há margem de segurança (desconto)
                 if (PrecoAtual >= ValorJustoGraham) return 0;
 
-                // Fórmula real da Margem de Desconto: (Valor Justo - Preço Atual) / Valor Justo
                 return ((ValorJustoGraham - PrecoAtual) / ValorJustoGraham) * 100;
             }
         }

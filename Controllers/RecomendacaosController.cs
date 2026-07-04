@@ -172,13 +172,15 @@ namespace Acoes_Fiis.Controllers
             return View();
         }
 
-        // POST: Recomendacaos/Create
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(Recomendacao recomendacao)
         {
+
+            ModelState.Remove("Id");
+            ModelState.Remove("DataAtualizacao");
+            ModelState.Remove("Setor");
+
             if (ModelState.IsValid)
             {
                 recomendacao.DataAtualizacao = DateTime.Now;
@@ -186,6 +188,7 @@ namespace Acoes_Fiis.Controllers
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
+
             return View(recomendacao);
         }
 

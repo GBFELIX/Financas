@@ -20,7 +20,7 @@
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link fw-bold text-secondary py-3" id="meta-tab" data-bs-toggle="tab" data-bs-target="#meta" type="button" role="tab">
-                            <i class="bi bi-graph-up-arrow me-1"></i> Projeção de Crescimento (12 Meses)
+                            <i class="bi bi-graph-up-arrow me-1"></i> Projeção de Crescimento (10 anos)
                         </button>
                     </li>
                 </ul>
@@ -315,7 +315,7 @@
 
             let capitalAcumulado = atualCapitalTotal;
 
-            for (let mes = 1; mes <= 12; mes++) {
+            for (let mes = 1; mes <= 120; mes++) {
                 let capInicialMes = capitalAcumulado;
                 let dividendosMes = capInicialMes * taxaMediaMensal;
 

@@ -72,7 +72,9 @@
                                             <thead class="table-light">
                                                 <tr>
                                                     <th>Macro Categoria</th>
+                                                    <th>Valor total</th>
                                                     <th class="text-center" style="width: 130px;">Alvo</th>
+                                                    
                                                     <th class="text-center">Atual</th>
                                                     <th class="text-center">Desvio</th>
                                                     <th class="text-center">Status</th>
@@ -113,23 +115,16 @@
                                                             var c when c.Contains("GLOBAL") || c.Contains("CRIPTO") => "🌍 Global",
                                                             _ => "📦 " + item.Categoria
                                                         };
-
+                                                    
                                                         <tr>
                                                             <td class="fw-bold">@emojiClasse</td>
-
-                                                            <td class="text-center">
-                                                                <form asp-action="UpdateMetaAlvo" method="post" class="d-flex justify-content-center">
-                                                                    <input type="hidden" name="categoria" value="@item.Categoria" />
-                                                                    <div class="input-group input-group-sm">
-                                                                        <input type="number" name="novaMeta" value="@item.PercentualAlvo.ToString("N0")"
-                                                                               class="form-control text-center fw-bold border-secondary-subtle"
-                                                                               min="0" max="100" step="1"
-                                                                               onchange="this.form.submit()" />
-                                                                        <span class="input-group-text bg-light fw-bold" style="font-size: 0.75rem;">%</span>
-                                                                    </div>
-                                                                </form>
+                                                            <td class="text-center fw-semibold text-muted">
+                                                                @item.ValorAtual.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))
                                                             </td>
-
+                                                            <td class="text-center">
+                                                                @item.PercentualAlvo.ToString("N0")%
+                                                            </td>
+                                                            
                                                             <td class="text-center fw-semibold text-muted">
                                                                 @item.PercentualAtual.ToString("N1")%
                                                             </td>

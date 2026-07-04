@@ -405,7 +405,7 @@
                                         if (item.DividendYield > 0 && item.DividendYield <= 20.0m)
                                         {
                                             decimal valorAtualTotal = item.PrecoAtual * item.Quantidade;
-                                            proventoEstimadoFinal = (valorAtualTotal * (item.DividendYield / 100m)) / 12m;
+                                            proventoEstimadoFinal = ((valorAtualTotal * (item.DividendYield / 100m)) / 12m) * item.Quantidade;
                                         }
                                     }
                                     else
@@ -571,7 +571,7 @@
 
                         <div class="mb-4">
                             <label for="selectModalTicker" class="form-label fw-bold small text-muted text-uppercase mb-2">
-                                Selecione o Ativo
+                                Selecione o Ativo   
                             </label>
                             <select id="selectModalTicker" name="ticker" class="form-select" size="8" required>
 

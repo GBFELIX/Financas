@@ -264,7 +264,7 @@
                                     }
                                 </td>
                                 <td class="small text-muted text-nowrap">
-                                    @item.DataAtualizacao.ToString("dd/MM HH:mm")
+                                    @item.DataAtualizacao?.ToString("dd/MM HH:mm")
                                     <i class="bi @(item.DataAtualizacao > DateTime.Now.AddMinutes(-30) ? "bi-patch-check-fill text-success" : "bi-clock text-warning")"></i>
                                 </td>
                                 <td>

@@ -77,7 +77,7 @@ namespace Acoes_Fiis.Services
                 Ticker = ticker.Replace(".SA", ""),
                 Nome = nome,
                 Setor = setor,
-                //TipoAcao = setor,
+                TipoAcao = setor,
                 PrecoAtual = preco,
                 VPA = vpa,
                 LPA = lpa,
