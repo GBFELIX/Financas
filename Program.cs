@@ -27,6 +27,7 @@ builder.Services.AddHostedService<BackupBackgroundService>();
 builder.Services.AddControllersWithViews();
 
 var defaultCulture = new CultureInfo("pt-BR");
+var supportedCultures = new[] { new System.Globalization.CultureInfo("pt-BR") };
 var localizationOptions = new RequestLocalizationOptions
 {
     DefaultRequestCulture = new RequestCulture(defaultCulture),
@@ -37,19 +38,19 @@ var localizationOptions = new RequestLocalizationOptions
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
-{
-    var services = scope.ServiceProvider;
-    try
-    {
-        var context = services.GetRequiredService<Acoes_FiisContext>();
-        context.Database.Migrate();
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine("Erro ao criar/atualizar banco SQLite: " + ex.Message);
-    }
-}
+//using (var scope = app.Services.CreateScope())
+//{
+//    var services = scope.ServiceProvider;
+//    try
+//    {
+//        var context = services.GetRequiredService<Acoes_FiisContext>();
+//        context.Database.Migrate();
+//    }
+//    catch (Exception ex)
+//    {
+//        Console.WriteLine("Erro ao criar/atualizar banco SQLite: " + ex.Message);
+//    }
+//}
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
@@ -58,6 +59,13 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 app.UseRequestLocalization(localizationOptions);
+
+app.UseRequestLocalization(new RequestLocalizationOptions
+{
+    DefaultRequestCulture = new Microsoft.AspNetCore.Localization.RequestCulture("pt-BR"),
+    SupportedCultures = supportedCultures,
+    SupportedUICultures = supportedCultures
+});
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();

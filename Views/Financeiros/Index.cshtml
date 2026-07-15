@@ -212,19 +212,18 @@
                         {
                             var diasParaVencer = (item.Data.Date - hoje).Days;
 
-                            // Estilos padrão do seu exemplo
                             var classeCorData = "text-muted";
-                            var classeCorLinha = ""; // Nova variável para controlar o fundo da linha inteira
+                            var classeCorLinha = ""; 
 
                             if (diasParaVencer <= 0)
                             {
-                                classeCorData = "text-success fw-bold";     // Mudado para Verde para destacar o Recebido
-                                classeCorLinha = "bg-success-subtle bg-opacity-50"; // Pinta a linha inteira de Verde Suave
+                                classeCorData = "text-success fw-bold";     
+                                classeCorLinha = "bg-success-subtle bg-opacity-50"; 
                             }
                             else if (diasParaVencer == 1)
                             {
-                                classeCorData = "text-danger fw-bold";      // Vermelho para AMANHÃ no texto
-                                classeCorLinha = "";                        // Mantém a linha limpa para destacar o texto vermelho
+                                classeCorData = "text-danger fw-bold";      
+                                classeCorLinha = "";                        
                             }
 
                             <tr class="@classeCorLinha align-middle">
@@ -301,7 +300,6 @@
 
                         @foreach (var item in grupo.OrderBy(x => x.Data))
                         {
-                            // Lógica de cores baseada na proximidade da data
                             var diasParaVencer = (item.Data.Date - hoje).Days;
                             var classeCorData = "text-muted";
 

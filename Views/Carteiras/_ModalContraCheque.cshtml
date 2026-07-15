@@ -75,7 +75,7 @@
                                 <label class="form-label small text-muted text-uppercase fw-bold">Salário Bruto (R$)</label>
                                 <div class="input-group">
                                     <span class="input-group-text bg-white border-secondary-subtle text-success fw-bold">R$</span>
-                                    <input type="text" name="salarioBruto" class="form-control border-secondary-subtle fw-bold text-success input-decimal" placeholder="0,00" required />
+                                    <input type="text" name="salarioBruto" class="form-control border-secondary-subtle fw-bold text-success" placeholder="0,00" required />
                                 </div>
                             </div>
 
@@ -83,7 +83,7 @@
                                 <label class="form-label small text-muted text-uppercase fw-bold">Descontos em Folha (R$)</label>
                                 <div class="input-group">
                                     <span class="input-group-text bg-white border-secondary-subtle text-danger fw-bold">R$</span>
-                                    <input type="text" name="descontos" class="form-control border-secondary-subtle fw-bold text-danger input-decimal" placeholder="0,00" required />
+                                    <input type="text" name="descontos" class="form-control border-secondary-subtle fw-bold text-danger" placeholder="0,00" required />
                                 </div>
                             </div>
 
@@ -162,7 +162,7 @@
                                         string nomeMes = System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(folha.Mes).ToUpper();
                                         decimal salarioLiquido = folha.SalarioBruto - folha.Descontos;
 
-                                        <tr>
+                                        <tr id="linha-folha-@folha.Id">
                                             <td class="fw-bold ps-3">@nomeMes / @folha.Ano</td>
                                             <td class="text-success fw-semibold">@folha.SalarioBruto.ToString("C2")</td>
                                             <td class="text-danger">@folha.Descontos.ToString("C2")</td>
@@ -180,14 +180,9 @@
                                                 }
                                             </td>
                                             <td class="text-end pe-3">
-                                                <form asp-action="ExcluirFolhaPagamento" asp-controller="Carteiras" method="post" class="d-inline"
-                                                      onsubmit="return confirm('Tem certeza que deseja excluir o registro de @nomeMes / @folha.Ano?');">
-                                                    <input type="hidden" name="id" value="@folha.Id" />
-                                                    <input type="hidden" name="visao" value="@visaoAtual" />
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger border-0 px-2 py-1 rounded-3">
-                                                        <i class="bi bi-trash3-fill"></i>
-                                                    </button>
-                                                </form>
+                                                <button type="button" class="btn btn-sm btn-outline-danger border-0 px-2 py-1 rounded-3" onclick="deletarRegistro(@folha.Id)">
+                                                    <i class="bi bi-trash3-fill"></i>
+                                                </button>
                                             </td>
                                         </tr>
                                     }
@@ -232,11 +227,13 @@
 
         const mesesNomes = ["JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
 
+        // 1. LÓGICA DO FILTRO DE ANO
         if (seletorAno && corpoTabela) {
             seletorAno.addEventListener("change", function () {
                 const anoSelecionado = seletorAno.value;
                 const visaoAtiva = "@visaoAtual";
 
+                // Atualiza o input hidden para que o novo cadastro seja no ano selecionado
                 if (inputAnoCadastro) inputAnoCadastro.value = anoSelecionado;
 
                 // Faz a chamada assíncrona trazendo JSON bruto da Controller
@@ -246,7 +243,7 @@
                         return response.json();
                     })
                     .then(dados => {
-                        // 1. RECALCULA TETO E CARDS VISUAIS DO IR NO CLIENT-SIDE
+                        // RECALCULA TETO E CARDS VISUAIS DO IR NO CLIENT-SIDE
                         let totalBruto = 0;
                         let totalDescontos = 0;
 
@@ -256,16 +253,16 @@
                         });
 
                         let totalLiquido = totalBruto - totalDescontos;
-                        let limiteIr = 30639.90;
+                        let limiteIr = 35584.00;
                         let precisaDeclarar = totalBruto > limiteIr;
 
-                        // Atualiza os indicadores de texto
+                        // Atualiza os indicadores de texto formatados em BRL
                         cardBruto.innerText = totalBruto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
                         textoAcumuladoBruto.innerText = cardBruto.innerText;
                         cardDescontos.innerText = totalDescontos.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
                         cardLiquido.innerText = totalLiquido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-                        // Ajusta as cores do Termômetro do IR baseado no resultado do ano
+                        // Ajusta as cores do Termômetro do IR
                         if (precisaDeclarar) {
                             alertaIrpfContainer.className = "alert alert-warning border-0 rounded-4 mb-4 shadow-sm";
                             alertaIrpfIcone.className = "bi bi-exclamation-triangle-fill text-warning fs-3 me-3 mt-1";
@@ -278,7 +275,7 @@
                             alertaIrpfBadge.innerText = "ISENTO POR FAIXA ATUAL";
                         }
 
-                        // 2. RECONSTRÓI AS LINHAS DA TABELA DINAMICAMENTE
+                        // RECONSTRÓI AS LINHAS DA TABELA DINAMICAMENTE
                         corpoTabela.innerHTML = "";
 
                         if (dados.length === 0) {
@@ -301,20 +298,16 @@
                                 : `<span class="text-muted small italic" style="font-size: 0.75rem;">Sem anexo</span>`;
 
                             let rowHtml = `
-                                <tr>
+                                <tr id="linha-folha-${folha.id}">
                                     <td class="fw-bold ps-3">${nomeMes} / ${folha.ano}</td>
                                     <td class="text-success fw-semibold">${folha.salarioBruto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                                     <td class="text-danger">${folha.descontos.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                                     <td class="text-dark fw-bold">${liquidoRow.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                                     <td class="text-center">${btnPdf}</td>
                                     <td class="text-end pe-3">
-                                        <form action="/Carteiras/ExcluirFolhaPagamento" method="post" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir?');">
-                                            <input type="hidden" name="id" value="${folha.id}" />
-                                            <input type="hidden" name="visao" value="${visaoAtiva}" />
-                                            <button type="submit" class="btn btn-sm btn-outline-danger border-0 px-2 py-1 rounded-3">
-                                                <i class="bi bi-trash3-fill"></i>
-                                            </button>
-                                        </form>
+                                        <button type="button" class="btn btn-sm btn-outline-danger border-0 px-2 py-1 rounded-3" onclick="deletarRegistro(${folha.id})">
+                                            <i class="bi bi-trash3-fill"></i>
+                                        </button>
                                     </td>
                                 </tr>`;
                             corpoTabela.insertAdjacentHTML("beforeend", rowHtml);
@@ -323,5 +316,102 @@
                     .catch(error => console.error("Erro no filtro client-side:", error));
             });
         }
-    });
+
+        // 2. LÓGICA DE LEITURA AUTOMÁTICA DO PDF
+        const campoPdf = document.getElementById("pdfContraCheque");
+        const inputBruto = document.querySelector("input[name='salarioBruto']");
+        const inputDescontos = document.querySelector("input[name='descontos']");
+
+        if (campoPdf) {
+            campoPdf.addEventListener("change", async function () {
+                if (this.files.length === 0) return;
+
+                const arquivo = this.files[0];
+                const formData = new FormData();
+                formData.append("pdfFile", arquivo);
+
+                const valorOriginalBruto = inputBruto.value;
+                const valorOriginalDesconto = inputDescontos.value;
+
+                inputBruto.value = "Processando...";
+                inputDescontos.value = "Processando...";
+
+                try {
+                    const resposta = await fetch('/Carteiras/ExtrairDadosHolerite', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (resposta.ok) {
+                        const dados = await resposta.json();
+
+                        if (dados.sucesso) {
+                            // Injeta os valores limpos com vírgula pt-BR vindos da Controller
+                            inputBruto.value = dados.bruto;
+                            inputDescontos.value = dados.desconto;
+
+                            inputBruto.dispatchEvent(new Event('input'));
+                            inputDescontos.dispatchEvent(new Event('input'));
+                        } else {
+                            alert(dados.mensagem || "Não foi possível extrair os dados deste PDF.");
+                            inputBruto.value = valorOriginalBruto;
+                            inputDescontos.value = valorOriginalDesconto;
+                        }
+                    } else {
+                        throw new Error("Erro na resposta do servidor.");
+                    }
+                } catch (erro) {
+                    console.error("Erro na leitura do PDF:", erro);
+                    alert("Ocorreu uma falha ao tentar ler o PDF automaticamente.");
+                    inputBruto.value = valorOriginalBruto;
+                    inputDescontos.value = valorOriginalDesconto;
+                }
+            });
+        }
+    }); // Fim do DOMContentLoaded
+
+        async function deletarRegistro(id) {
+        if (!confirm("Tem certeza que deseja excluir este contra-cheque?")) return;
+
+        // Captura o token de segurança gerado pelo ASP.NET que está escondido na página
+        const tokenElement = document.querySelector('input[name="__RequestVerificationToken"]');
+        const token = tokenElement ? tokenElement.value : "";
+
+        try {
+            const resposta = await fetch('/Carteiras/ExcluirFolhaPagamento', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                // Enviamos o ID E o Token de validação exigido pela Controller
+                body: `id=${id}&__RequestVerificationToken=${encodeURIComponent(token)}`
+            });
+
+            if (resposta.ok) {
+                const resultado = await resposta.json();
+
+                if (resultado.sucesso) {
+                    // Remove a linha da tabela na hora
+                    const linha = document.getElementById(`linha-folha-${id}`);
+                    if (linha) {
+                        linha.remove();
+                    }
+
+                    // Dispara o filtro de ano para recalcular os cards de totais lá no topo
+                    const seletorAno = document.getElementById("anoFiltro");
+                    if (seletorAno) {
+                        seletorAno.dispatchEvent(new Event('change'));
+                    }
+
+                } else {
+                    alert(resultado.mensagem || "Erro ao tentar excluir o registro.");
+                }
+            } else {
+                throw new Error("Erro de comunicação com o servidor. Status: " + resposta.status);
+            }
+        } catch (erro) {
+            console.error("Erro na exclusão:", erro);
+            alert("Não foi possível excluir o registro.");
+        }
+    }
 </script>

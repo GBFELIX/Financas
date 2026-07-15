@@ -10,7 +10,9 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Metadata;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using UglyToad.PdfPig;
 
 namespace Acoes_Fiis.Controllers
 {
@@ -257,14 +259,10 @@ namespace Acoes_Fiis.Controllers
             string sufixoMesAno = agora.ToString("MM/yyyy");
             string descricaoRendimentoNode = $"Rendimento Automático Caixinhas - {sufixoMesAno}";
 
-            // 2. Busca na lista de lançamentos o valor real que a automação diária já calculou e acumulou até hoje
             var lancamentoFixaExistente = financeiroData.FirstOrDefault(x => x.Descricao == descricaoRendimentoNode);
 
-            // Se achou, usa o valor do banco. Se for o dia 1º e não houver lançamento ainda, o padrão é 0.
             decimal rendimentoAcumuladoAteHoje = lancamentoFixaExistente?.Valor ?? 0m;
 
-            // 3. Consolidação da Renda Mensal na ViewModel
-            // Agora o cálculo soma a Renda Mensal Estimada (Renda Variável) + Renda Fixa Manual + O ganho REAL acumulado da caixinha
             viewModel.RendaMensalTotalConsolidada = viewModel.TotalRendaMensalEstimada
                                                  + viewModel.RendaFixaMensalLiquida
                                                  + rendimentoAcumuladoAteHoje;
@@ -384,8 +382,11 @@ namespace Acoes_Fiis.Controllers
                 DateTime mesAlvo = dataAtual.AddMonths(i);
                 var transacoesDoMes = transacoesFuturas.Where(t => t.Data.Month == mesAlvo.Month && t.Data.Year == mesAlvo.Year).ToList();
 
-                decimal entradas = !transacoesDoMes.Any(t => t.Tipo == "Entrada") ? mediaEntradasHistorica : transacoesDoMes.Where(t => t.Tipo == "Entrada").Sum(t => t.Valor);
-                decimal despesas = !transacoesDoMes.Any(t => t.Tipo == "Despesa") ? mediaDespesasHistorica : transacoesDoMes.Where(t => t.Tipo == "Despesa").Sum(t => t.Valor);
+                decimal entradasAvulsasPlanejadas = transacoesDoMes.Where(t => t.Tipo == "Entrada").Sum(t => t.Valor);
+                decimal entradas = mediaEntradasHistorica + entradasAvulsasPlanejadas;
+
+                decimal despesasAvulsasPlanejadas = transacoesDoMes.Where(t => t.Tipo == "Despesa").Sum(t => t.Valor);
+                decimal despesas = mediaDespesasHistorica + despesasAvulsasPlanejadas;
 
                 patrimonioAcumulado += (entradas - despesas);
                 labelsProjecao.Add(mesAlvo.ToString("MM/yyyy"));
@@ -427,7 +428,7 @@ namespace Acoes_Fiis.Controllers
             List<decimal> valoresFixaFuturo = new List<decimal>();
             List<decimal> valoresVariavelFuturo = new List<decimal>();
 
-            for (int i = 1; i <= 6; i++)
+            for (int i = 1; i <= 12; i++)
             {
                 DateTime mesAlvo = dataAtual.AddMonths(i);
                 var rendimentosFuturosMes = todosRendimentos.Where(x => x.Data.Month == mesAlvo.Month && x.Data.Year == mesAlvo.Year).ToList();
@@ -556,22 +557,17 @@ namespace Acoes_Fiis.Controllers
             string sufixoMesAno = agora.ToString("MM/yyyy");
             string donoDestino = visao == "Casal" ? "Casal" : visao;
 
-            // ====================================================================
-            // --- AUTOMAÇÃO A: CAIXINHAS / RENDA FIXA (DIAS ÚTEIS - BASE 252) ---
-            // ====================================================================
             string descricaoRendimentoNode = $"Rendimento Automático Caixinhas - {sufixoMesAno}";
 
             decimal cdiAnual = parametro?.CdiAnual ?? 14.75m;
             double taxaAnualDouble = (double)(cdiAnual / 100m);
 
-            // 1. AJUSTE DE MERCADO: Equivalência para Taxa DIÁRIA baseada em 252 DIAS ÚTEIS por ano
             decimal taxaDiariaCaixinha = (decimal)(Math.Pow(1.0 + taxaAnualDouble, 1.0 / 252.0) - 1.0);
 
             var lancamentoFixaExistente = financeiroData.FirstOrDefault(x => x.Descricao == descricaoRendimentoNode);
 
             if (lancamentoFixaExistente == null)
             {
-                // Primeiro acesso: Se hoje for dia útil, calcula 1 dia normal. Se for fim de semana, inicializa com 0.
                 bool hojeEhDiaUtil = agora.DayOfWeek != DayOfWeek.Saturday && agora.DayOfWeek != DayOfWeek.Sunday;
                 decimal rendimentoDiarioLiquido = hojeEhDiaUtil ? (saldoFinanceiroAteHoje * taxaDiariaCaixinha * 0.825m) : 0m;
                 decimal valorInicial = Math.Round(rendimentoDiarioLiquido > 0.01m ? rendimentoDiarioLiquido : 0m, 2);
@@ -582,7 +578,7 @@ namespace Acoes_Fiis.Controllers
                     {
                         Descricao = descricaoRendimentoNode,
                         Valor = valorInicial,
-                        Data = ultimoDiaMesAtual,
+                        Data = agora.Date,
                         Tipo = "Entrada",
                         Categoria = "Investimento",
                         Pagamento = "Pix",
@@ -598,9 +594,8 @@ namespace Acoes_Fiis.Controllers
             {
                 DateTime dataUltimaAtualizacao = lancamentoFixaExistente.DataRegistro ?? agora.AddDays(-1);
 
-                // 2. AJUSTE DE CONTEXTO: Conta quantos DIAS ÚTEIS de fato se passaram entre os acessos
                 int diasUteisDecorridos = 0;
-                DateTime dataChecagem = dataUltimaAtualizacao.Date.AddDays(1); // Começa a contar a partir do dia seguinte da última atualização
+                DateTime dataChecagem = dataUltimaAtualizacao.Date.AddDays(1);
 
                 while (dataChecagem <= agora.Date)
                 {
@@ -611,16 +606,14 @@ namespace Acoes_Fiis.Controllers
                     dataChecagem = dataChecagem.AddDays(1);
                 }
 
-                // Se o usuário acessar várias vezes no MESMO dia útil, tratamos a fração de horas útil proporcional (regra de segurança)
                 double fracaoHorasExtra = 0;
                 if (dataUltimaAtualizacao.Date == agora.Date && agora.DayOfWeek != DayOfWeek.Saturday && agora.DayOfWeek != DayOfWeek.Sunday)
                 {
-                    fracaoHorasExtra = (agora - dataUltimaAtualizacao).TotalDays; // Se for no mesmo dia, calcula a fração decimal dele
+                    fracaoHorasExtra = (agora - dataUltimaAtualizacao).TotalDays;
                 }
 
                 double multiplicadorDiasFinais = diasUteisDecorridos + fracaoHorasExtra;
 
-                // Só processa se de fato houve tempo útil decorrido
                 if (multiplicadorDiasFinais > 0.01)
                 {
                     decimal rendimentoPeriodo = saldoFinanceiroAteHoje * (taxaDiariaCaixinha * (decimal)multiplicadorDiasFinais) * 0.825m;
@@ -629,8 +622,8 @@ namespace Acoes_Fiis.Controllers
                     if (incrementoFinal > 0m)
                     {
                         lancamentoFixaExistente.Valor = Math.Round(lancamentoFixaExistente.Valor + incrementoFinal, 2);
-                        lancamentoFixaExistente.Data = ultimoDiaMesAtual;
-                        lancamentoFixaExistente.DataRegistro = agora; // Atualiza o marco temporal
+                        lancamentoFixaExistente.Data = agora.Date;
+                        lancamentoFixaExistente.DataRegistro = agora;
 
                         _context.Financeiro.Update(lancamentoFixaExistente);
                         mudouBanco = true;
@@ -675,7 +668,6 @@ namespace Acoes_Fiis.Controllers
                 mudouBanco = true;
             }
 
-            // Persiste todas as alterações acumuladas do request de uma só vez
             if (mudouBanco)
             {
                 await _context.SaveChangesAsync();
@@ -996,6 +988,11 @@ namespace Acoes_Fiis.Controllers
         {
             if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
 
+            // Força a cultura pt-BR na requisição de salvamento para garantir o bind correto de decimais
+            var cultureBR = new System.Globalization.CultureInfo("pt-BR");
+            System.Threading.Thread.CurrentThread.CurrentCulture = cultureBR;
+            System.Threading.Thread.CurrentThread.CurrentUICulture = cultureBR;
+
             if (ano < 2000 || mes < 1 || mes > 12 || salarioBruto < 0 || descontos < 0)
             {
                 TempData["Error"] = "Dados informados para a folha de pagamento são inválidos.";
@@ -1048,6 +1045,128 @@ namespace Acoes_Fiis.Controllers
 
             TempData["Success"] = $"Folha de pagamento de {mes:D2}/{ano} registrada com sucesso!";
             return RedirectToAction("Index", new { visao = visao });
+        }
+
+        [HttpPost]
+        public IActionResult ExtrairDadosHolerite(IFormFile? pdfFile)
+        {
+            if (pdfFile == null || pdfFile.Length == 0)
+                return Json(new { sucesso = false, mensagem = "Nenhum arquivo foi enviado." });
+
+            string extensao = Path.GetExtension(pdfFile.FileName).ToLower();
+            bool isPdfMime = pdfFile.ContentType.Equals("application/pdf", StringComparison.OrdinalIgnoreCase);
+
+            if (!isPdfMime || extensao != ".pdf")
+            {
+                return Json(new { sucesso = false, mensagem = "Apenas arquivos no formato PDF legítimo são permitidos." });
+            }
+
+            try
+            {
+                string textoExtraido = "";
+
+                using (var stream = pdfFile.OpenReadStream())
+                using (var document = UglyToad.PdfPig.PdfDocument.Open(stream))
+                {
+                    foreach (var page in document.GetPages())
+                    {
+                        textoExtraido += page.Text + " ";
+                    }
+                }
+
+                string padraoBruto = @"Total\s+de\s+Proventos\s*:\s*([\d\.]+\,\d{2})";
+                string padraoDesconto = @"Total\s+de\s+Descontos\s*:\s*([\d\.]+\,\d{2})";
+                string padraoAdiantamento = @"ADIANTAMENTO\s+QUINZENAL.*?([\d\.]+\,\d{2})";
+
+                var matchBruto = Regex.Match(textoExtraido, padraoBruto, RegexOptions.IgnoreCase);
+                var matchDesconto = Regex.Match(textoExtraido, padraoDesconto, RegexOptions.IgnoreCase);
+                var matchAdiantamento = Regex.Match(textoExtraido, padraoAdiantamento, RegexOptions.IgnoreCase);
+
+                if (matchBruto.Success && matchDesconto.Success)
+                {
+                    var cultureBR = new System.Globalization.CultureInfo("pt-BR");
+
+                    decimal valorBruto = decimal.Parse(matchBruto.Groups[1].Value, cultureBR);
+                    decimal valorDesconto = decimal.Parse(matchDesconto.Groups[1].Value, cultureBR);
+                    decimal valorAdiantamento = 0m;
+
+                    if (matchAdiantamento.Success)
+                    {
+                        valorAdiantamento = decimal.Parse(matchAdiantamento.Groups[1].Value, cultureBR);
+                    }
+
+                    decimal descontoReal = valorDesconto - valorAdiantamento;
+
+                    return Json(new
+                    {
+                        sucesso = true,
+                        bruto = valorBruto.ToString("F2", cultureBR),
+                        desconto = descontoReal.ToString("F2", cultureBR)
+                    });
+                }
+
+                return Json(new { sucesso = false, mensagem = "Não foi possível mapear os valores com o layout do PDF." });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { sucesso = false, mensagem = $"Erro ao processar o arquivo: {ex.Message}" });
+            }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ExcluirFolhaPagamento(int id)
+        {
+            var folha = await _context.FolhasPagamento.FindAsync(id);
+
+            if (folha == null)
+            {
+                return Json(new { sucesso = false, mensagem = "Folha de pagamento não encontrada." });
+            }
+
+            try
+            {
+                if (!string.IsNullOrEmpty(folha.PathPdf))
+                {
+                    string caminhoArquivoFisico = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", folha.PathPdf.TrimStart('/'));
+
+                    if (System.IO.File.Exists(caminhoArquivoFisico))
+                    {
+                        System.IO.File.Delete(caminhoArquivoFisico);
+                    }
+                }
+
+                _context.FolhasPagamento.Remove(folha);
+                await _context.SaveChangesAsync();
+
+                return Json(new { sucesso = true });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { sucesso = false, mensagem = $"Erro ao excluir do banco de dados: {ex.Message}" });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> ObterHistoricoPorAnoJson(int ano, string visao)
+        {
+            if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
+
+            var historico = await _context.FolhasPagamento
+                .Where(f => f.Ano == ano && f.Visao == visao)
+                .OrderByDescending(f => f.Mes)
+                .Select(f => new
+                {
+                    id = f.Id,
+                    mes = f.Mes,
+                    ano = f.Ano,
+                    salarioBruto = f.SalarioBruto,
+                    descontos = f.Descontos,
+                    pathPdf = f.PathPdf
+                })
+                .ToListAsync();
+
+            return Json(historico);
         }
 
         [HttpPost]
@@ -1573,34 +1692,6 @@ namespace Acoes_Fiis.Controllers
 
             var bytes = System.Text.Encoding.UTF8.GetBytes(sb.ToString());
             return File(bytes, "text/csv", $"carteira_{visao.ToLower()}.csv");
-        }
-
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> ExcluirFolhaPagamento(int id, string visao)
-        {
-            if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
-
-            var folha = await _context.FolhasPagamento.FindAsync(id);
-
-            if (folha != null)
-            {
-                if (!string.IsNullOrEmpty(folha.PathPdf))
-                {
-                    string caminhoArquivoFisico = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", folha.PathPdf.TrimStart('/'));
-
-                    if (System.IO.File.Exists(caminhoArquivoFisico))
-                    {
-                        System.IO.File.Delete(caminhoArquivoFisico);
-                    }
-                }
-
-                _context.FolhasPagamento.Remove(folha);
-                await _context.SaveChangesAsync();
-                TempData["Success"] = "Folha de pagamento excluída com sucesso.";
-            }
-
-            return RedirectToAction("Index", new { visao = visao });
         }
 
         [HttpPost]

@@ -62,7 +62,7 @@
                                                 </optgroup>
                                             }
                                         }
-                                        @if (Model.ListaTickersAcoes != null)
+                                        @* @if (Model.ListaTickersAcoes != null)
                                         {
                                             @foreach (var grupoAcao in Model.ListaTickersAcoes.DistinctBy(x => x.Ticker).GroupBy(x => x.TipoAcao))
                                             {
@@ -94,7 +94,7 @@
                                                     }
                                                 </optgroup>
                                             }
-                                        }
+                                        } *@
                                     </select>
                                 </div>
                             </div>
@@ -306,27 +306,23 @@
             const aporteMensal = parseFloat(inputAporte.value) || 0;
             tbodyProjecao.innerHTML = "";
 
-            // Calcula a taxa média da carteira (Rendimento Total / Capital Total)
             let taxaMediaMensal = atualCapitalTotal > 0 ? (atualRendimentoTotal / atualCapitalTotal) : 0;
 
-            // Atualiza os labels informativos da Aba 2
             lblCapitalBase.innerText = atualCapitalTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
             lblTaxaMedia.innerText = (taxaMediaMensal * 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "%";
 
             let capitalAcumulado = atualCapitalTotal;
 
-            for (let mes = 1; mes <= 120; mes++) {
-                let capInicialMes = capitalAcumulado;
-                let dividendosMes = capInicialMes * taxaMediaMensal;
+            for (let mes = 1; mes <= 240; mes++) {
+            let capInicialMes = capitalAcumulado;
+            let dividendosMes = capInicialMes * taxaMediaMensal;
 
-                // O capital final do mês considera: Capital Inicial + Aporte + Dividendos reinvestidos
-                capitalAcumulado = capInicialMes + aporteMensal + dividendosMes;
+            capitalAcumulado = capInicialMes + aporteMensal + dividendosMes;
 
-                // Renda passiva estimada gerada para o próximo mês com o novo patrimônio
-                let proximaRendaMensal = capitalAcumulado * taxaMediaMensal;
+            let proximaRendaMensal = capitalAcumulado * taxaMediaMensal;
 
-                const tr = document.createElement("tr");
-                tr.innerHTML = `
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
                     <td class="fw-bold text-secondary">Mês ${mes}</td>
                     <td>${capInicialMes.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                     <td>${aporteMensal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
@@ -335,6 +331,19 @@
                     <td class="text-success fw-bold">${proximaRendaMensal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                 `;
                 tbodyProjecao.appendChild(tr);
+
+                if (mes % 12 === 0) {
+                    let ano = mes / 12;
+                    const trAno = document.createElement("tr");
+
+                    trAno.className = "table-dark text-center fw-bold align-middle";
+                    trAno.innerHTML = `
+                        <td colspan="6" class="text-info py-2 text-uppercase" style="font-size: 0.75rem; letter-spacing: 1px;">
+                            <i class="bi bi-calendar-check-fill me-2"></i> Concluído o ${ano}º Ano — Renda Mensal: ${proximaRendaMensal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </td>
+                    `;
+                    tbodyProjecao.appendChild(trAno);
+                }
             }
         }
 
@@ -411,7 +420,6 @@
             anexarEventosLinha(tr);
             calcularCarteira();
 
-            // Limpa os campos após a inserção
             inputTicker.value = "";
             inputQtd.value = "";
             inputPreco.value = "";
@@ -422,7 +430,6 @@
         // Escuta modificações no campo de Aporte Mensal na Aba 2 para recalcular a projeção na hora
         inputAporte.addEventListener("input", calcularProjecao12Meses);
 
-        // Inicializa eventos e cálculos nas linhas injetadas via C#
         tbodyFiis.querySelectorAll("tr").forEach(anexarEventosLinha);
         calcularCarteira();
 
