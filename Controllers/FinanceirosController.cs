@@ -474,6 +474,7 @@ namespace Acoes_Fiis.Controllers
             return View(financeiro);
         }
 
+
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id, string visao)

@@ -123,7 +123,8 @@ namespace Acoes_Fiis.Controllers
                     Quantidade = item.Quantidade,
                     PrecoMedio = item.PrecoMedio,
                     TipoAtivo = item.TipoAtivo,
-                    TaxaRentabilidade = item.TaxaRentabilidade
+                    TaxaRentabilidade = item.TaxaRentabilidade,
+                    Favorito = item.Favorito
                 };
 
                 if (item.TipoAtivo == "RendaFixa")
@@ -518,34 +519,56 @@ namespace Acoes_Fiis.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> SalvarParametros(decimal cdiAnual)
         {
-            if (cdiAnual < 0 || cdiAnual > 100)
+            var cultureBR = new System.Globalization.CultureInfo("pt-BR");
+            System.Threading.Thread.CurrentThread.CurrentCulture = cultureBR;
+            System.Threading.Thread.CurrentThread.CurrentUICulture = cultureBR;
+
+            if (!ModelState.IsValid)
             {
-                return BadRequest("O valor do CDI informado é inválido. Insira um percentual entre 0 e 100.");
+                TempData["Error"] = "O valor informado para o CDI é inválido. Certifique-se de digitar apenas números e usar vírgula para os decimais (Ex: 14,75).";
+                return RedirectToAction("Index");
             }
 
-            var parametro = await _context.Parametro.FirstOrDefaultAsync();
-
-            if (parametro == null)
+            if (cdiAnual <= 0 || cdiAnual > 40)
             {
-                parametro = new Parametro
-                {
-                    CdiAnual = cdiAnual,
-                    DataAtualizacao = DateTime.Now
-                };
-                _context.Parametro.Add(parametro);
+                TempData["Error"] = "O valor do CDI anual deve ser um percentual realista (maior que 0% e menor que 40%).";
+                return RedirectToAction("Index");
             }
-            else
+
+            try
             {
-                if (parametro.CdiAnual == cdiAnual)
+                var parametro = await _context.Parametro.FirstOrDefaultAsync();
+
+                if (parametro == null)
                 {
-                    return RedirectToAction("Index");
+                    parametro = new Parametro
+                    {
+                        CdiAnual = cdiAnual,
+                        DataAtualizacao = DateTime.Now
+                    };
+                    _context.Parametro.Add(parametro);
+                }
+                else
+                {
+                    if (parametro.CdiAnual == cdiAnual)
+                    {
+                        TempData["Success"] = "O CDI informado já é o valor atual registrado.";
+                        return RedirectToAction("Index");
+                    }
+
+                    parametro.CdiAnual = cdiAnual;
+                    parametro.DataAtualizacao = DateTime.Now;
+                    _context.Parametro.Update(parametro);
                 }
 
-                parametro.CdiAnual = cdiAnual;
-                parametro.DataAtualizacao = DateTime.Now;
-            }
+                await _context.SaveChangesAsync();
 
-            await _context.SaveChangesAsync();
+                TempData["Success"] = $"CDI Anual atualizado com sucesso para {cdiAnual.ToString("F2", cultureBR)}%!";
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = $"Falha ao gravar os parâmetros no banco de dados. Detalhes: {ex.Message}";
+            }
 
             return RedirectToAction("Index");
         }
@@ -1692,6 +1715,25 @@ namespace Acoes_Fiis.Controllers
 
             var bytes = System.Text.Encoding.UTF8.GetBytes(sb.ToString());
             return File(bytes, "text/csv", $"carteira_{visao.ToLower()}.csv");
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> AlternarFavorito(int id)
+        {
+            var ativo = await _context.Carteira.FindAsync(id);
+
+            if (ativo == null)
+            {
+                return Json(new { sucesso = false, mensagem = "Ativo não encontrado." });
+            }
+
+            ativo.Favorito = !ativo.Favorito;
+
+            _context.Update(ativo);
+            await _context.SaveChangesAsync();
+
+            // Retorna o novo status para o JavaScript atualizar a cor
+            return Json(new { sucesso = true, favorito = ativo.Favorito });
         }
 
         [HttpPost]

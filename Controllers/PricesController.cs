@@ -161,7 +161,7 @@ namespace Acoes_Fiis.Controllers
                 {
                     _context.Update(price);
                     await _context.SaveChangesAsync();
-                    return RedirectToAction(nameof(Index), new { visao = visao });
+                    return RedirectToAction(nameof(Details), new { id = price.Id, visao = visao });
                 }
                 catch (DbUpdateConcurrencyException)
                 {

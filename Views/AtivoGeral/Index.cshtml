@@ -212,13 +212,10 @@
                             <td>
                                 <div class="btn-group">
                                     @{
-                                        // 1. Limpa o ticker padrão Yahoo Finance para o padrão limpo do Investidor10
                                         string tickerLimpo = item.Ticker.Replace(".SA", "").Replace("-USD", "").Replace("=X", "").ToLower();
 
-                                        // 2. Define a categoria padrão
                                         string categoria = "acoes";
 
-                                        // 3. Identifica a categoria pelas características do Ticker limpo
                                         if (tickerLimpo == "btc" )
                                         {
                                             categoria = "criptomoedas";
@@ -240,15 +237,12 @@
                                         }
                                         else if (tickerLimpo.EndsWith("11"))
                                         {
-                                            // Nota: Se você tiver FIIs na mesma tabela, precisará validar pelo item.Tipo.
-                                            // Caso contrário, se forem só ETFs (como BOVA11, IVVB11, HASH11), cai aqui:
                                             categoria = "etfs";
                                         }
                                         else if (tickerLimpo == "usdbrl")
                                         {
-                                            // Cotação do Dólar Comercial no Investidor10
                                             categoria = "cambio/USD-BRL";
-                                            tickerLimpo = ""; // A URL do câmbio termina logo após o segmento
+                                            tickerLimpo = "";
                                         }
 
                                         string urlFinal = $"https://investidor10.com.br/{categoria}/{tickerLimpo}".TrimEnd('/');

@@ -17,6 +17,8 @@ namespace Acoes_Fiis.Models
 
         public string? TipoAtivo { get; set; }
         public string? Setor { get; set; }
+
+        public bool Favorito { get; set; } = false;
         public DateTime DataCompra { get; set; } = DateTime.Now;
 
         [Column(TypeName = "decimal(18,2)")]
@@ -123,6 +125,7 @@ namespace Acoes_Fiis.Models
         public int Quantidade { get; set; }
         public decimal PrecoMedio { get; set; }
         public decimal PrecoAtual { get; set; }
+        public bool Favorito { get; set; } = false;
         public decimal DividendYield { get; set; }
         public string? TipoAtivo { get; set; }
         public decimal? TaxaRentabilidade { get; set; }

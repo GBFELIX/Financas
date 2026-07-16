@@ -374,7 +374,13 @@
                                     ultimoTipo = item.TipoAtivo;
                         }
                         <tr>
-                            <td class="fw-bold text-primary">@item.Ticker</td>
+                            <td class="fw-bold @(item.Favorito ? "text-warning" : "text-primary")"
+                                style="cursor: pointer; transition: color 0.3s;"
+                                onclick="alternarFavorito(@item.Id, this)"
+                                title="Clique para favoritar/desfavoritar">
+                                <i class="bi @(item.Favorito ? "bi-star-fill" : "bi-star text-muted opacity-50") me-1" id="icone-star-@item.Id"></i>
+                                    @item.Ticker
+                                </td>
                             <td class="fw-bold text-success" id="quantidade-@item.Id">@item.Quantidade.ToString("N0")</td>
                             <td>R$ @item.PrecoMedio.ToString("N2")</td>
                             <td>R$ @item.PrecoAtual.ToString("N2")</td>
@@ -450,6 +456,59 @@
                                         <i class="bi bi-pencil-square"></i>
                                         <span class="d-none d-md-inline"></span>
                                     </button>
+                                        @if (item.TipoAtivo == "Acao")
+                                        {
+                                            <a href="https://investidor10.com.br/acoes/@item.Ticker.ToLower()/" target="_blank" class="btn btn-sm btn-outline-info" title="Ver no Investidor10">
+                                                <i class="bi bi-graph-up-arrow"></i>
+                                            </a>
+                                        }else if (item.TipoAtivo == "Fii")
+                                        {
+                                            <a href="https://investidor10.com.br/fiis/@item.Ticker.ToLower()" target="_blank" class="btn btn-sm btn-outline-info" title="Ver no Investidor10">
+                                                <i class="bi bi-graph-up-arrow"></i>
+                                            </a>
+                                        }else if (item.TipoAtivo == "Geral")
+                                        {
+                                           
+                                        string tickerLimpo = item.Ticker.Replace(".SA", "").Replace("-USD", "").Replace("=X", "").ToLower();
+
+                                        string categoria = "acoes";
+
+                                        if (tickerLimpo == "btc" )
+                                        {
+                                            categoria = "criptomoedas";
+                                            tickerLimpo = "bitcoin";
+                                        }
+                                        else if (tickerLimpo == "eth")
+                                        {
+                                            categoria = "criptomoedas";
+                                            tickerLimpo = "ethereum";
+                                        }
+                                        else if (tickerLimpo == "sol")
+                                        {
+                                            categoria = "criptomoedas";
+                                            tickerLimpo = "solana";
+                                        }
+                                        else if (tickerLimpo.EndsWith("34"))
+                                        {
+                                            categoria = "bdrs";
+                                        }
+                                        else if (tickerLimpo.EndsWith("11"))
+                                        {
+                                            categoria = "etfs";
+                                        }
+                                        else if (tickerLimpo == "usdbrl")
+                                        {
+                                            categoria = "cambio/USD-BRL";
+                                            tickerLimpo = "";
+                                        }
+
+                                        string urlFinal = $"https://investidor10.com.br/{categoria}/{tickerLimpo}".TrimEnd('/');
+
+                                    <!-- Botão Geral Dinâmico -->
+                                    <a href="@urlFinal" target="_blank" class="btn btn-sm btn-outline-info" title="Ver no Investidor10">
+                                        <i class="bi bi-graph-up-arrow"></i>
+                                    </a>
+                                        }   
                                     <a asp-action="Delete"
                                        asp-route-id="@item.Id"
                                        asp-route-visao="@ViewBag.VisaoAtual"
@@ -582,7 +641,7 @@
                                         <optgroup label="Ações - @grupoAcao.Key">
                                             @foreach (var item in grupoAcao)
                                             {
-                                                <option value="@item.Ticker" data-search="@item.Ticker.ToUpper()">
+                                                <option value="@item.Ticker" data-search="@item.Ticker.ToUpper()" data-preco="@item.PrecoAtual">
                                                     @{
                                                         string emojiTipo = item.TipoAtivo switch
                                                         {
@@ -606,7 +665,7 @@
                                         <optgroup label="FIIs - @grupoFii.Key">
                                             @foreach (var item in grupoFii)
                                             {
-                                                <option value="@item.Ticker" data-search="@item.Ticker.ToUpper()">
+                                                <option value="@item.Ticker" data-search="@item.Ticker.ToUpper()" data-preco="@item.PrecoAtual">
                                                     @{
                                                         string emojiTipoFii = item.TipoFii switch
                                                         {
@@ -634,7 +693,7 @@
                                             @foreach (var item in grupoGeral)
                                             {
                                                 var textoExibicao = item.Ticker.Replace(".SA", "").Replace("-USD", "").Replace("=X", "");
-                                                <option value="@item.Ticker" data-search="@item.Ticker.ToUpper() @item.Nome.ToUpper()">
+                                                <option value="@item.Ticker" data-search="@item.Ticker.ToUpper() @item.Nome.ToUpper()" data-preco="@item.PrecoAtual">
                                                     @emoji @textoExibicao - @item.Nome
                                                 </option>
                                             }
@@ -771,6 +830,32 @@
         .card-interativo:active {
             transform: translateY(0);
         }
+
+        .notificacao-topo {
+            position: fixed;
+            top: -100px; /* Começa escondido acima da tela */
+            left: 50%;
+            transform: translateX(-50%); /* Centraliza perfeitamente na horizontal */
+            z-index: 10000; /* Garante que fica por cima de modais e menus */
+            min-width: 320px;
+            max-width: 90%;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+            border-radius: 12px;
+            transition: top 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.5s ease;
+            opacity: 0;
+        }
+
+            /* Classe que faz a mensagem descer */
+            .notificacao-topo.mostrar {
+                top: 25px; /* Desce até 25px do topo */
+                opacity: 1;
+            }
+
+            /* Classe que faz a mensagem subir ao sumir */
+            .notificacao-topo.esconder {
+                top: -100px;
+                opacity: 0;
+            }
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -1039,4 +1124,82 @@
             modalConfigMetas.show();
         }, 400);
     }
+        document.addEventListener("DOMContentLoaded", function () {
+                const selectTicker = document.getElementById("selectModalTicker");
+                const inputPrecoMedio = document.querySelector("input[name='precoMedio']");
+
+                if (selectTicker && inputPrecoMedio) {
+                    selectTicker.addEventListener("change", function () {
+                        // Pega a opção que o usuário acabou de clicar
+                        const opcaoSelecionada = this.options[this.selectedIndex];
+
+                        // Extrai o valor do data-preco
+                        let precoAtual = opcaoSelecionada.getAttribute("data-preco");
+
+                        if (precoAtual) {
+                            // Substitui ponto por vírgula para manter o padrão brasileiro no input (Ex: 34.50 vira 34,50)
+                            precoAtual = precoAtual.replace('.', ',');
+
+                            // Preenche o input
+                            inputPrecoMedio.value = precoAtual;
+
+                            // Dispara um evento de input caso você use alguma máscara JS (ex: jQuery Mask) para ele formatar na hora
+                            inputPrecoMedio.dispatchEvent(new Event('input'));
+                        } else {
+                            // Limpa o campo caso o ativo não tenha preço cadastrado
+                            inputPrecoMedio.value = "";
+                        }
+                    });
+                }
+            });
+
+           async function alternarFavorito(id, elementoTd) {
+            try {
+                // Desativa cliques duplos rápidos enquanto processa
+                elementoTd.style.pointerEvents = 'none';
+
+                const resposta = await fetch('/Carteiras/AlternarFavorito', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: `id=${id}`
+                });
+
+                if (resposta.ok) {
+                    const dados = await resposta.json();
+
+                    if (dados.sucesso) {
+                        const iconeEstrela = document.getElementById(`icone-star-${id}`);
+
+                        if (dados.favorito) {
+                            // Ficou Favorito: Fica Amarelo (text-warning)
+                            elementoTd.classList.remove("text-primary");
+                            elementoTd.classList.add("text-warning");
+
+                            if (iconeEstrela) {
+                                iconeEstrela.className = "bi bi-star-fill me-1";
+                            }
+                        } else {
+                            // Removeu Favorito: Volta ao Azul (text-primary)
+                            elementoTd.classList.remove("text-warning");
+                            elementoTd.classList.add("text-primary");
+
+                            if (iconeEstrela) {
+                                iconeEstrela.className = "bi bi-star text-muted opacity-50 me-1";
+                            }
+                        }
+                    } else {
+                        console.error(dados.mensagem);
+                    }
+                }
+            } catch (erro) {
+                console.error("Erro ao favoritar o ativo:", erro);
+            } finally {
+                // Libera o clique novamente
+                elementoTd.style.pointerEvents = 'auto';
+            }
+        }
 </script>
+
+

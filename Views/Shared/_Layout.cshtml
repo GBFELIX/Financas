@@ -57,6 +57,23 @@
         var visaoAtual = Context.Request.Query["visao"].ToString();
         if (string.IsNullOrEmpty(visaoAtual)) visaoAtual = "Gabriel";
     }
+    @if (TempData["Success"] != null || TempData["Error"] != null)
+    {
+        var ehErro = TempData["Error"] != null;
+        var mensagem = ehErro ? TempData["Error"] : TempData["Success"];
+        var classeAlerta = ehErro ? "alert-danger" : "alert-success";
+        var icone = ehErro ? "bi-exclamation-triangle-fill" : "bi-check-circle-fill";
+
+        <div id="alertaFlutuante" class="notificacao-topo alert @classeAlerta d-flex align-items-center py-3 px-4 m-0" role="alert">
+            <i class="bi @icone fs-4 me-3"></i>
+
+            <div class="fw-semibold me-4">
+                @mensagem
+            </div>
+
+            <button type="button" class="btn-close ms-auto ps-3" onclick="fecharNotificacao()" aria-label="Close"></button>
+        </div>
+    }
 
     <header>
         <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom mb-4 py-3">
@@ -168,6 +185,36 @@
                 });
             });
         });
+            document.addEventListener("DOMContentLoaded", function () {
+            const alerta = document.getElementById("alertaFlutuante");
+
+            if (alerta) {
+                // 1. Pequeno delay para iniciar a animação de descida de forma suave
+                setTimeout(() => {
+                    alerta.classList.add("mostrar");
+                }, 150);
+
+                // 2. Programa o fechamento automático após 4 segundos (4000ms)
+                setTimeout(() => {
+                    fecharNotificacao();
+                }, 4150);
+            }
+        });
+
+        function fecharNotificacao() {
+            const alerta = document.getElementById("alertaFlutuante");
+
+            if (alerta) {
+                // Remove a classe de exibição e adiciona a de subida
+                alerta.classList.remove("mostrar");
+                alerta.classList.add("esconder");
+
+                // Remove o elemento do HTML completamente após a animação terminar (0.5 segundos)
+                setTimeout(() => {
+                    alerta.remove();
+                }, 500);
+            }
+        }
     </script>
 
     @await RenderSectionAsync("Scripts", required: false)
