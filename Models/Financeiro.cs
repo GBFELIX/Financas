@@ -42,7 +42,7 @@ namespace Acoes_Fiis.Models
 
         public decimal RendimentoRendaFixaMes { get; set; }
 
-        public decimal SobraEstimada => (TotalEntradas - TotalDespesas) + RendimentoRendaFixaMes + InvestimentoMesCorrente;
+        public decimal SobraEstimada => (TotalEntradas - TotalDespesas) + RendimentoRendaFixaMes;
 
         public decimal TotalAnual { get; set; }
 

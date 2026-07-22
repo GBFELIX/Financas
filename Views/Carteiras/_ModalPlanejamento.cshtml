@@ -1,0 +1,275 @@
+﻿@model CarteiraTotalViewModel
+
+<!-- Modal Radar de Compras -->
+<div class="modal fade" id="modalPlanejamento" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+
+            <div class="modal-header bg-dark text-white border-0 py-3 rounded-top-4">
+                <h5 class="modal-title fw-bold">
+                    <i class="bi bi-radar text-warning me-2"></i>Radar de Compras
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+
+            <ul class="nav nav-tabs px-4 pt-3 bg-light border-0" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active border-0 fw-bold small text-uppercase pb-2 text-dark" data-bs-toggle="tab" data-bs-target="#lista-radar-pane" type="button" role="tab">
+                        <i class="bi bi-list-check me-1"></i> No Radar
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link border-0 fw-bold small text-uppercase pb-2 text-dark" data-bs-toggle="tab" data-bs-target="#novo-plano-pane" type="button" role="tab">
+                        <i class="bi bi-plus-circle me-1"></i> Planejar Compra
+                    </button>
+                </li>
+            </ul>
+
+            <div class="modal-body tab-content p-4">
+
+                <!-- ABA 1: LISTA DO QUE ESTÁ NO RADAR -->
+                <div class="tab-pane fade show active" id="lista-radar-pane" role="tabpanel" tabindex="0">
+                    <div class="table-responsive rounded-3 border">
+                        <table class="table table-sm table-hover align-middle mb-0" style="font-size: 0.85rem;">
+                            <thead class="table-light text-muted small text-uppercase">
+                                <tr>
+                                    <th class="ps-3">Data</th>
+                                    <th>Ativo</th>
+                                    <th>Qtd Planejada</th>
+                                    <th>Preço (Ref)</th>
+                                    <th>Total Estimado</th>
+                                    <th class="text-end pe-3">Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="corpoTabelaRadar">
+                                <tr>
+                                    <td colspan="6" class="text-center py-4 text-muted">Carregando seu radar...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ABA 2: ADICIONAR NOVO ATIVO AO RADAR -->
+                <div class="tab-pane fade" id="novo-plano-pane" role="tabpanel" tabindex="0">
+                    <form id="formPlanejamentoCompra" onsubmit="salvarPlanejamento(event)">
+                        <input type="hidden" name="visao" value="@ViewBag.VisaoAtual" />
+
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label fw-bold small text-muted text-uppercase mb-2">Selecione o Ativo Desejado</label>
+
+                                <select id="selectAtivoRadar" name="ticker" class="form-select" size="6" required="required">
+
+                                    @if (Model.ListaTickersAcoes != null)
+                                    {
+                                        @foreach (var grupoAcao in Model.ListaTickersAcoes.DistinctBy(x => x.Ticker).GroupBy(x => x.TipoAcao))
+                                        {
+                                            <optgroup label="Ações - @grupoAcao.Key">
+                                                @foreach (var item in grupoAcao)
+                                                {
+                                                    <option value="@item.Ticker" data-search="@item.Ticker.ToUpper()" data-preco="@item.PrecoAtual">
+                                                        @{
+                                                            string emojiTipo = item.TipoAtivo switch
+                                                            {
+                                                                "Setor Perene" => "🏦",
+                                                                "Dividendos" => "💰",
+                                                                "Crescimento" => "🚀",
+                                                                _ => "❓"
+                                                            };
+                                                        }
+                                                        @emojiTipo @item.Ticker.Replace(".SA", "")
+                                                    </option>
+                                                }
+                                            </optgroup>
+                                        }
+                                    }
+
+                                    @if (Model.ListaTickersFiis != null)
+                                    {
+                                        @foreach (var grupoFii in Model.ListaTickersFiis.DistinctBy(x => x.Ticker).GroupBy(x => x.Segmento))
+                                        {
+                                            <optgroup label="FIIs - @grupoFii.Key">
+                                                @foreach (var item in grupoFii)
+                                                {
+                                                    <option value="@item.Ticker" data-search="@item.Ticker.ToUpper()" data-preco="@item.PrecoAtual">
+                                                        @{
+                                                            string emojiTipoFii = item.TipoFii switch
+                                                            {
+                                                                "Tijolo" => "🧱",
+                                                                "Papel" => "📜",
+                                                                "Híbrido" => "🔄",
+                                                                _ => "❓"
+                                                            };
+                                                        }
+                                                        @emojiTipoFii @item.Ticker.Replace(".SA", "")
+                                                    </option>
+                                                }
+                                            </optgroup>
+                                        }
+                                    }
+
+                                    @if (Model.ListaTickersGerais != null)
+                                    {
+                                        @foreach (var grupoGeral in Model.ListaTickersGerais.DistinctBy(x => x.Ticker).GroupBy(x => x.ClasseAtivo))
+                                        {
+                                            string emoji = grupoGeral.Key.ToLower().Contains("cripto") ? "🪙" :
+                                            grupoGeral.Key.ToLower().Contains("bdr") ? "🇺🇸" : "🌐";
+
+                                            <optgroup label="@grupoGeral.Key">
+                                                @foreach (var item in grupoGeral)
+                                                {
+                                                    var textoExibicao = item.Ticker.Replace(".SA", "").Replace("-USD", "").Replace("=X", "");
+                                                    <option value="@item.Ticker" data-search="@item.Ticker.ToUpper() @item.Nome.ToUpper()" data-preco="@item.PrecoAtual">
+                                                        @emoji @textoExibicao - @item.Nome
+                                                    </option>
+                                                }
+                                            </optgroup>
+                                        }
+                                    }
+                                </select>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-muted text-uppercase">Quantidade Alvo</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-secondary-subtle"><i class="bi bi-hash"></i></span>
+                                    <input type="number" name="quantidade" class="form-control border-secondary-subtle fw-semibold" placeholder="0" min="1" required="required" />
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-muted text-uppercase">Preço Referência (Atual)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-secondary-subtle text-success fw-bold">R$</span>
+                                    <input type="text" id="inputPrecoRadar" name="precoReferencia" class="form-control border-secondary-subtle fw-semibold" placeholder="0,00" required="required" />
+                                </div>
+                            </div>
+
+                            <div class="col-12 mt-4">
+                                <button type="submit" class="btn btn-dark w-100 rounded-pill fw-bold py-2 shadow-sm">
+                                    <i class="bi bi-crosshair me-2"></i>Colocar no Radar
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+    const modalPlanejamento = document.getElementById('modalPlanejamento');
+    const selectAtivoRadar = document.getElementById("selectAtivoRadar");
+    const inputPrecoRadar = document.getElementById("inputPrecoRadar");
+
+    // Preenche o preço automaticamente ao clicar no ativo na aba de Planejar
+    if (selectAtivoRadar && inputPrecoRadar) {
+        selectAtivoRadar.addEventListener("change", function () {
+            const opcao = this.options[this.selectedIndex];
+            let preco = opcao.getAttribute("data-preco");
+            if (preco) {
+                inputPrecoRadar.value = preco.replace('.', ',');
+            }
+        });
+    }
+
+    // Carrega a lista sempre que o modal for aberto
+    if (modalPlanejamento) {
+        modalPlanejamento.addEventListener('show.bs.modal', function () {
+            carregarRadarDeCompras();
+        });
+    }
+});
+
+async function carregarRadarDeCompras() {
+    const visao = document.querySelector('input[name="visao"]').value;
+    const tbody = document.getElementById("corpoTabelaRadar");
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Atualizando...</td></tr>';
+
+    try {
+        const resposta = await fetch(`/Carteiras/ObterPlanejamentosPendentes?visao=${visao}`);
+        const dados = await resposta.json();
+        tbody.innerHTML = "";
+
+        if (dados.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted"><i class="bi bi-wind fs-3 d-block mb-2"></i>Nenhum ativo no radar no momento.</td></tr>';
+            return;
+        }
+
+        dados.forEach(item => {
+            const valorTotal = (item.total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            const precoRef = (item.precoReferencia).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+            tbody.insertAdjacentHTML('beforeend', `
+                <tr id="plano-${item.id}">
+                    <td class="text-muted ps-3">${item.data}</td>
+                    <td class="fw-bold text-dark">${item.ticker}</td>
+                    <td>${item.quantidade}</td>
+                    <td class="text-info">${precoRef}</td>
+                    <td class="fw-bold">${valorTotal}</td>
+                    <td class="text-end pe-3">
+                        <button class="btn btn-sm btn-outline-success rounded-pill px-3" onclick="marcarComoComprado(${item.id})" title="Marcar como Comprado">
+                            <i class="bi bi-check2-circle me-1"></i>Comprado
+                        </button>
+                    </td>
+                </tr>
+            `);
+        });
+    } catch (e) {
+        console.error(e);
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Erro ao carregar o radar.</td></tr>';
+    }
+}
+
+async function salvarPlanejamento(event) {
+    event.preventDefault();
+    const form = event.target;
+    const dados = new FormData(form);
+
+    try {
+        const resposta = await fetch('/Carteiras/AdicionarPlanejamento', {
+            method: 'POST',
+            body: dados
+        });
+        const result = await resposta.json();
+
+        if (result.sucesso) {
+            form.reset(); // Limpa o formulário
+            
+            // Troca de aba para mostrar a lista atualizada
+            const triggerEl = document.querySelector('button[data-bs-target="#lista-radar-pane"]');
+            const tab = new bootstrap.Tab(triggerEl);
+            tab.show();
+            
+            carregarRadarDeCompras(); // Recarrega a tabela
+        } else {
+            alert("Erro ao salvar: " + result.mensagem);
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+async function marcarComoComprado(id) {
+    if(!confirm("Confirmar que este ativo já foi comprado? Ele sairá do radar.")) return;
+
+    try {
+        const resposta = await fetch(`/Carteiras/ConcluirPlanejamento?id=${id}`, { method: 'POST' });
+        const result = await resposta.json();
+
+        if (result.sucesso) {
+            const linha = document.getElementById(`plano-${id}`);
+            linha.style.transition = "opacity 0.5s";
+            linha.style.opacity = "0";
+            setTimeout(() => linha.remove(), 500); // Remove com animação suave
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
+    </script>
+                               

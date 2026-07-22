@@ -1736,6 +1736,66 @@ namespace Acoes_Fiis.Controllers
             return Json(new { sucesso = true, favorito = ativo.Favorito });
         }
 
+        [HttpGet]
+        public async Task<IActionResult> ObterPlanejamentosPendentes(string visao)
+        {
+            var planos = await _context.PlanejamentoCompras
+                .Where(p => p.Dono == visao && !p.Comprado)
+                .OrderByDescending(p => p.DataPlanejamento)
+                .Select(p => new
+                {
+                    id = p.Id,
+                    ticker = p.Ticker,
+                    quantidade = p.Quantidade,
+                    precoReferencia = p.PrecoReferencia,
+                    data = p.DataPlanejamento.ToString("dd/MM/yyyy"),
+                    total = (p.Quantidade * p.PrecoReferencia)
+                })
+                .ToListAsync();
+
+            return Json(planos);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> AdicionarPlanejamento(string ticker, int quantidade, string precoReferencia, string visao)
+        {
+            try
+            {
+                var cultureBR = new System.Globalization.CultureInfo("pt-BR");
+                decimal preco = decimal.Parse(precoReferencia.Replace("R$", "").Trim(), cultureBR);
+
+                var plano = new PlanejamentoCompra
+                {
+                    Ticker = ticker,
+                    Quantidade = quantidade,
+                    PrecoReferencia = preco,
+                    Dono = visao ?? "Gabriel"
+                };
+
+                _context.PlanejamentoCompras.Add(plano);
+                await _context.SaveChangesAsync();
+
+                return Json(new { sucesso = true });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { sucesso = false, mensagem = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ConcluirPlanejamento(int id)
+        {
+            var plano = await _context.PlanejamentoCompras.FindAsync(id);
+            if (plano != null)
+            {
+                plano.Comprado = true; // Marca como comprado
+                await _context.SaveChangesAsync();
+                return Json(new { sucesso = true });
+            }
+            return Json(new { sucesso = false });
+        }
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> SalvarMetasAlocacao(decimal percentualRF, decimal percentualFIIs, decimal percentualAcoes)

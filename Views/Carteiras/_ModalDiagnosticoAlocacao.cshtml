@@ -29,14 +29,16 @@
                         <div class="row g-3">
                             <div class="col-md-4 text-center">
                                 <div class="bg-white p-3 rounded-4 shadow-sm h-100">
-                                    <h6 class="fw-bold text-secondary mb-3">Ações por Setor</h6>
-                                    <canvas id="chartAcoesSetor"></canvas>
+                                    <h6 class="fw-bold text-secondary mb-0" id="tituloGraficoAcoes">Ações por Ticker</h6>
+                                    <small class="text-muted d-block mb-3" style="font-size: 0.7rem;">(Clique no gráfico para agrupar)</small>
+                                    <canvas id="chartAcoesSetor" style="cursor: pointer;"></canvas>
                                 </div>
                             </div>
                             <div class="col-md-4 text-center">
                                 <div class="bg-white p-3 rounded-4 shadow-sm h-100">
-                                    <h6 class="fw-bold text-secondary mb-3">FIIs por Segmento</h6>
-                                    <canvas id="chartFiisSegmento"></canvas>
+                                    <h6 class="fw-bold text-secondary mb-0" id="tituloGraficoFiis">FIIs por Ticker</h6>
+                                    <small class="text-muted d-block mb-3" style="font-size: 0.7rem;">(Clique no gráfico para agrupar)</small>
+                                    <canvas id="chartFiisSegmento" style="cursor: pointer;"></canvas>
                                 </div>
                             </div>
                             <div class="col-md-4 text-center">
@@ -196,14 +198,21 @@
 
     document.addEventListener("DOMContentLoaded", function () {
         @{
-                // 1. Criamos dicionários rápidos para descobrir a Categoria, Setor/Segmento e Nome real olhando o catálogo global do banco
                 var mapaAcoesBanco = (Model.ListaTickersAcoes ?? new List<Recomendacao>())
                         .DistinctBy(x => x.Ticker.ToUpper())
-                        .ToDictionary(x => x.Ticker.ToUpper(), x => string.IsNullOrEmpty(x.TipoAcao) ? "Outros" : x.TipoAcao);
+                        .ToDictionary(x => x.Ticker.ToUpper(), x => new
+                        {
+                                TipoAcao = string.IsNullOrEmpty(x.TipoAcao) ? "Outros" : x.TipoAcao,
+                                TipoAtivo = string.IsNullOrEmpty(x.TipoAtivo) ? "Outros" : x.TipoAtivo
+                        });
 
                 var mapaFiisBanco = (Model.ListaTickersFiis ?? new List<RecomendacaoFii>())
                         .DistinctBy(x => x.Ticker.ToUpper())
-                        .ToDictionary(x => x.Ticker.ToUpper(), x => string.IsNullOrEmpty(x.Segmento) ? "Outros" : x.Segmento);
+                        .ToDictionary(x => x.Ticker.ToUpper(), x => new
+                        {
+                                Segmento = string.IsNullOrEmpty(x.Segmento) ? "Outros" : x.Segmento,
+                                TipoFii = string.IsNullOrEmpty(x.TipoFii) ? "Outros" : x.TipoFii
+                        });
 
                 var mapaGeraisBanco = (Model.ListaTickersGerais ?? new List<AtivoGeral>())
                         .DistinctBy(x => x.Ticker.ToUpper())
@@ -213,7 +222,6 @@
                                 Nome = x.Nome
                         });
 
-                // 2. Processamos os itens REAIS da carteira (Agrupados por Ticker para matar qualquer duplicação física no banco)
                 var itensCarteiraConsolidados = Model.Itens
                         .Where(x => !string.IsNullOrEmpty(x.Ticker))
                         .GroupBy(x => x.Ticker.ToUpper())
@@ -223,17 +231,17 @@
                                 TickerExibicao = g.Key.Replace(".SA", "").Replace("-USD", "").Replace("=X", ""),
                                 ValorTotal = g.Sum(x => (decimal)x.Quantidade * x.PrecoMedio)
                         })
-                        .Where(x => x.ValorTotal > 0) // Só exibe no gráfico se tiver saldo financeiro real
+                        .Where(x => x.ValorTotal > 0)
                         .ToList();
 
-                // 3. SEPARAMOS OS ATIVOS DA CARTEIRA POR CATEGORIA REAL CONFORME O MAPEAMENTO DO CADASTRO
                 var acoesGrafico = itensCarteiraConsolidados
                         .Where(x => mapaAcoesBanco.ContainsKey(x.Ticker))
                         .Select(x => new
                         {
                                 x.TickerExibicao,
                                 x.ValorTotal,
-                                Setor = mapaAcoesBanco[x.Ticker]
+                                TipoAcao = mapaAcoesBanco[x.Ticker].TipoAcao,
+                                TipoAtivo = mapaAcoesBanco[x.Ticker].TipoAtivo
                         }).ToList();
 
                 var fiisGrafico = itensCarteiraConsolidados
@@ -242,7 +250,8 @@
                         {
                                 x.TickerExibicao,
                                 x.ValorTotal,
-                                Segmento = mapaFiisBanco[x.Ticker]
+                                Segmento = mapaFiisBanco[x.Ticker].Segmento,
+                                TipoFii = mapaFiisBanco[x.Ticker].TipoFii
                         }).ToList();
 
                 var geraisGrafico = itensCarteiraConsolidados
@@ -255,86 +264,175 @@
                                 Nome = mapaGeraisBanco[x.Ticker].Nome
                         }).ToList();
 
-                // Totais macro calculados por soma financeira pura das fatias reais
                 decimal totalFinanceiroAcoes = acoesGrafico.Sum(x => x.ValorTotal);
                 decimal totalFinanceiroFiis = fiisGrafico.Sum(x => x.ValorTotal);
                 decimal totalFinanceiroGerais = geraisGrafico.Sum(x => x.ValorTotal);
         }
 
-        // Paleta de cores estendida para evitar repetições excessivas de cores vizinhas
         const CORES_PALETA = ['#003366', '#fd7e14', '#20c997', '#6f42c1', '#336699', '#ffc107', '#e83e8c', '#6699cc', '#28a745', '#99ccff', '#dc3545', '#17a2b8', '#6c757d'];
 
-        // --- CHART 1: AÇÕES REAIS (SEM DUPLICADOS) ---
+        const dadosAcoes = @Html.Raw(Json.Serialize(acoesGrafico));
+        const dadosFiis = @Html.Raw(Json.Serialize(fiisGrafico));
+
+        let estadoAcoes = 0;
+        const titulosAcoes = ['Ações por Ticker', 'Ações por TipoAção', 'Ações por TipoAtivo'];
+
+        let estadoFiis = 0;
+        const titulosFiis = ['FIIs por Ticker', 'FIIs por Segmento', 'FIIs por TipoFii'];
+
+        function agruparDados(dados, propriedadeAgrupamento) {
+            let mapa = {};
+            dados.forEach(item => {
+                let chave = item[propriedadeAgrupamento] || 'Outros';
+                if (!mapa[chave]) mapa[chave] = 0;
+                mapa[chave] += item.valorTotal;
+            });
+            return {
+                labels: Object.keys(mapa),
+                data: Object.values(mapa)
+            };
+        }
+
+        // ==========================================
+        // MÁGICA DO TOOLTIP (MOSTRA OS ATIVOS DENTRO DA FATIA)
+        // ==========================================
+        const tooltipCallbacks = {
+            label: function(context) {
+                let label = context.label || '';
+                let valor = parseFloat(context.raw) || 0;
+                let total = context.chart.data.datasets[0].data.reduce((sum, val) => sum + parseFloat(val), 0);
+                let percentage = total > 0 ? ((valor / total) * 100).toFixed(1) : 0;
+                return ` ${label}: R$ ${valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})} (${percentage}%)`;
+            },
+            footer: function(tooltipItems) {
+                let chart = tooltipItems[0].chart;
+                let estado = chart.customState;
+
+                // Se o estado for 0 (Visão Ticker normal), não precisa mostrar nada no rodapé
+                if (!estado || estado === 0) return null;
+
+                let labelFatia = tooltipItems[0].label;
+                let propDeFiltro = chart.customProp;
+                let dadosBrutos = chart.customRawData;
+
+                // Filtra quais ações ou FIIs fazem parte deste agrupamento
+                let tickersNaFatia = dadosBrutos
+                    .filter(x => (x[propDeFiltro] || 'Outros') === labelFatia)
+                    .map(x => x.tickerExibicao);
+
+                // Se a lista for muito grande, quebramos em linhas para não estourar a tela
+                let linhas = ['', '📌 Ativos nesta fatia:'];
+                let linhaAtual = [];
+                for(let i = 0; i < tickersNaFatia.length; i++) {
+                    linhaAtual.push(tickersNaFatia[i]);
+                    if (linhaAtual.length === 4 || i === tickersNaFatia.length - 1) {
+                        linhas.push('   ' + linhaAtual.join(', '));
+                        linhaAtual = [];
+                    }
+                }
+                return linhas;
+            }
+        };
+
+        const configTooltip = {
+            callbacks: tooltipCallbacks,
+            footerFont: { style: 'italic', weight: 'normal', size: 11 },
+            footerColor: '#ced4da',
+            padding: 12
+        };
+
+        // ==========================================
+        // CHART 1: AÇÕES
+        // ==========================================
         const ctxAcoes = document.getElementById('chartAcoesSetor').getContext('2d');
-        new Chart(ctxAcoes, {
+        const graficoAcoes = new Chart(ctxAcoes, {
             type: 'doughnut',
             data: {
-                labels: @Html.Raw(Json.Serialize(acoesGrafico.Select(x => x.TickerExibicao))),
+                labels: dadosAcoes.map(x => x.tickerExibicao),
                 datasets: [{
-                    data: @Html.Raw(Json.Serialize(acoesGrafico.Select(x => x.ValorTotal.ToString(System.Globalization.CultureInfo.InvariantCulture)))),
-                    backgroundColor: CORES_PALETA,
-                    setores: @Html.Raw(Json.Serialize(acoesGrafico.Select(x => x.Setor)))
+                    data: dadosAcoes.map(x => x.valorTotal),
+                    backgroundColor: CORES_PALETA
                 }]
             },
             options: {
                 responsive: true,
-                plugins: {
-                    legend: { position: 'bottom' },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                let ticker = context.label;
-                                let valor = parseFloat(context.raw) || 0;
-                                let dataset = context.dataset;
-                                let setor = dataset.setores[context.dataIndex];
+                plugins: { legend: { position: 'bottom' }, tooltip: configTooltip },
+                onClick: (event, elements, chart) => {
+                    estadoAcoes = (estadoAcoes + 1) % 3;
+                    let prop = '';
+                    let novoAgrupamento;
 
-                                let totalAcoes = dataset.data.reduce((sum, val) => sum + parseFloat(val), 0);
-                                let percentual = totalAcoes > 0 ? ((valor / totalAcoes) * 100).toFixed(1) : 0;
-
-                                return ` [${setor}] ${ticker}: R$ ${valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})} (${percentual}%)`;
-                            }
-                        }
+                    if (estadoAcoes === 0) {
+                        novoAgrupamento = { labels: dadosAcoes.map(x => x.tickerExibicao), data: dadosAcoes.map(x => x.valorTotal) };
+                    } else if (estadoAcoes === 1) {
+                        prop = 'tipoAcao';
+                        novoAgrupamento = agruparDados(dadosAcoes, prop);
+                    } else if (estadoAcoes === 2) {
+                        prop = 'tipoAtivo';
+                        novoAgrupamento = agruparDados(dadosAcoes, prop);
                     }
+
+                    // Guarda informações no próprio gráfico para o tooltip conseguir ler
+                    chart.customState = estadoAcoes;
+                    chart.customProp = prop;
+                    chart.customRawData = dadosAcoes;
+
+                    chart.data.labels = novoAgrupamento.labels;
+                    chart.data.datasets[0].data = novoAgrupamento.data;
+                    document.getElementById('tituloGraficoAcoes').innerText = titulosAcoes[estadoAcoes];
+                    chart.update();
                 }
             }
         });
+        graficoAcoes.customState = 0; // Inicia sem agrupamento
 
-        // --- CHART 2: FIIS REAIS (SEM DUPLICADOS) ---
+        // ==========================================
+        // CHART 2: FIIs
+        // ==========================================
         const ctxFiis = document.getElementById('chartFiisSegmento').getContext('2d');
-        new Chart(ctxFiis, {
+        const graficoFiis = new Chart(ctxFiis, {
             type: 'doughnut',
             data: {
-                labels: @Html.Raw(Json.Serialize(fiisGrafico.Select(x => x.TickerExibicao))),
+                labels: dadosFiis.map(x => x.tickerExibicao),
                 datasets: [{
-                    data: @Html.Raw(Json.Serialize(fiisGrafico.Select(x => x.ValorTotal.ToString(System.Globalization.CultureInfo.InvariantCulture)))),
-                    backgroundColor: [...CORES_PALETA].reverse(), // Inverte a paleta para dar contraste visual
-                    segmentos: @Html.Raw(Json.Serialize(fiisGrafico.Select(x => x.Segmento)))
+                    data: dadosFiis.map(x => x.valorTotal),
+                    backgroundColor: [...CORES_PALETA].reverse()
                 }]
             },
             options: {
                 responsive: true,
-                plugins: {
-                    legend: { position: 'bottom' },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                let ticker = context.label;
-                                let valor = parseFloat(context.raw) || 0;
-                                let dataset = context.dataset;
-                                let segmento = dataset.segmentos[context.dataIndex];
+                plugins: { legend: { position: 'bottom' }, tooltip: configTooltip },
+                onClick: (event, elements, chart) => {
+                    estadoFiis = (estadoFiis + 1) % 3;
+                    let prop = '';
+                    let novoAgrupamento;
 
-                                let totalFiis = dataset.data.reduce((sum, val) => sum + parseFloat(val), 0);
-                                let percentual = totalFiis > 0 ? ((valor / totalFiis) * 100).toFixed(1) : 0;
-
-                                return ` [${segmento}] ${ticker}: R$ ${valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})} (${percentual}%)`;
-                            }
-                        }
+                    if (estadoFiis === 0) {
+                        novoAgrupamento = { labels: dadosFiis.map(x => x.tickerExibicao), data: dadosFiis.map(x => x.valorTotal) };
+                    } else if (estadoFiis === 1) {
+                        prop = 'segmento';
+                        novoAgrupamento = agruparDados(dadosFiis, prop);
+                    } else if (estadoFiis === 2) {
+                        prop = 'tipoFii';
+                        novoAgrupamento = agruparDados(dadosFiis, prop);
                     }
+
+                    chart.customState = estadoFiis;
+                    chart.customProp = prop;
+                    chart.customRawData = dadosFiis;
+
+                    chart.data.labels = novoAgrupamento.labels;
+                    chart.data.datasets[0].data = novoAgrupamento.data;
+                    document.getElementById('tituloGraficoFiis').innerText = titulosFiis[estadoFiis];
+                    chart.update();
                 }
             }
         });
+        graficoFiis.customState = 0; // Inicia sem agrupamento
 
-        // --- CHART 3: ATIVOS GERAIS REAIS (SEM DUPLICADOS) ---
+        // ==========================================
+        // CHART 3 e 4 (Gerais e Consolidado permanecem iguais)
+        // ==========================================
         const ctxGerais = document.getElementById('chartGeraisClasse').getContext('2d');
         new Chart(ctxGerais, {
             type: 'doughnut',
@@ -342,36 +440,15 @@
                 labels: @Html.Raw(Json.Serialize(geraisGrafico.Select(x => x.TickerExibicao))),
                 datasets: [{
                     data: @Html.Raw(Json.Serialize(geraisGrafico.Select(x => x.ValorTotal.ToString(System.Globalization.CultureInfo.InvariantCulture)))),
-                    backgroundColor: CORES_PALETA.slice(3),
-                    classes: @Html.Raw(Json.Serialize(geraisGrafico.Select(x => x.Classe))),
-                    nomes: @Html.Raw(Json.Serialize(geraisGrafico.Select(x => x.Nome)))
+                    backgroundColor: CORES_PALETA.slice(3)
                 }]
             },
             options: {
                 responsive: true,
-                plugins: {
-                    legend: { position: 'bottom' },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                let ticker = context.label;
-                                let valor = parseFloat(context.raw) || 0;
-                                let dataset = context.dataset;
-                                let classe = dataset.classes[context.dataIndex];
-                                let nomeCompleto = dataset.nomes[context.dataIndex];
-
-                                let totalGerais = dataset.data.reduce((sum, val) => sum + parseFloat(val), 0);
-                                let percentual = totalGerais > 0 ? ((valor / totalGerais) * 100).toFixed(1) : 0;
-
-                                return ` [${classe}] ${ticker} - ${nomeCompleto}: R$ ${valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})} (${percentual}%)`;
-                            }
-                        }
-                    }
-                }
+                plugins: { legend: { position: 'bottom' }, tooltip: configTooltip }
             }
         });
 
-        // --- CHART 4: CONSOLIDADO MACRO FINANCEIRO ---
         const ctxConsolidado = document.getElementById('chartCarteiraConsolidado').getContext('2d');
         new Chart(ctxConsolidado, {
             type: 'doughnut',
@@ -388,22 +465,7 @@
             },
             options: {
                 responsive: true,
-                plugins: {
-                    legend: { position: 'bottom' },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                let label = context.label || '';
-                                let value = parseFloat(context.raw) || 0;
-                                let dataset = context.chart.data.datasets[0];
-                                let total = dataset.data.reduce((sum, val) => sum + parseFloat(val), 0);
-                                let percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-
-                                return `${label}: R$ ${value.toLocaleString('pt-BR', {minimumFractionDigits: 2})} (${percentage}%)`;
-                            }
-                        }
-                    }
-                }
+                plugins: { legend: { position: 'bottom' }, tooltip: configTooltip }
             }
         });
     });

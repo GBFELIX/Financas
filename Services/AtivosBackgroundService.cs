@@ -30,7 +30,7 @@ public class AtivosBackgroundService : BackgroundService
                     var acoes = await context.Recomendacao.ToListAsync(stoppingToken);
                     foreach (var item in acoes)
                     {
-                        if (item.DataAtualizacao > DateTime.Now.AddMinutes(-1440)) continue;
+                        if (item.DataAtualizacao > DateTime.Now.AddMinutes(-500)) continue;
 
                         try
                         {
@@ -66,7 +66,7 @@ public class AtivosBackgroundService : BackgroundService
                     var fiis = await context.RecomendacaoFii.ToListAsync(stoppingToken);
                     foreach (var item in fiis)
                     {
-                        if (item.DataAtualizacao > DateTime.Now.AddMinutes(-1440)) continue;
+                        if (item.DataAtualizacao > DateTime.Now.AddMinutes(-500)) continue;
 
                         try
                         {
@@ -101,7 +101,7 @@ public class AtivosBackgroundService : BackgroundService
 
                     foreach (var item in outros)
                     {
-                        if (item.DataAtualizacao > DateTime.Now.AddMinutes(-1440)) continue;
+                        if (item.DataAtualizacao > DateTime.Now.AddMinutes(-500)) continue;
 
                         try
                         {
@@ -137,7 +137,6 @@ public class AtivosBackgroundService : BackgroundService
                         }
                     }
 
-                    // Salva em lote todas as cotações atualizadas e convertidas com segurança
                     await context.SaveChangesAsync(stoppingToken);
                 }
             }
