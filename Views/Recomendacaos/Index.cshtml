@@ -238,7 +238,9 @@
                         @foreach (var item in grupo)
                         {
                             <tr>
-                                <td class="ps-4 fw-bold text-primary sticky-col">@item.Ticker.ToUpper()</td>
+                                <td class="ps-4 fw-bold text-primary sticky-col" title="@item.Nome" style="cursor: help;">
+                                    @item.Ticker.ToUpper()
+                                </td>
                                 <td><span class="text-nowrap">R$ @item.PrecoAtual.ToString("N2")</span></td>
                                 <td class="text-muted">@item.PVP.ToString("N2")</td>
                                 <td class="text-muted">@(item.PL == 0 ? "N/A" : item.PL.ToString("N2"))</td>

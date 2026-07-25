@@ -159,7 +159,10 @@
 
                 <div class="card-body text-center p-4">
                     <h6 class="text-uppercase small fw-bold opacity-75">Rendimentos do Mês</h6>
-                    <h2 class="mb-1 fw-bold">R$ @Model.RendaMensalTotalConsolidada.ToString("N2")</h2>
+                    <h6 class="text-uppercase small fw-bold opacity-75">Fixa / Variável</h6>
+                    <h2 class="mb-1 fw-bold">
+                        R$ @((Model.RendaMensalTotalConsolidada - Model.TotalRendaMensalEstimada).ToString("N2")) - R$ @(Model.TotalRendaMensalEstimada.ToString("N2"))
+                    </h2>
                     <div class="mt-2 pt-2 border-top border-white border-opacity-25">
                         <small class="d-block">Ganhos (Mês): <span class="fw-bold">R$ @(Model.EntradasMesCorrente.ToString("N2"))</span></small>
                     </div>
@@ -185,8 +188,8 @@
 
                 <div class="card-body text-center d-flex flex-column justify-content-between py-3">
                     <div>
-                        <h6 class="text-uppercase small fw-bold opacity-75 mb-1">Projeção Anual (Proventos)</h6>
-                        <h3 class="mb-0 fw-bold">R$ @Model.ProventoAnualEstimado.ToString("N2")</h3>
+                        <h6 class="text-uppercase small fw-bold opacity-75 mb-1">Proventos</h6>
+                        <h3 class="mb-0 fw-bold">R$ @Model.RendaMensalTotalConsolidada.ToString("N2")</h3>
                     </div>
 
                     <div class="mt-2 pt-2 border-top border-dark border-opacity-10">
@@ -377,7 +380,7 @@
                             <td class="fw-bold @(item.Favorito ? "text-warning" : "text-primary")"
                                 style="cursor: pointer; transition: color 0.3s;"
                                 onclick="alternarFavorito(@item.Id, this)"
-                                title="Clique para favoritar/desfavoritar">
+                                title="Clique para favoritar/desfavoritar @Model.ListaTickersAcoes.FirstOrDefault(x => x.Ticker == item.Ticker)?.Nome">
                                 <i class="bi @(item.Favorito ? "bi-star-fill" : "bi-star text-muted opacity-50") me-1" id="icone-star-@item.Id"></i>
                                     @item.Ticker
                                 </td>

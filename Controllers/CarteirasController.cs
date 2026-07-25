@@ -209,7 +209,7 @@ namespace Acoes_Fiis.Controllers
 
             var listaMetas = ViewBag.MetasAlocacaoLista as List<MetaAlocacao>;
 
-            if (patrimonioTotal > 0 && listaMetas != null && listaMetas.Count >= 3)
+            if (patrimonioTotal > 0 && listaMetas != null)
             {
                 viewModel.PercentualAtualRendaFixa = (double)((viewModel.TotalInvestidoRendaFixa / patrimonioTotal) * 100);
                 viewModel.PercentualAtualFiis = (double)((totalAcumuladoFiis / patrimonioTotal) * 100);

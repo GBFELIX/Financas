@@ -275,10 +275,10 @@
         const dadosFiis = @Html.Raw(Json.Serialize(fiisGrafico));
 
         let estadoAcoes = 0;
-        const titulosAcoes = ['Ações por Ticker', 'Ações por TipoAção', 'Ações por TipoAtivo'];
+        const titulosAcoes = ['Ações por Ticker', 'Ações por Tipo de Ação', 'Ações por Tipo de Ativo'];
 
         let estadoFiis = 0;
-        const titulosFiis = ['FIIs por Ticker', 'FIIs por Segmento', 'FIIs por TipoFii'];
+        const titulosFiis = ['FIIs por Ticker', 'FIIs por Segmento', 'FIIs por Tipo de Fii'];
 
         function agruparDados(dados, propriedadeAgrupamento) {
             let mapa = {};
