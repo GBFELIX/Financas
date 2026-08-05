@@ -132,7 +132,23 @@ namespace Acoes_Fiis.Models
         public string Recomendacao { get; set; } = string.Empty;
         public string CorBadge { get; set; } = string.Empty;
         public decimal UltimoRendimento { get; set; }
-        public decimal ProventoMensalEstimado => Quantidade * UltimoRendimento;
+        public decimal ProventoMensalEstimado
+        {
+            get
+            {
+                if (TipoAtivo == "Acao" || TipoAtivo == "Dividendos" || TipoAtivo == "Setor Perene" || TipoAtivo == "Crescimento")
+                {
+                    if (DividendYield > 0)
+                    {
+                        decimal valorAtualTotal = PrecoAtual * Quantidade;
+
+                        return (valorAtualTotal * (DividendYield / 100m)) / 12m;
+                    }
+                    return 0;
+                }
+                return Quantidade * UltimoRendimento;
+            }
+        }
 
         public decimal ValorAtual
         {

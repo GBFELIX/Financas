@@ -10,11 +10,11 @@ using static System.Runtime.InteropServices.JavaScript.JSType;
 //AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddDbContext<Acoes_FiisContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("acoes_fiiscontext") ?? throw new InvalidOperationException("connection string 'acoes_fiiscontext' not found.")));
-
 //builder.Services.AddDbContext<Acoes_FiisContext>(options =>
-//    options.UseSqlite("Data Source=Planejamento.db"));
+//    options.UseSqlServer(builder.Configuration.GetConnectionString("acoes_fiiscontext") ?? throw new InvalidOperationException("connection string 'acoes_fiiscontext' not found.")));
+
+builder.Services.AddDbContext<Acoes_FiisContext>(options =>
+    options.UseSqlite("Data Source=Planejamento.db"));
 
 //builder.Services.AddDbContext<Acoes_FiisContext>(options =>
 //    options.UseNpgsql(builder.Configuration.GetConnectionString("Acoes_FiisContext")));
@@ -38,19 +38,19 @@ var localizationOptions = new RequestLocalizationOptions
 
 var app = builder.Build();
 
-//using (var scope = app.Services.CreateScope())
-//{
-//    var services = scope.ServiceProvider;
-//    try
-//    {
-//        var context = services.GetRequiredService<Acoes_FiisContext>();
-//        context.Database.Migrate();
-//    }
-//    catch (Exception ex)
-//    {
-//        Console.WriteLine("Erro ao criar/atualizar banco SQLite: " + ex.Message);
-//    }
-//}
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<Acoes_FiisContext>();
+        context.Database.Migrate();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine("Erro ao criar/atualizar banco SQLite: " + ex.Message);
+    }
+}
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())

@@ -29,7 +29,7 @@
 
                     <div class="tab-pane fade show active" id="carteira" role="tabpanel">
                         <p class="small text-muted mb-3">
-                            Simule sua carteira de FIIs atual ou busque novos ativos da base para projetar seu capital e renda.
+                            Simule sua carteira de FIIs e Ações ou busque novos ativos da base para projetar seu capital e renda.
                         </p>
 
                         <div class="row g-3 mb-3 pb-3 border-bottom">
@@ -42,6 +42,36 @@
                                 </div>
                                 <div>
                                     <select id="selectModalTickerSim" class="form-select form-select-sm shadow-sm" size="5">
+
+                                        <!-- LISTA DE AÇÕES COM CÁLCULO DE DY MENSAL INLINE -->
+                                        @if (Model.ListaTickersAcoes != null)
+                                        {
+                                            @foreach (var grupoAcao in Model.ListaTickersAcoes.DistinctBy(x => x.Ticker).GroupBy(x => x.TipoAcao))
+                                            {
+                                                <optgroup label="Ações - @grupoAcao.Key">
+                                                    @foreach (var item in grupoAcao)
+                                                    {
+                                                        decimal divMensalAcao = 0m;
+                                                        if (item.DividendYield > 0 && item.DividendYield <= 20.0m)
+                                                        {
+                                                            divMensalAcao = (item.PrecoAtual * (item.DividendYield / 100m)) / 12m;
+                                                        }
+
+                                                        <option value="@item.Ticker.Replace(".SA", "")"
+                                                                data-search="@item.Ticker.ToUpper()"
+                                                                data-preco="@(item.PrecoAtual.ToString("F2", System.Globalization.CultureInfo.InvariantCulture))"
+                                                                data-div="@(divMensalAcao.ToString("F2", System.Globalization.CultureInfo.InvariantCulture))">
+                                                            @{
+                                                                string emojiTipo = item.TipoAtivo switch { "Setor Perene" => "🏦", "Dividendos" => "💰", "Crescimento" => "🚀", _ => "❓" };
+                                                            }
+                                                            @emojiTipo @item.Ticker.Replace(".SA", "")
+                                                        </option>
+                                                    }
+                                                </optgroup>
+                                            }
+                                        }
+
+                                        <!-- LISTA DE FIIS -->
                                         @if (Model.ListaTickersFiis != null)
                                         {
                                             @foreach (var grupoFii in Model.ListaTickersFiis.DistinctBy(x => x.Ticker).GroupBy(x => x.Segmento))
@@ -62,23 +92,8 @@
                                                 </optgroup>
                                             }
                                         }
-                                        @* @if (Model.ListaTickersAcoes != null)
-                                        {
-                                            @foreach (var grupoAcao in Model.ListaTickersAcoes.DistinctBy(x => x.Ticker).GroupBy(x => x.TipoAcao))
-                                            {
-                                                <optgroup label="Ações - @grupoAcao.Key">
-                                                    @foreach (var item in grupoAcao)
-                                                    {
-                                                        <option value="@item.Ticker.Replace(".SA", "")" data-search="@item.Ticker.ToUpper()">
-                                                            @{
-                                                                string emojiTipo = item.TipoAtivo switch { "Setor Perene" => "🏦", "Dividendos" => "💰", "Crescimento" => "🚀", _ => "❓" };
-                                                            }
-                                                            @emojiTipo @item.Ticker.Replace(".SA", "")
-                                                        </option>
-                                                    }
-                                                </optgroup>
-                                            }
-                                        }
+
+                                        <!-- LISTA DE ATIVOS GERAIS (Sem dividendos projetados) -->
                                         @if (Model.ListaTickersGerais != null)
                                         {
                                             @foreach (var grupoGeral in Model.ListaTickersGerais.DistinctBy(x => x.Ticker).GroupBy(x => x.ClasseAtivo))
@@ -88,13 +103,16 @@
                                                     @foreach (var item in grupoGeral)
                                                     {
                                                         var textoExibicao = item.Ticker.Replace(".SA", "").Replace("-USD", "").Replace("=X", "");
-                                                        <option value="@textoExibicao" data-search="@item.Ticker.ToUpper() @item.Nome.ToUpper()">
+                                                        <option value="@textoExibicao"
+                                                                data-search="@item.Ticker.ToUpper() @item.Nome.ToUpper()"
+                                                                data-preco="@(item.PrecoAtual.ToString("F2", System.Globalization.CultureInfo.InvariantCulture))"
+                                                                data-div="0.00">
                                                             @emoji @textoExibicao - @item.Nome
                                                         </option>
                                                     }
                                                 </optgroup>
                                             }
-                                        } *@
+                                        }
                                     </select>
                                 </div>
                             </div>
@@ -118,7 +136,7 @@
                                         <input type="number" id="novoDiv" class="form-control form-control-sm border-secondary-subtle text-success" placeholder="0,00" step="0.01">
                                     </div>
                                     <div class="col-12 mt-2">
-                                        <button type="button" id="btnAdicionarFii" class="btn btn-sm btn-success w-100 fw-bold shadow-sm">
+                                        <button type="button" id="btnAdicionarAtivo" class="btn btn-sm btn-success w-100 fw-bold shadow-sm">
                                             <i class="bi bi-plus-circle-fill me-1"></i>Adicionar Ativo ao Simulador
                                         </button>
                                     </div>
@@ -127,7 +145,7 @@
                         </div>
 
                         <div class="table-responsive mb-3" style="max-height: 250px; overflow-y: auto;">
-                            <table class="table table-hover table-sm align-middle" id="tabelaFiisSimulador">
+                            <table class="table table-hover table-sm align-middle" id="tabelaAtivosSimulador">
                                 <thead class="table-light sticky-top">
                                     <tr>
                                         <th>Ativo</th>
@@ -142,8 +160,21 @@
                                 <tbody>
                                     @if (Model.Itens != null)
                                     {
-                                        foreach (var item in Model.Itens.Where(x => x.TipoAtivo != null && x.TipoAtivo.Equals("Fii", StringComparison.OrdinalIgnoreCase)))
+                                        // Filtra tanto FIIs quanto Ações para aparecerem juntos
+                                        foreach (var item in Model.Itens.Where(x => x.TipoAtivo != null && (x.TipoAtivo.Equals("Fii", StringComparison.OrdinalIgnoreCase) || x.TipoAtivo.Equals("Acao", StringComparison.OrdinalIgnoreCase))))
                                         {
+                                            decimal divMensalCalculado = 0m;
+
+                                            // Aplica a mesma regra matemática aqui no load inicial da carteira
+                                            if (item.TipoAtivo.Equals("Acao", StringComparison.OrdinalIgnoreCase) && item.DividendYield > 0 && item.DividendYield <= 20.0m)
+                                            {
+                                                divMensalCalculado = (item.PrecoAtual * (item.DividendYield / 100m)) / 12m;
+                                            }
+                                            else
+                                            {
+                                                divMensalCalculado = item.UltimoRendimento;
+                                            }
+
                                             <tr>
                                                 <td class="fw-bold text-uppercase">@item.Ticker</td>
                                                 <td>
@@ -153,12 +184,12 @@
                                                     <input type="number" class="form-control form-control-sm sim-preco border-secondary-subtle" value="@item.PrecoAtual.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)" step="0.01">
                                                 </td>
                                                 <td>
-                                                    <input type="number" class="form-control form-control-sm sim-div border-secondary-subtle text-success" value="@item.UltimoRendimento.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)" step="0.01">
+                                                    <input type="number" class="form-control form-control-sm sim-div border-secondary-subtle text-success" value="@divMensalCalculado.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)" step="0.01">
                                                 </td>
                                                 <td class="fw-bold sim-subtotal-capital">R$ 0,00</td>
                                                 <td class="fw-bold text-success sim-subtotal-rendimento">R$ 0,00</td>
                                                 <td class="text-center">
-                                                    <button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remover-fii"><i class="bi bi-trash"></i></button>
+                                                    <button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remover-ativo"><i class="bi bi-trash"></i></button>
                                                 </td>
                                             </tr>
                                         }
@@ -237,7 +268,6 @@
 </div>
 
 <script>
-    // Função global de filtro para o select interno do simulador
     function filtrarTickersSimulador() {
         const input = document.getElementById('inputFiltroTickerSim');
         const filter = input.value.toUpperCase();
@@ -269,7 +299,7 @@
 
     document.addEventListener("DOMContentLoaded", function () {
 
-        const tbodyFiis = document.querySelector("#tabelaFiisSimulador tbody");
+        const tbodyAtivos = document.querySelector("#tabelaAtivosSimulador tbody");
         const resRendimentoTotal = document.getElementById("resRendimentoTotal");
         const resCapitalTotalCarteira = document.getElementById("resCapitalTotalCarteira");
 
@@ -279,13 +309,11 @@
         const inputDiv = document.getElementById("novoDiv");
         const inputQtd = document.getElementById("novaQtd");
 
-        // Elementos da Aba de Projeção
         const inputAporte = document.getElementById("simAporteMensal");
         const lblCapitalBase = document.getElementById("lblCapitalInicialBase");
         const lblTaxaMedia = document.getElementById("lblTaxaMedia");
         const tbodyProjecao = document.querySelector("#tabelaProjecaoCrescimento tbody");
 
-        // Variáveis globais de controle de cálculo entre abas
         let atualCapitalTotal = 0;
         let atualRendimentoTotal = 0;
 
@@ -301,7 +329,6 @@
             }
         });
 
-        // Executa a projeção com base nos dados gerados na Aba 1
         function calcularProjecao12Meses() {
             const aporteMensal = parseFloat(inputAporte.value) || 0;
             tbodyProjecao.innerHTML = "";
@@ -350,7 +377,7 @@
         function calcularCarteira() {
             let totalMensalRendimento = 0;
             let totalCapital = 0;
-            const linhas = tbodyFiis.querySelectorAll("tr");
+            const linhas = tbodyAtivos.querySelectorAll("tr");
 
             linhas.forEach(linha => {
                 const qtdInput = linha.querySelector(".sim-qtd");
@@ -377,7 +404,6 @@
             resCapitalTotalCarteira.innerText = totalCapital.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
             resRendimentoTotal.innerText = totalMensalRendimento.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-            // Alimenta as variáveis globais e dispara a projeção da outra aba em cadeia
             atualCapitalTotal = totalCapital;
             atualRendimentoTotal = totalMensalRendimento;
 
@@ -386,7 +412,7 @@
 
         function anexarEventosLinha(linha) {
             const inputs = linha.querySelectorAll("input[type='number']");
-            const btnRemover = linha.querySelector(".btn-remover-fii");
+            const btnRemover = linha.querySelector(".btn-remover-ativo");
 
             inputs.forEach(input => input.addEventListener("input", calcularCarteira));
 
@@ -396,8 +422,7 @@
             });
         }
 
-        // Adicionar novo FII na simulação
-        document.getElementById("btnAdicionarFii").addEventListener("click", function() {
+        document.getElementById("btnAdicionarAtivo").addEventListener("click", function() {
             const ticker = inputTicker.value.toUpperCase() || "NOVO ATIVO";
             const qtd = inputQtd.value || 1;
             const preco = inputPreco.value || 0;
@@ -412,11 +437,11 @@
                 <td class="fw-bold sim-subtotal-capital">R$ 0,00</td>
                 <td class="fw-bold text-success sim-subtotal-rendimento">R$ 0,00</td>
                 <td class="text-center">
-                    <button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remover-fii"><i class="bi bi-trash"></i></button>
+                    <button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remover-ativo"><i class="bi bi-trash"></i></button>
                 </td>
             `;
 
-            tbodyFiis.appendChild(tr);
+            tbodyAtivos.appendChild(tr);
             anexarEventosLinha(tr);
             calcularCarteira();
 
@@ -427,13 +452,11 @@
             selectAtivo.value = "";
         });
 
-        // Escuta modificações no campo de Aporte Mensal na Aba 2 para recalcular a projeção na hora
         inputAporte.addEventListener("input", calcularProjecao12Meses);
 
-        tbodyFiis.querySelectorAll("tr").forEach(anexarEventosLinha);
+        tbodyAtivos.querySelectorAll("tr").forEach(anexarEventosLinha);
         calcularCarteira();
 
-        // Estilização das Abas
         const tabs = document.querySelectorAll('#simuladorTabs .nav-link');
         tabs.forEach(tab => {
             tab.addEventListener('show.bs.tab', function(event) {
