@@ -39,7 +39,7 @@
                         </div>
                     </div>
 
-                    <form asp-action="Delete">
+                    <form asp-action="Delete" asp-route-visao="@ViewBag.VisaoAtual">
                         <input type="hidden" asp-for="Id" />
 
                         <div class="d-grid gap-2">

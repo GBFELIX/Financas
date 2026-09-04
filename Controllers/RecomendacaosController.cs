@@ -108,17 +108,14 @@ namespace Acoes_Fiis.Controllers
 
             await _context.SaveChangesAsync();
 
-            // Mensagem de feedback personalizada
             TempData["Sucesso"] = $"{atualizados} ativos atualizados. {pulados} mantidos (atualizados recentemente).";
 
             return RedirectToAction(nameof(Index), new { filtroTipo = filtroTipo });
         }
-        // GET: Recomendacaos
         public async Task<IActionResult> Index(string filtroTipo)
         {
             var query = _context.Recomendacao.AsQueryable();
 
-            // 2. Aplica a lógica do filtro se houver parâmetro
             if (!string.IsNullOrEmpty(filtroTipo))
             {
                 query = query.Where(s => s.TipoAtivo == filtroTipo);

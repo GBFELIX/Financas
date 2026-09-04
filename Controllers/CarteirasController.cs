@@ -878,6 +878,82 @@ namespace Acoes_Fiis.Controllers
             return RedirectToAction("Index", new { visao = visao });
         }
 
+        #region Processar Carrinho
+
+        [HttpPost]
+        public async Task<IActionResult> ProcessarCarrinho([FromBody] List<ItemCarrinho> carrinho, [FromQuery] string visao)
+        {
+            if (string.IsNullOrEmpty(visao)) visao = "Gabriel";
+            if (carrinho == null || !carrinho.Any()) return BadRequest("Carrinho vazio");
+
+            DateTime dataHoje = DateTime.Now;
+
+            foreach (var item in carrinho)
+            {
+                var ativo = await _context.Carteira.FindAsync(item.Id);
+                if (ativo == null) continue;
+
+                decimal precoExecucao = 0;
+
+                if (ativo.TipoAtivo == "Fii")
+                {
+                    precoExecucao = await _context.RecomendacaoFii.AsNoTracking()
+                        .Where(x => x.Ticker == ativo.Ticker)
+                        .Select(x => x.PrecoAtual)
+                        .FirstOrDefaultAsync();
+                }
+                else if (ativo.TipoAtivo == "Acao")
+                {
+                    precoExecucao = await _context.Recomendacao.AsNoTracking()
+                        .Where(x => x.Ticker == ativo.Ticker)
+                        .Select(x => x.PrecoAtual)
+                        .FirstOrDefaultAsync();
+                }
+
+                if (precoExecucao == 0) precoExecucao = ativo.PrecoMedio;
+
+                decimal valorTotalAporte = item.Quantidade * precoExecucao;
+                decimal custoTotalAntigo = ativo.Quantidade * ativo.PrecoMedio;
+
+                ativo.Quantidade += item.Quantidade;
+                ativo.PrecoMedio = ativo.Quantidade > 0
+                    ? (custoTotalAntigo + valorTotalAporte) / ativo.Quantidade
+                    : precoExecucao;
+
+                _context.Update(ativo);
+
+                // Registro Histórico
+                _context.HistoricoAtivos.Add(new HistoricoAtivo
+                {
+                    Ticker = ativo.Ticker,
+                    TipoOperacao = "Compra",
+                    Quantidade = item.Quantidade,
+                    PrecoUnidade = precoExecucao,
+                    DataOperacao = dataHoje,
+                    Dono = ativo.Dono
+                });
+
+                // Lançamento Financeiro
+                _context.Financeiro.Add(new Financeiro
+                {
+                    Descricao = $"Compra de Ativo - {ativo.Ticker} ({item.Quantidade} un)",
+                    Valor = Math.Round(valorTotalAporte, 2),
+                    Data = dataHoje,
+                    Tipo = "Despesa",
+                    Categoria = "Investimento",
+                    Pagamento = "Pix",
+                    Dono = ativo.Dono
+                });
+            }
+
+            // Salva todas as alterações no banco (Transaction implícita do EF Core)
+            await _context.SaveChangesAsync();
+
+            return Ok(new { mensagem = "Compras registradas com sucesso!" });
+        }
+
+        #endregion
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ExcluirHistoricoAjax(int id)

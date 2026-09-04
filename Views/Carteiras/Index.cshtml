@@ -17,7 +17,15 @@
 
             <div class="d-flex align-items-center gap-2">
 
-                <div class="btn-group">
+                    <div class="btn-group">
+
+                    <button type="button" class="btn btn-sm btn-danger d-inline-flex align-items-center gap-2 rounded-pill px-3 py-2 fw-bold shadow-sm me-2" data-bs-toggle="modal" data-bs-target="#modalCarrinho">
+                        <i class="bi bi-cart-fill"></i>
+                        Carrinho
+                        <span id="cartCount" class="badge bg-light text-success rounded-pill px-2">0</span>
+                        <span class="border-start border-light-subtle ps-2" id="cartTotalHeader">R$ 0,00</span>
+                    </button>
+
                     <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle d-inline-flex align-items-center gap-2 rounded-pill px-3 py-2 fw-semibold" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="bi bi-sliders text-secondary"></i> Ferramentas e Análises
                     </button>
@@ -124,8 +132,7 @@
         }
     </style>
 
-    <div class="row mb-4 g-3">
-        @* Card 1: Patrimônio com Fluxo Automático *@
+    <div class="row mb-4 g-3">      
         <div class="col-md-3">
             <div class="card bg-dark text-white shadow border-0 h-100 rounded-4"
                  style="cursor: pointer;"
@@ -143,9 +150,9 @@
                     </small>
                 </div>
             </div>
-        </div>
+        </div> @* Card 1: Patrimônio com Fluxo Automático *@ 
 
-        @* Card 2: Rendimentos Mensais *@
+       
         <div class="col-md-3">
             <div class="card bg-primary text-white shadow border-0 h-100 rounded-4"
                  style="cursor: pointer;"
@@ -167,8 +174,8 @@
                         <small class="d-block">Ganhos (Mês): <span class="fw-bold">R$ @(Model.EntradasMesCorrente.ToString("N2"))</span></small>
                     </div>
                 </div>
-            </div>
-        </div>
+            </div> 
+        </div>  @* Card 2: Rendimentos Mensais *@
 
         @{
             // Matemática rápida de cobertura sem pesar o HTML
@@ -177,7 +184,6 @@
             double percentualCobertura = (double)(proventoMensalEstimado / divisorSaidas) * 100;
         }
 
-        @* Card 3: Projeção Anual (Gatilho para o Novo Diagnóstico de Alocação) *@
         <div class="col-md-3">
             <div class="card bg-info text-dark shadow border-0 h-100 rounded-4 position-relative"
                  data-bs-toggle="modal"
@@ -206,10 +212,10 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </div> @* Card 3: Projeção Anual (Gatilho para o Novo Diagnóstico de Alocação) *@
 
 
-        @* Card 4: Resultado Geral de Carteira *@
+        
         <div class="col-md-3">
             <div class="card shadow border-0 h-100 rounded-4 @(Model.TotalLucro >= 0 ? "bg-success" : "bg-danger") text-white position-relative card-interativo"
                  data-bs-toggle="modal"
@@ -227,7 +233,7 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </div> @* Card 4: Resultado Geral de Carteira *@
 
 
     @if (TempData["Sucesso"] != null)
@@ -238,6 +244,7 @@
         </div> 
     }
     <div class="card shadow-sm border-0 mb-4">
+
         <div class="card-header bg-white">
             <h5 class="mb-0 fw-bold text-primary"><i class="bi bi-graph-up-arrow me-2"></i>Renda Variável</h5>
         </div>
@@ -262,7 +269,7 @@
                     @{
                         string ultimoTipo = "";
                     }
-                    @foreach (var item in Model.Itens.Where(x => x.TipoAtivo != "RendaFixa").OrderBy(x => x.TipoAtivo == "Acao" ? 0 : x.TipoAtivo == "Fii" ? 1 : 2).ThenBy(x => x.Ticker))
+                        @foreach (var item in Model.Itens.Where(x => x.TipoAtivo != "RendaFixa").OrderBy(x => x.TipoAtivo == "Acao" ? 0 : x.TipoAtivo == "Fii" ? 1 : 2).ThenByDescending(x => x.Favorito).ThenBy(x => x.Ticker))
                     {
                         <div class="modal fade" id="modalCompra-@item.Id" tabindex="-1" aria-hidden="true">
                             <div class="modal-dialog modal-dialog-centered">
@@ -317,7 +324,10 @@
 
                                         <div class="modal-footer border-0 bg-light rounded-bottom-4 p-3">
                                             <button type="button" class="btn btn-secondary border-0 px-3 rounded-3" data-bs-dismiss="modal">Cancelar</button>
-                                            <button type="submit" class="btn btn-success fw-bold px-4 rounded-3 shadow-sm">Confirmar Compra</button>
+                                                <button type="button" class="btn btn-success fw-bold px-4 rounded-3 shadow-sm"
+                                                        onclick="adicionarAoCarrinho(@item.Id, '@item.Ticker', @item.PrecoAtual.ToString(System.Globalization.CultureInfo.InvariantCulture))">
+                                                    <i class="bi bi-cart-plus me-1"></i> Adicionar
+                                                </button>
                                         </div>
                                     </form>
                                 </div>
@@ -367,6 +377,7 @@
                                 </div>
                             </div>
                         </div>
+
                         if (ultimoTipo != item.TipoAtivo)
                         {
                             <tr class="table-secondary">
@@ -399,8 +410,6 @@
                                 }
                                 else
                                 {
-                                    <!-- Coluna 1: Exibe o Último Rendimento em Reais (FIIs / Outros) -->
-                                    <!-- Nota: Adicionado InvariantCulture no JS para evitar erro de vírgula no onclick -->
                                     <td id="celula-rendimento-@item.Id" class="text-success small fw-semibold" style="cursor: pointer;" onclick="tornarRendimentoEditavel(@item.Id, @(item.UltimoRendimento.ToString(System.Globalization.CultureInfo.InvariantCulture)))">
                                         <span id="texto-rendimento-@item.Id">
                                             @(item.UltimoRendimento > 0 ? item.UltimoRendimento.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")) : "R$ 0,00")
@@ -542,6 +551,7 @@
     @await Html.PartialAsync("_ModalRendimentosERebalanceamento", Model)
     @await Html.PartialAsync("_ModalDiagnosticoAlocacao", Model)
     @await Html.PartialAsync("_ModalPlanejamento", Model)
+    @await Html.PartialAsync("_ModalCarrinho", Model)
 
     <div class="card shadow-sm border-0">
         <div class="card-header bg-light d-flex justify-content-between align-items-center">
@@ -734,11 +744,11 @@
         </div>
     </div>
 
-<div class="modal fade" id="modalNovoRF" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal fade" id="modalNovoRF" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog"> 
         <div class="modal-content text-dark">
-            <div class="modal-header bg-dark text-white">
-                <h5 class="modal-title"><i class="bi bi-piggy-bank me-2"></i>Novo Título de Renda Fixa</h5>
+                <div class="modal-header bg-dark text-white"> @* modalNovoRF *@
+                <h5 class="modal-title"><i class="bi bi-piggy-bank me-2"></i>Novo Título de Renda Fixa</h5> 
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form asp-action="AdicionarRendaFixa" method="post" asp-route-visao="@ViewBag.VisaoAtual">
@@ -782,282 +792,202 @@
     </div>
 </div>
 
-<style>
-    .ts-dropdown .optgroup-header {
-        font-weight: bold;
-        font-size: 0.7rem;
-        text-uppercase: true;
-        letter-spacing: 0.5px;
-        color: #6c757d !important;
-        background-color: #f8f9fa;
-        padding: 6px 12px !important;
-        border-bottom: 1px solid #dee2e6;
-    }
-
-    .ts-dropdown .option {
-        padding: 8px 16px !important;
-        font-weight: 500;
-        color: #212529;
-    }
-
-    .ts-dropdown .active {
-        background-color: #e9ecef !important;
-        color: #198754 !important; /* Destaque verde combinando com o modal */
-    }
-
-    .ts-control {
-        border-radius: 0.375rem !important;
-        border: 1px solid #dee2e6 !important;
-        padding: 10px 12px !important;
-    }
-
-    .ts-wrapper.focus .ts-control {
-        border-color: #a3cfbb !important;
-        box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25) !important;
-    }
-
-        .card-interativo:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 15px rgba(0,0,0,0.15) !important;
-        }
-
-        .card-interativo:active {
-            transform: translateY(0);
-        }
-
-        .notificacao-topo {
-            position: fixed;
-            top: -100px; /* Começa escondido acima da tela */
-            left: 50%;
-            transform: translateX(-50%); /* Centraliza perfeitamente na horizontal */
-            z-index: 10000; /* Garante que fica por cima de modais e menus */
-            min-width: 320px;
-            max-width: 90%;
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
-            border-radius: 12px;
-            transition: top 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.5s ease;
-            opacity: 0;
-        }
-
-            /* Classe que faz a mensagem descer */
-            .notificacao-topo.mostrar {
-                top: 25px; /* Desce até 25px do topo */
-                opacity: 1;
-            }
-
-            /* Classe que faz a mensagem subir ao sumir */
-            .notificacao-topo.esconder {
-                top: -100px;
-                opacity: 0;
-            }
-</style>
-
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 <link href="https://cdn.jsdelivr.net/npm/tom-select/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/Carteira.css">
 <script src="https://cdn.jsdelivr.net/npm/tom-select/dist/tom-select.complete.min.js"></script>
 
 <script>
-    // 1. Função de Cálculo do Preço Médio Ponderado
-    function calcularNovoPrecoMedio(id, qtdAtual, pmAtual, precoAtual) {
-        const inputQtd = document.getElementById(`inputQtdCompra-${id}`);
-        const txtAporte = document.getElementById(`txtNovoAporte-${id}`);
-        const txtNovoPM = document.getElementById(`txtNovoPM-${id}`);
+            function calcularNovoPrecoMedio(id, qtdAtual, pmAtual, precoAtual) {
+            const inputQtd = document.getElementById(`inputQtdCompra-${id}`);
+            const txtAporte = document.getElementById(`txtNovoAporte-${id}`);
+            const txtNovoPM = document.getElementById(`txtNovoPM-${id}`);
 
-        if (!inputQtd) return;
+            if (!inputQtd) return;
 
-        const qtdComprada = parseFloat(inputQtd.value) || 0;
+            const qtdComprada = parseFloat(inputQtd.value) || 0;
 
-        // Calcula o capital exigido para o novo lote
-        const custoAporte = qtdComprada * precoAtual;
-        txtAporte.innerText = custoAporte.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            const custoAporte = qtdComprada * precoAtual;
+            txtAporte.innerText = custoAporte.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-        // Aplica a fórmula ponderada de mercado para re-precificação
-        const custoTotalAcumulado = (qtdAtual * pmAtual) + custoAporte;
-        const totalAcoesNovas = qtdAtual + qtdComprada;
+            const custoTotalAcumulado = (qtdAtual * pmAtual) + custoAporte;
+            const totalAcoesNovas = qtdAtual + qtdComprada;
 
-        const novoPrecoMedioEstimado = totalAcoesNovas > 0 ? (custoTotalAcumulado / totalAcoesNovas) : 0;
-        txtNovoPM.innerText = novoPrecoMedioEstimado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    }
+            const novoPrecoMedioEstimado = totalAcoesNovas > 0 ? (custoTotalAcumulado / totalAcoesNovas) : 0;
+            txtNovoPM.innerText = novoPrecoMedioEstimado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
 
-    // Gatilho inicial para computar o cálculo no "Page Load" de cada abertura de modal
-    document.addEventListener("DOMContentLoaded", function() {
-        @foreach (var item in Model.Itens.Where(x => x.TipoAtivo != "RendaFixa"))
+        document.addEventListener("DOMContentLoaded", function () {
+            @foreach (var item in Model.Itens.Where(x => x.TipoAtivo != "RendaFixa"))
         {
                 <text>calcularNovoPrecoMedio('@item.Id', @item.Quantidade, @item.PrecoMedio.ToString("F2", System.Globalization.CultureInfo.InvariantCulture), @item.PrecoAtual.ToString("F2", System.Globalization.CultureInfo.InvariantCulture));</text>
         }
-    });
-
-    // 2. Inicialização do TomSelect para busca inteligente de Tickers
-    document.addEventListener("DOMContentLoaded", function () {
-        const modalSelect = document.getElementById('selectModalTicker');
-        if (modalSelect) {
-            new TomSelect(modalSelect, {
-                plugins: ['dropdown_input'],
-                create: false,
-                sortField: { field: "text", direction: "asc" },
-                maxOptions: 60,
-                render: {
-                    option: function(data, escape) {
-                        return '<div class="option py-2">' + escape(data.text) + '</div>';
-                    },
-                    item: function(data, escape) {
-                        return '<div class="item fw-bold text-success">' + escape(data.text) + '</div>';
-                    }
-                }
             });
-        }
-    });
 
-    // 3. Sistema de Edição Inline de Rendimentos na Tabela
-    function tornarRendimentoEditavel(id, valorAtual) {
-        const celula = document.getElementById(`celula-rendimento-${id}`);
-
-        if (celula.querySelector('input')) return;
-
-        const input = document.createElement('input');
-        input.type = 'number';
-        input.step = '0.01';
-        input.min = '0.00';
-        input.className = 'form-control form-control-sm text-success fw-bold text-center border-primary d-inline-block';
-        input.style.maxWidth = '90px';
-        input.value = valorAtual;
-
-        const spanTexto = document.getElementById(`texto-rendimento-${id}`);
-        spanTexto.style.display = 'none';
-        celula.appendChild(input);
-        input.focus();
-        input.select();
-
-        const salvarMudanca = () => {
-            const novoValor = parseFloat(input.value) || 0;
-
-            fetch(`/Carteiras/AtualizarRendimentoInline?id=${id}&novoValor=${novoValor}`, {
-                method: 'POST',
-                headers: {
-                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
-                }
-            })
-            .then(response => {
-                if (response.ok) {
-                    input.remove();
-                    spanTexto.textContent = novoValor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-                    spanTexto.style.display = '';
-                    celula.setAttribute('onclick', `tornarRendimentoEditavel(${id}, ${novoValor})`);
-
-                    // RECALCULO DO PROVENTO MENSAL ESTIMADO EM TEMPO REAL
-                    const campoProvento = document.getElementById(`provento-estimado-${id}`);
-                    const campoQuantidade = document.getElementById(`quantidade-${id}`);
-
-                    if (campoProvento && campoQuantidade) {
-                        const qtdTexto = campoQuantidade.textContent.trim().replace(/\./g, '').replace(',', '.');
-                        const quantidade = parseFloat(qtdTexto) || 0;
-                        const novoProventoEstimado = quantidade * novoValor;
-
-                        if (novoProventoEstimado > 0) {
-                            campoProvento.textContent = novoProventoEstimado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-                        } else {
-                            campoProvento.textContent = "-";
+        document.addEventListener("DOMContentLoaded", function () {
+            const modalSelect = document.getElementById('selectModalTicker');
+            if (modalSelect) {
+                new TomSelect(modalSelect, {
+                    plugins: ['dropdown_input'],
+                    create: false,
+                    sortField: { field: "text", direction: "asc" },
+                    maxOptions: 60,
+                    render: {
+                        option: function (data, escape) {
+                            return '<div class="option py-2">' + escape(data.text) + '</div>';
+                        },
+                        item: function (data, escape) {
+                            return '<div class="item fw-bold text-success">' + escape(data.text) + '</div>';
                         }
                     }
-                } else {
-                    alert('Erro ao salvar o novo valor de rendimento.');
+                });
+            }
+        });
+
+        function tornarRendimentoEditavel(id, valorAtual) {
+            const celula = document.getElementById(`celula-rendimento-${id}`);
+
+            if (celula.querySelector('input')) return;
+
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.step = '0.01';
+            input.min = '0.00';
+            input.className = 'form-control form-control-sm text-success fw-bold text-center border-primary d-inline-block';
+            input.style.maxWidth = '90px';
+            input.value = valorAtual;
+
+            const spanTexto = document.getElementById(`texto-rendimento-${id}`);
+            spanTexto.style.display = 'none';
+            celula.appendChild(input);
+            input.focus();
+            input.select();
+
+            const salvarMudanca = () => {
+                const novoValor = parseFloat(input.value) || 0;
+
+                fetch(`/Carteiras/AtualizarRendimentoInline?id=${id}&novoValor=${novoValor}`, {
+                    method: 'POST',
+                    headers: {
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                    }
+                })
+                    .then(response => {
+                        if (response.ok) {
+                            input.remove();
+                            spanTexto.textContent = novoValor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                            spanTexto.style.display = '';
+                            celula.setAttribute('onclick', `tornarRendimentoEditavel(${id}, ${novoValor})`);
+
+                            const campoProvento = document.getElementById(`provento-estimado-${id}`);
+                            const campoQuantidade = document.getElementById(`quantidade-${id}`);
+
+                            if (campoProvento && campoQuantidade) {
+                                const qtdTexto = campoQuantidade.textContent.trim().replace(/\./g, '').replace(',', '.');
+                                const quantidade = parseFloat(qtdTexto) || 0;
+                                const novoProventoEstimado = quantidade * novoValor;
+
+                                if (novoProventoEstimado > 0) {
+                                    campoProvento.textContent = novoProventoEstimado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                                } else {
+                                    campoProvento.textContent = "-";
+                                }
+                            }
+                        } else {
+                            alert('Erro ao salvar o novo valor de rendimento.');
+                            cancelarEdicao();
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erro:', error);
+                        cancelarEdicao();
+                    });
+            };
+
+            const cancelarEdicao = () => {
+                input.remove();
+                spanTexto.style.display = '';
+            };
+
+            input.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    salvarMudanca();
+                }
+                if (e.key === 'Escape') {
                     cancelarEdicao();
                 }
-            })
-            .catch(error => {
-                console.error('Erro:', error);
-                cancelarEdicao();
             });
-        };
 
-        const cancelarEdicao = () => {
-            input.remove();
-            spanTexto.style.display = '';
-        };
-
-        input.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
+            input.addEventListener('blur', function () {
                 salvarMudanca();
-            }
-            if (e.key === 'Escape') {
-                cancelarEdicao();
-            }
-        });
+            });
+        }
 
-        input.addEventListener('blur', function() {
-            salvarMudanca();
-        });
-    }
+        document.addEventListener("DOMContentLoaded", function () {
+            const modalElement = document.getElementById('modalRendimentosERebalanceamento');
+            let chartEvolucao = null;
 
-    // =========================================================================
-    // 4. SCRIPT ADICIONADO: NOVO MOTOR DO GRÁFICO DE EVOLUÇÃO PATRIMONIAL LÍQUIDA
-    // =========================================================================
-    document.addEventListener("DOMContentLoaded", function () {
-        const modalElement = document.getElementById('modalRendimentosERebalanceamento');
-        let chartEvolucao = null;
+            modalElement.addEventListener('shown.bs.modal', function () {
+                const canvasEvolucao = document.getElementById('chartEvolucaoPatrimonial');
+                if (!canvasEvolucao) return;
 
-        modalElement.addEventListener('shown.bs.modal', function () {
-            const canvasEvolucao = document.getElementById('chartEvolucaoPatrimonial');
-            if (!canvasEvolucao) return;
+                let labelsEvolucao = @Html.Raw(Json.Serialize(ViewBag.HistoricoEvolucaoLabels)) || [];
+                let dadosEvolucao = @Html.Raw(Json.Serialize(ViewBag.HistoricoEvolucaoValores)) || [];
 
-            let labelsEvolucao = @Html.Raw(Json.Serialize(ViewBag.HistoricoEvolucaoLabels)) || [];
-            let dadosEvolucao = @Html.Raw(Json.Serialize(ViewBag.HistoricoEvolucaoValores)) || [];
+                // Tratamento preventivo para o primeiro mês do sistema (gráfico de 1 ponto só)
+                if (labelsEvolucao.length === 1) {
+                    labelsEvolucao = ['Início', labelsEvolucao[0]];
+                    dadosEvolucao = [dadosEvolucao[0], dadosEvolucao[0]];
+                }
+                else if (labelsEvolucao.length === 0) {
+                    labelsEvolucao = ['Início', new Date().toLocaleDateString('pt-BR', { month: '2-digit', year: 'numeric' })];
+                    dadosEvolucao = [@Model.PatrimonioTotalReal, @Model.PatrimonioTotalReal];
+                }
 
-            // Tratamento preventivo para o primeiro mês do sistema (gráfico de 1 ponto só)
-            if (labelsEvolucao.length === 1) {
-                labelsEvolucao = ['Início', labelsEvolucao[0]];
-                dadosEvolucao = [dadosEvolucao[0], dadosEvolucao[0]];
-            }
-            else if (labelsEvolucao.length === 0) {
-                labelsEvolucao = ['Início', new Date().toLocaleDateString('pt-BR', { month: '2-digit', year: 'numeric' })];
-                dadosEvolucao = [@Model.PatrimonioTotalReal, @Model.PatrimonioTotalReal];
-            }
+                const ctxEvolucao = canvasEvolucao.getContext('2d');
 
-            const ctxEvolucao = canvasEvolucao.getContext('2d');
+                if (chartEvolucao) {
+                    chartEvolucao.destroy();
+                }
 
-            if (chartEvolucao) {
-                chartEvolucao.destroy();
-            }
-
-            chartEvolucao = new Chart(ctxEvolucao, {
-                type: 'line',
-                data: {
-                    labels: labelsEvolucao,
-                    datasets: [{
-                        label: 'Patrimônio Líquido (R$)',
-                        data: dadosEvolucao,
-                        borderColor: '#0d6efd',
-                        backgroundColor: 'rgba(13, 110, 253, 0.1)',
-                        fill: true,
-                        tension: 0.3,
-                        borderWidth: 3,
-                        pointBackgroundColor: '#0d6efd',
-                        pointRadius: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                label: (context) => 'Saldo: ' + new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(context.raw)
+                chartEvolucao = new Chart(ctxEvolucao, {
+                    type: 'line',
+                    data: {
+                        labels: labelsEvolucao,
+                        datasets: [{
+                            label: 'Patrimônio Líquido (R$)',
+                            data: dadosEvolucao,
+                            borderColor: '#0d6efd',
+                            backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                            fill: true,
+                            tension: 0.3,
+                            borderWidth: 3,
+                            pointBackgroundColor: '#0d6efd',
+                            pointRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: (context) => 'Saldo: ' + new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(context.raw)
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: false,
+                                ticks: { callback: (v) => 'R$ ' + v.toLocaleString('pt-BR') }
                             }
                         }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: false,
-                            ticks: { callback: (v) => 'R$ ' + v.toLocaleString('pt-BR') }
-                        }
                     }
-                }
+                });
             });
         });
-    });
 
         function filtrarTickersModal() {
             const input = document.getElementById('inputFiltroTicker');
@@ -1106,48 +1036,48 @@
             filtrarTickersModal();
         });
 
-    // Função auxiliar para transição fluida entre modais
-    function abrirConfiguracaoMetasRapido() {
-        const modalDetalhes = bootstrap.Modal.getInstance(document.getElementById('modalRendimentosERebalanceamento'));
-        const modalDetalhes1 = bootstrap.Modal.getInstance(document.getElementById('modalDiagnosticoAlocacao'));
-        if(modalDetalhes) modalDetalhes.hide();
-        if(modalDetalhes1) modalDetalhes1.hide();
+        // Função auxiliar para transição fluida entre modais
+        function abrirConfiguracaoMetasRapido() {
+            const modalDetalhes = bootstrap.Modal.getInstance(document.getElementById('modalRendimentosERebalanceamento'));
+            const modalDetalhes1 = bootstrap.Modal.getInstance(document.getElementById('modalDiagnosticoAlocacao'));
+            if (modalDetalhes) modalDetalhes.hide();
+            if (modalDetalhes1) modalDetalhes1.hide();
 
-        setTimeout(() => {
-            const modalConfigMetas = new bootstrap.Modal(document.getElementById('modalMetas'));
-            modalConfigMetas.show();
-        }, 400);
-    }
+            setTimeout(() => {
+                const modalConfigMetas = new bootstrap.Modal(document.getElementById('modalMetas'));
+                modalConfigMetas.show();
+            }, 400);
+        }
         document.addEventListener("DOMContentLoaded", function () {
-                const selectTicker = document.getElementById("selectModalTicker");
-                const inputPrecoMedio = document.querySelector("input[name='precoMedio']");
+            const selectTicker = document.getElementById("selectModalTicker");
+            const inputPrecoMedio = document.querySelector("input[name='precoMedio']");
 
-                if (selectTicker && inputPrecoMedio) {
-                    selectTicker.addEventListener("change", function () {
-                        // Pega a opção que o usuário acabou de clicar
-                        const opcaoSelecionada = this.options[this.selectedIndex];
+            if (selectTicker && inputPrecoMedio) {
+                selectTicker.addEventListener("change", function () {
+                    // Pega a opção que o usuário acabou de clicar
+                    const opcaoSelecionada = this.options[this.selectedIndex];
 
-                        // Extrai o valor do data-preco
-                        let precoAtual = opcaoSelecionada.getAttribute("data-preco");
+                    // Extrai o valor do data-preco
+                    let precoAtual = opcaoSelecionada.getAttribute("data-preco");
 
-                        if (precoAtual) {
-                            // Substitui ponto por vírgula para manter o padrão brasileiro no input (Ex: 34.50 vira 34,50)
-                            precoAtual = precoAtual.replace('.', ',');
+                    if (precoAtual) {
+                        // Substitui ponto por vírgula para manter o padrão brasileiro no input (Ex: 34.50 vira 34,50)
+                        precoAtual = precoAtual.replace('.', ',');
 
-                            // Preenche o input
-                            inputPrecoMedio.value = precoAtual;
+                        // Preenche o input
+                        inputPrecoMedio.value = precoAtual;
 
-                            // Dispara um evento de input caso você use alguma máscara JS (ex: jQuery Mask) para ele formatar na hora
-                            inputPrecoMedio.dispatchEvent(new Event('input'));
-                        } else {
-                            // Limpa o campo caso o ativo não tenha preço cadastrado
-                            inputPrecoMedio.value = "";
-                        }
-                    });
-                }
-            });
+                        // Dispara um evento de input caso você use alguma máscara JS (ex: jQuery Mask) para ele formatar na hora
+                        inputPrecoMedio.dispatchEvent(new Event('input'));
+                    } else {
+                        // Limpa o campo caso o ativo não tenha preço cadastrado
+                        inputPrecoMedio.value = "";
+                    }
+                });
+            }
+        });
 
-           async function alternarFavorito(id, elementoTd) {
+        async function alternarFavorito(id, elementoTd) {
             try {
                 // Desativa cliques duplos rápidos enquanto processa
                 elementoTd.style.pointerEvents = 'none';
@@ -1194,6 +1124,89 @@
                 elementoTd.style.pointerEvents = 'auto';
             }
         }
+        let carrinho = [];
+
+        function adicionarAoCarrinho(id, ticker, preco) {
+            let inputQtd = document.getElementById(`inputQtdCompra-${id}`);
+            let qtd = parseInt(inputQtd.value);
+
+            if (qtd <= 0) return;
+
+            // Verifica se já existe no carrinho e apenas soma a quantidade
+            let itemExistente = carrinho.find(i => i.id === id);
+            if (itemExistente) {
+                itemExistente.quantidade += qtd;
+            } else {
+                carrinho.push({ id: id, ticker: ticker, preco: preco, quantidade: qtd });
+            }
+
+            atualizarInterfaceCarrinho();
+
+            // Fecha o modal do ativo
+            let modalEl = document.getElementById(`modalCompra-${id}`);
+            let modalObj = bootstrap.Modal.getInstance(modalEl);
+            if (modalObj) modalObj.hide();
+        }
+
+        function removerDoCarrinho(id) {
+            carrinho = carrinho.filter(i => i.id !== id);
+            atualizarInterfaceCarrinho();
+        }
+
+        function atualizarInterfaceCarrinho() {
+            let tbody = document.getElementById('tabelaCarrinhoBody');
+            tbody.innerHTML = '';
+            let total = 0;
+            let qtdItens = 0;
+
+            carrinho.forEach(item => {
+                let subtotal = item.quantidade * item.preco;
+                total += subtotal;
+                qtdItens += item.quantidade;
+
+                tbody.innerHTML += `
+                            <tr>
+                                <td class="ps-4 fw-bold align-middle">${item.ticker}</td>
+                                <td class="text-center align-middle">${item.quantidade}</td>
+                                <td class="text-end pe-4 align-middle text-secondary">${subtotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                                <td class="text-center align-middle">
+                                    <button class="btn btn-sm btn-outline-danger border-0" onclick="removerDoCarrinho(${item.id})">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+            });
+
+            if (carrinho.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-muted">Seu carrinho está vazio.</td></tr>`;
+            }
+
+            let totalFormatado = total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+            // Atualiza o botão do cabeçalho
+            document.getElementById('cartCount').innerText = qtdItens;
+            document.getElementById('cartTotalHeader').innerText = totalFormatado;
+
+            // Atualiza o total dentro do modal do carrinho
+            document.getElementById('cartTotalFinal').innerText = totalFormatado;
+        }
+
+        function realizarComprasEmLote(visaoAtual) {
+            if (carrinho.length === 0) return alert("Adicione ativos antes de comprar!");
+
+            fetch(`/Carteiras/ProcessarCarrinho?visao=${visaoAtual}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(carrinho)
+            })
+                .then(response => {
+                    if (response.ok) {
+                        carrinho = [];
+                        window.location.reload();
+                    } else {
+                        alert("Erro ao processar as compras.");
+                    }
+                });
+        }
 </script>
-
-
